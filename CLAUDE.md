@@ -96,7 +96,7 @@ Pages should **calculate** from the rules (modifiers, proficiency, HP, AC, saves
 
 ## Online (live since 2026-11-23)
 - **Live site:** https://ford-5.github.io/dragon-table/ — GitHub Pages from the `main` branch, folder `/`. Repo: https://github.com/ford-5/dragon-table (public). Every push to `main` updates the site within a minute or two.
-- The app was renamed **Dragon Table** (no "D&D" in visible text, for trademark reasons; links that name the D&D Beyond store stay). "Dungeon Master"/"DM" wording is unchanged for now; for a commercial product consider "Game Master".
+- The app was renamed **Dragon Table** (no "D&D" in visible text, for trademark reasons; links that name the D&D Beyond store stay), and all visible text says **Game Master / GM** instead of Dungeon Master / DM (also a trademark; the SRD itself says Game Master). Keep using GM in new text. File names (`dm.html`, `ai-dm.html`, `dm-start.html`, `dm-learn.html`), code names and saved-data keys (`"dmNotes"`, etc.) deliberately still say dm, so links and saved data keep working. The rest of this guide may still say "DM" when describing older features.
 - Git: repo-local identity `ford-5` with GitHub's noreply email (the real email is never used). The GitHub CLI is at `~/tools/gh/bin/gh` (official release, checksum-verified; not on the PATH), signed in as `ford-5` via the device-code flow, and it is the Git credential helper for this repo. To publish: `git add -A && git commit -m "..." && git push`.
 - Checked online: all pages load, the AI page explains it only runs locally, and a DM and a player connected through the live site (invite link `…/join.html?code=…`).
 - Note: if a player has no characters when `join.html` loads, the join button stays disabled until they reload the page.

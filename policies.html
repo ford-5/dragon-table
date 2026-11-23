@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy & Shop Policies</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <nav class="top-nav">
+    <a href="index.html">🏠 Home</a>
+    <a href="dice.html">🎲 Dice</a>
+    <a href="character.html">🧙 Characters</a>
+    <a href="dm.html">🛡️ GM Screen</a>
+    <a href="equipment.html">🛒 Equipment</a>
+  </nav>
+
+  <h1>🔒 Privacy & Shop Policies</h1>
+  <p class="hint">Last updated: <span data-info="lastUpdated"></span></p>
+
+  <!-- Plain-language policies. The shop details (email, shipping, times) come from
+       SHOP_INFO in equipment.js, so they only need changing in one place. -->
+
+  <div class="panel policy">
+    <h2>The short version</h2>
+    <ul>
+      <li>No accounts, no ads, no tracking, and no cookies.</li>
+      <li>Your characters, notes and adventures stay in <strong>your own browser</strong>. We never see them.</li>
+      <li>If you order, we use your name, email and address <strong>only to make and send your order</strong>.</li>
+      <li>We never sell your information.</li>
+    </ul>
+  </div>
+
+  <div class="panel policy">
+    <h2>🔒 Privacy</h2>
+
+    <h3>What stays on your device</h3>
+    <p>Characters, Game Master notes, AI adventures, your shop basket and your settings are saved in your web browser's storage on your own device. They are not sent to us. Clearing your browser's data for this site deletes them.</p>
+
+    <h3>Live games and voice chat</h3>
+    <p>When you join a live game, your hero's name, class, species, level, Armor Class, Hit Points and special item are sent to the Game Master's browser, so they can run the game. Rolls and messages you send go to the Game Master too.</p>
+    <p>To connect browsers, the app uses PeerJS, a free public service that introduces your browser to the Game Master's. It sees game codes and connection details (like IP addresses), but not the game itself.</p>
+    <p>Voice chat only starts when you choose to join it. Your voice goes to the Game Master and the other players at the table, encrypted. Sometimes it passes through a PeerJS relay server on the way. Nothing is recorded or saved.</p>
+
+    <h3>The AI Game Master and voice typing</h3>
+    <p>The AI Game Master only runs on a computer that has the app downloaded, using that person's own Anthropic API key. Their messages, campaign choices and hero's sheet are sent to Anthropic to write the replies. Voice typing on that page uses your browser's own speech service, which may send your voice to Google (Chrome) or Apple (Safari).</p>
+
+    <h3>Orders</h3>
+    <p>Orders are sent with a Google Form and kept in the shop owner's private Google Sheet. We use your name, email and shipping address only to confirm, make and send your order, and to answer your questions about it. Google handles the form under <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google's privacy policy</a>.</p>
+
+    <h3>Hosting</h3>
+    <p>This website is hosted on GitHub Pages. Like most websites, GitHub may record basic visit details such as IP addresses, under <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub's privacy statement</a>. The live-game code is loaded from unpkg.com, which may also see your IP address.</p>
+
+    <h3>Children</h3>
+    <p>Children under 13 should only order, or use live games and voice chat, with a parent or guardian.</p>
+
+    <h3>Your choices</h3>
+    <p>You can ask us to show you, correct or delete the order details we hold about you. <span data-contact></span></p>
+  </div>
+
+  <div class="panel policy">
+    <h2>🛒 Shop policies</h2>
+
+    <h3>Ordering and payment</h3>
+    <p>Pressing "Send my order" doesn't charge you anything. We'll email you to confirm the price, payment and delivery before we start printing.</p>
+
+    <h3>Made to order</h3>
+    <p>Every item is 3D-printed after you order. Printing usually takes <span data-info="makeTime"></span> before we ship.
+      3D prints show fine layer lines, and colors can look a little different from the photos. That's normal and not a fault.</p>
+
+    <h3>Shipping</h3>
+    <p>We currently ship to <span data-info="shipsTo"></span>. We'll confirm the shipping cost and expected delivery time by email before you pay.</p>
+
+    <h3>Broken or wrong items</h3>
+    <p>If something arrives broken or isn't what you ordered, tell us within <span data-info="returnDays"></span> days, with a photo if you can, and we'll replace it or refund you.</p>
+
+    <h3>Returns</h3>
+    <p>You can return an unused item within <span data-info="returnDays"></span> days of delivery for a refund of the item's price. Custom items, like a miniature of your own hero, are made just for you, so they can't be returned unless they arrive broken or wrong.</p>
+
+    <h3>⚠️ Safety</h3>
+    <p>These are hobby and gaming items, not toys. They contain <strong>small parts</strong> and are not suitable for children under 3. Don't put them in your mouth, and keep them away from heat.</p>
+  </div>
+
+  <div class="panel policy">
+    <h2>✉️ Questions?</h2>
+    <p data-contact></p>
+  </div>
+
+  <p><a href="index.html" class="back-link">← Back</a></p>
+
+  <script src="equipment.js"></script>
+  <script>
+    // Fill in the shop details from SHOP_INFO (in equipment.js).
+    for (const spot of document.querySelectorAll("[data-info]")) {
+      spot.textContent = SHOP_INFO[spot.dataset.info];
+    }
+
+    // How to contact the shop: the email if there is one, otherwise the order form's Notes box.
+    for (const spot of document.querySelectorAll("[data-contact]")) {
+      spot.textContent = "";
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(SHOP_INFO.contactEmail)) {
+        const link = document.createElement("a");
+        link.href = "mailto:" + SHOP_INFO.contactEmail;
+        link.textContent = SHOP_INFO.contactEmail;
+        spot.append("Email us at ", link, ".");
+      } else {
+        spot.append("Write to us in the Notes box of the order form, or reply to any email we sent you about your order.");
+      }
+    }
+  </script>
+</body>
+</html>

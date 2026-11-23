@@ -18,6 +18,17 @@ const ORDER_FORM = {
   totalField: "entry.107570527"    // "Order total"
 };
 
+// ---------- Your shop details (shown on the Privacy & Shop Policies page) ----------
+// contactEmail is PUBLIC: anyone can see it. A separate shop email address is a good idea.
+// Leave it "" to tell people to use the order form's Notes box instead.
+const SHOP_INFO = {
+  contactEmail: "",
+  shipsTo: "the United States",          // where you ship
+  makeTime: "3 to 7 days",               // how long printing takes before you ship
+  returnDays: 14,                        // days to return an unused item
+  lastUpdated: "23 November 2026"        // change this whenever you change the policies
+};
+
 // The money symbol shown in front of prices.
 const CURRENCY = "$";
 

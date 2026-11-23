@@ -94,23 +94,24 @@ Pages should **calculate** from the rules (modifiers, proficiency, HP, AC, saves
 - Everything was tested that way, with rule calculations checked by hand. Voice chat can be tested without microphones by replacing `navigator.mediaDevices.getUserMedia` in each tab with an `OfflineAudioContext`-free `AudioContext` oscillator → `MediaStreamDestination` stream, then measuring RMS with an `AnalyserNode` on each side. There's no Node on this Mac: run JavaScript checks in the browser pane.
 - The browser pane can reach the real PeerJS cloud, so DM-and-player tests with two tabs use the real matchmaking service (use a fixed code by calling `startPeer("ZZZZZZ", 0)` in the DM tab).
 
-## Going online (paused, 2026-11-21)
-- Goal: GitHub Pages at `<username>.github.io/dragon-table` (repo name chosen by the user: **dragon-table**, public).
-- The app is ready for hosting: relative URLs (`api/status`, `api/dm`), invite links built with `new URL("join.html", location.href)` so they work in a sub-folder, the AI page explains it only runs locally, the exact SRD 5.2.1 attribution statement is in the `index.html` footer and `README.md`.
-- Tried and paused: signing in to GitHub in the in-app browser pane didn't work for the user, and Claude in Chrome wasn't connected (no browsers listed for the account). The user found the browser steps confusing.
-- Next plan: once Apple's Command Line Tools are installed (Git), publish from Terminal so the user only has to type a short device code GitHub shows them. Do the steps for the user; give one small instruction at a time.
+## Online (live since 2026-11-23)
+- **Live site:** https://ford-5.github.io/dragon-table/ — GitHub Pages from the `main` branch, folder `/`. Repo: https://github.com/ford-5/dragon-table (public). Every push to `main` updates the site within a minute or two.
+- The app was renamed **Dragon Table** (no "D&D" in visible text, for trademark reasons; links that name the D&D Beyond store stay). "Dungeon Master"/"DM" wording is unchanged for now; for a commercial product consider "Game Master".
+- Git: repo-local identity `ford-5` with GitHub's noreply email (the real email is never used). The GitHub CLI is at `~/tools/gh/bin/gh` (official release, checksum-verified; not on the PATH), signed in as `ford-5` via the device-code flow, and it is the Git credential helper for this repo. To publish: `git add -A && git commit -m "..." && git push`.
+- Checked online: all pages load, the AI page explains it only runs locally, and a DM and a player connected through the live site (invite link `…/join.html?code=…`).
+- Note: if a player has no characters when `join.html` loads, the join button stays disabled until they reload the page.
 
 ## Roadmap
 1. [x] Dice roller — d4, d6, d8, d10, d12, d20
 2. [x] Dice roller upgrades — modifiers (d20+5), multiple dice (3d6), roll history, styling
 3. [x] Initiative tracker — add creatures, sort by initiative, track HP
 4. [x] Character sheet — ability scores with auto-calculated modifiers, saved in the browser
-5. [ ] Tidy up — learn Git, split code into files (files split ✓ — Git still to do; needs Apple's Command Line Tools installed first)
-6. [ ] Going further — publish online (GitHub Pages), maybe React
+5. [x] Tidy up — files split, Git set up (2026-11-23)
+6. [x] Publish online (GitHub Pages) — live 2026-11-23; maybe React later
 7. [x] Based on real D&D — character creator by the SRD rules, multiple characters, DM party import, advantage/disadvantage
 9. [x] Start flow (Player/DM → AI or Live DM), AI Dungeon Master (helper server + Claude API), live games (DM requests players, PeerJS)
 10. [x] Help levels (Beginner/Intermediate/Advanced), AI campaign setup + special item, two classes, waiting room for live players, DM course, Battle Simulator with SRD monsters, live voice chat (2026-11-23)
-8. [ ] Next ideas: put the app online (GitHub Pages) so players on any device can join; more backgrounds, spells, equipment and armor, class features by level, special-ability simulation in battles, live DM voice for 3+ players tested with real people
+8. [ ] Next ideas: more backgrounds, spells, equipment and armor, class features by level, special-ability simulation in battles, live DM voice for 3+ players tested with real people
 
 ## D&D content rules
 - Only use rules and content from the **SRD (System Reference Document)**, which is free under Creative Commons.

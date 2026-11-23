@@ -12,7 +12,7 @@
     <a href="index.html">🏠 Home</a>
     <a href="dice.html">🎲 Dice</a>
     <a href="character.html" class="active">🧙 Characters</a>
-    <a href="dm.html">🛡️ DM Screen</a>
+    <a href="dm.html">🛡️ GM Screen</a>
   </nav>
 
   <h1 id="pageTitle">🧙 Characters</h1>
@@ -230,7 +230,7 @@
           What can it do?
           <textarea id="itemPowers" class="notes-box short-notes" placeholder="Once per day, it can set its blade alight for one minute..."></textarea>
         </label>
-        <p id="itemCustomHint" class="hint">A homemade item's real powers are for you and your DM to agree on, so it stays fair for the whole party.</p>
+        <p id="itemCustomHint" class="hint">A homemade item's real powers are for you and your GM to agree on, so it stays fair for the whole party.</p>
 
         <button onclick="saveItem()">Keep this item</button>
         <button class="small-button" onclick="closeItemEditor()">Cancel</button>
@@ -897,7 +897,7 @@
       const character = buildDraftCharacter();
       characters.push(character);
       persist();
-      // Came here from the AI Dungeon Master's setup? Go straight back with the new hero.
+      // Came here from the AI Game Master's setup? Go straight back with the new hero.
       if (returnTo) {
         location.href = returnTo + "?hero=" + character.id;
         return;
@@ -1246,9 +1246,9 @@
           ? "✅ Applied to your sheet: " + effectLines.join("; ") + "."
           : "⏸️ Not applied until you are attuned: " + effectLines.join("; ") + ".";
       } else if (item.source === "srd") {
-        effectNote.textContent = "ℹ️ This item's powers don't change the numbers on your sheet. Use them at the table with your DM.";
+        effectNote.textContent = "ℹ️ This item's powers don't change the numbers on your sheet. Use them at the table with your GM.";
       } else {
-        effectNote.textContent = "ℹ️ A custom item's powers are for you and your DM to run at the table.";
+        effectNote.textContent = "ℹ️ A custom item's powers are for you and your GM to run at the table.";
       }
       card.append(effectNote);
       display.append(card);
@@ -1517,7 +1517,7 @@
     const CREATOR_TIPS = {
       name: {
         long: "Welcome! In a tabletop adventure you play one hero: your character. Everything about them goes on a character sheet, and this page fills it in for you, one step at a time. Start with a name. Heroic, funny, anything goes.",
-        short: "Name your hero. The player name helps the DM tell sheets apart."
+        short: "Name your hero. The player name helps the GM tell sheets apart."
       },
       class: {
         long: "Your class is your hero's job, and it decides how you fight and what you're good at. Great first picks: Fighter (tough and simple to play), Rogue (sneaky and skillful) or Cleric (heals friends with magic). The hit die shows how tough the class is: a bigger die means more Hit Points.",
@@ -1626,7 +1626,7 @@
     fillItemSelects();
     document.getElementById("itemSelect").addEventListener("change", showSelectedItemInfo);
     startGuide();
-    // Sent here to make a hero (from the AI Dungeon Master's setup)? Go straight to the creator.
+    // Sent here to make a hero (from the AI Game Master's setup)? Go straight to the creator.
     if (guideLevel || returnTo) {
       startCreator();
     } else {

@@ -96,9 +96,9 @@ function findMusicTag(text) {
   return MUSIC_TAG_MOODS.includes(mood) ? mood : null;
 }
 
-// What roll does the Dungeon Master want? Returns null, or one of:
+// What roll does the Game Master want? Returns null, or one of:
 //   { type: "check", entry, index, mode, label }        a roll from the sheet (the bonus comes from the sheet)
-//   { type: "dice", count, sides, modifier, mode, label } dice the DM wrote out (attacks, damage)
+//   { type: "dice", count, sides, modifier, mode, label } dice the GM wrote out (attacks, damage)
 function findRollRequest(text, character) {
   const tag = String(text).match(/\[ROLL\s*:\s*([^\]]+)\]/i);
   if (tag) return parseRollRequest(tag[1], character);
@@ -202,7 +202,7 @@ function rollRequest(character, request) {
 }
 
 // ---------------------------------------------------------------------
-// THE CHARACTER SHEET AS TEXT (sent to the AI Dungeon Master)
+// THE CHARACTER SHEET AS TEXT (sent to the AI Game Master)
 // ---------------------------------------------------------------------
 function makeSheetText(c) {
   const species = findByName(SPECIES, c.species);
@@ -248,10 +248,10 @@ function makeSheetText(c) {
 }
 
 // ---------------------------------------------------------------------
-// LIVE GAMES: identity, game codes, and what a player shares with a DM
+// LIVE GAMES: identity, game codes, and what a player shares with a GM
 // ---------------------------------------------------------------------
 
-// Every browser gets a random id, so a DM can recognise a returning player.
+// Every browser gets a random id, so a GM can recognise a returning player.
 // (It's random and unguessable, but it is not a password.)
 let cachedClientId = null;
 function getClientId() {
@@ -297,7 +297,7 @@ function peerIdFromCode(code) {
   return PEER_PREFIX + normalizeCode(code);
 }
 
-// The small summary of a character that a player sends to the DM.
+// The small summary of a character that a player sends to the GM.
 // Deliberately leaves out inventory notes and the player's real name.
 function makeSharedCharacter(c) {
   const item = c.specialItem;

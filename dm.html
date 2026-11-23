@@ -3,24 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DM Screen</title>
+  <title>GM Screen</title>
 
   <!-- Same shared styles as the player page -->
   <link rel="stylesheet" href="style.css">
 </head>
 
-<!-- class="dm" switches on the purple DM theme from style.css -->
+<!-- class="dm" switches on the purple GM theme from style.css -->
 <body class="dm">
   <nav class="top-nav">
     <a href="index.html">🏠 Home</a>
     <a href="dice.html">🎲 Dice</a>
     <a href="character.html">🧙 Characters</a>
-    <a href="dm.html" class="active">🛡️ DM Screen</a>
+    <a href="dm.html" class="active">🛡️ GM Screen</a>
     <a href="battle.html">⚔️ Battle</a>
   </nav>
 
-  <h1>🛡️ DM Screen</h1>
-  <p><a href="dm-start.html" class="back-link">← Back</a> · <a href="dm-learn.html" class="back-link">🎓 Learn to be a DM</a></p>
+  <h1>🛡️ GM Screen</h1>
+  <p><a href="dm-start.html" class="back-link">← Back</a> · <a href="dm-learn.html" class="back-link">🎓 Learn to be a GM</a></p>
 
   <!-- ===================== REQUEST PLAYERS (live game) ===================== -->
   <div class="panel" id="livePanel">
@@ -142,7 +142,7 @@
 
     <h3 class="section-label">Free official rules</h3>
     <ul class="book-list">
-      <!-- target="_blank" opens the link in a new tab, so the DM screen stays open -->
+      <!-- target="_blank" opens the link in a new tab, so the GM screen stays open -->
       <li>
         <a href="https://www.dndbeyond.com/srd" target="_blank">System Reference Document (SRD 5.2.1)</a>
         <br><span class="hint">The core rules, classes, spells and monsters. Free to read and download.</span>
@@ -156,7 +156,7 @@
     <h3 class="section-label">The three core books</h3>
     <ul class="book-list">
       <li>📕 <strong>Player's Handbook</strong> <span class="hint">— classes, species, spells, character creation</span></li>
-      <li>📘 <strong>Dungeon Master's Guide</strong> <span class="hint">— running games, building worlds, magic items</span></li>
+      <li>📘 <strong>Game Master's Guide</strong> <span class="hint">— running games, building worlds, magic items</span></li>
       <li>📗 <strong>Monster Manual</strong> <span class="hint">— hundreds of creatures and their stat blocks</span></li>
       <li>
         <a href="https://marketplace.dndbeyond.com/" target="_blank">Get them on the D&D Beyond Marketplace</a>
@@ -180,7 +180,7 @@
   <script src="rules.js"></script>
   <script src="play.js"></script>
 
-  <!-- PeerJS (MIT license, version pinned) connects the DM's browser straight to the players' browsers. -->
+  <!-- PeerJS (MIT license, version pinned) connects the GM's browser straight to the players' browsers. -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 
   <script>
@@ -483,7 +483,7 @@
             maxHp: maxHp,
             passive: getPassivePerception(c),
             summary: describeSavedCharacter(c),
-            item: c.specialItem || null   // the player's special item, so the DM can see it
+            item: c.specialItem || null   // the player's special item, so the GM can see it
           });
           nextPartyId++;
           added++;
@@ -550,9 +550,9 @@
         return;
       }
 
-      // prompt() pops up a box asking the DM to type something.
+      // prompt() pops up a box asking the GM to type something.
       const answer = prompt("What did " + member.name + " roll for initiative?");
-      if (answer === null) return;   // the DM clicked Cancel
+      if (answer === null) return;   // the GM clicked Cancel
 
       combatants.push({
         id: nextId,
@@ -687,15 +687,15 @@
     buildConditions();
 
     // =====================================================================
-    // LIVE GAME — players ask to join, the DM accepts or declines
+    // LIVE GAME — players ask to join, the GM accepts or declines
     // =====================================================================
-    // PeerJS connects the DM's browser straight to each player's browser (encrypted).
+    // PeerJS connects the GM's browser straight to each player's browser (encrypted).
     // A free public "matchmaking" service only introduces them to each other.
     // Nothing is stored online: when you close this page, the game is over.
     //
     // Messages that travel between the browsers are small objects with a "type":
-    //   player -> DM:  request, update, roll, say
-    //   DM -> player:  waiting, accepted, declined, announce, hp, closed
+    //   player -> GM:  request, update, roll, say
+    //   GM -> player:  waiting, accepted, declined, announce, hp, closed
 
     let peer = null;            // our PeerJS connection to the matchmaking service
     let gameCode = "";          // e.g. "K7M4QX"
@@ -781,10 +781,10 @@
         joinPage.search = "?code=" + gameCode;
         inviteLink = joinPage.href;
         note.textContent = "Send your players this invite link: " + inviteLink +
-          " (or they choose Player → Live Dungeon Master and type the code).";
+          " (or they choose Player → Live Game Master and type the code).";
       } else {
         inviteLink = "";
-        note.textContent = "Players need to open this app on their own device and choose Player → Live Dungeon Master, then type the code. " +
+        note.textContent = "Players need to open this app on their own device and choose Player → Live Game Master, then type the code. " +
           "To let players on your Wi-Fi open it, start the helper with:  ruby server.rb --share";
       }
       document.getElementById("copyInviteBtn").classList.toggle("hidden", !inviteLink);
@@ -854,7 +854,7 @@
         const character = cleanSharedCharacter(data.character);   // from play.js
         if (!character || !character.key) return;
 
-        // A player the DM already accepted (same unguessable key) can come straight back in.
+        // A player the GM already accepted (same unguessable key) can come straight back in.
         const known = party.find(function (m) {
           return m.remoteKey === character.key;
         });
@@ -868,7 +868,7 @@
           return r.character.key === character.key;
         });
         if (!alreadyWaiting && pendingRequests.length >= 12) {
-          conn.send({ type: "declined", reason: "The DM has too many requests waiting." });
+          conn.send({ type: "declined", reason: "The GM has too many requests waiting." });
           return;
         }
 
@@ -909,7 +909,7 @@
       }
     }
 
-    // Copy a shared character's details onto a party member. The DM's tracked HP is kept.
+    // Copy a shared character's details onto a party member. The GM's tracked HP is kept.
     function applyCharacterToMember(member, character) {
       member.name = character.name;
       member.ac = character.ac;
@@ -986,7 +986,7 @@
     }
 
     function declinePlayer(request) {
-      if (request.conn.open) request.conn.send({ type: "declined", reason: "The DM declined your request." });
+      if (request.conn.open) request.conn.send({ type: "declined", reason: "The GM declined your request." });
       pendingRequests = pendingRequests.filter(function (r) {
         return r !== request;
       });
@@ -1033,12 +1033,12 @@
     }
 
     // ---------- Voice chat ----------
-    // Everyone calls the DM (a "star"). The DM's browser mixes the sound so each player
-    // hears the DM AND the other players, but not themselves.
-    //   microphone → DM's mixer → one output stream per player (everyone except that player)
+    // Everyone calls the GM (a "star"). The GM's browser mixes the sound so each player
+    // hears the GM AND the other players, but not themselves.
+    //   microphone → GM's mixer → one output stream per player (everyone except that player)
     const voice = {
       on: false,
-      stream: null,      // the DM's microphone
+      stream: null,      // the GM's microphone
       ctx: null,         // the Web Audio mixer
       mic: null,         // the microphone as a mixer input
       players: new Map() // player key -> { call, dest, source, audio }
@@ -1069,7 +1069,7 @@
       dropVoicePlayer(key);   // a fresh call replaces any old one
 
       const dest = voice.ctx.createMediaStreamDestination();
-      voice.mic.connect(dest);                       // they hear the DM
+      voice.mic.connect(dest);                       // they hear the GM
       for (const other of voice.players.values()) {  // ...and everyone already in voice
         if (other.source) other.source.connect(dest);
       }
@@ -1085,7 +1085,7 @@
         entry.audio.srcObject = remote;
         entry.audio.muted = true;
         entry.source = voice.ctx.createMediaStreamSource(remote);
-        entry.source.connect(voice.ctx.destination);   // the DM hears them
+        entry.source.connect(voice.ctx.destination);   // the GM hears them
         for (const [otherKey, other] of voice.players) {
           if (otherKey !== key) entry.source.connect(other.dest);   // the other players hear them
         }

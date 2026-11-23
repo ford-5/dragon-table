@@ -179,7 +179,7 @@ const BACKGROUNDS = [
 //     climbSpeed: true                  gain a Climb Speed equal to your Speed
 //     minSpeed: 30                      Speed is at least this
 //   Items with no "effects" are described in words only (spells, charges, and
-//   so on are for the player and DM to run at the table).
+//   so on are for the player and GM to run at the table).
 const MAGIC_ITEMS = [
   { name: "Weapon, +1", type: "Weapon", rarity: "Uncommon", attunement: "",
     powers: "A magic weapon of any simple or martial kind. You get +1 to attack rolls and +1 to damage rolls made with it." },
@@ -222,7 +222,7 @@ const MAGIC_ITEMS = [
 ];
 
 // Make the object saved as character.specialItem (used by the character sheet
-// and the AI Dungeon Master's setup, so both save items the same way).
+// and the AI Game Master's setup, so both save items the same way).
 function makeSrdItem(itemName, appearance) {
   const chosen = findByName(MAGIC_ITEMS, itemName);
   if (!chosen) return null;
@@ -486,14 +486,14 @@ function getSaveBonus(character, abilityKey) {
   return bonus;
 }
 
-// Passive Perception: 10 + your Perception bonus. The DM uses it to see
+// Passive Perception: 10 + your Perception bonus. The GM uses it to see
 // whether you notice hidden things without rolling.
 function getPassivePerception(character) {
   return 10 + getSkillBonus(character, findByName(SKILLS, "Perception"));
 }
 
 // =====================================================================
-// SAVED CHARACTERS (shared by the character page and the DM page)
+// SAVED CHARACTERS (shared by the character page and the GM page)
 // =====================================================================
 function loadCharacters() {
   try {

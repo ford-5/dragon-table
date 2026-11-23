@@ -13,9 +13,9 @@
 //   orderField: the form's "Order details" question, like "entry.123456789"
 //   totalField: the form's "Order total" question, like "entry.987654321"
 const ORDER_FORM = {
-  url: "",
-  orderField: "",
-  totalField: ""
+  url: "https://docs.google.com/forms/d/e/1FAIpQLSfVuGG1TzSgiE4CoiR12SLJkE2NW8DuKG4prpgtDrFHV6HgFQ/viewform",
+  orderField: "entry.472318392",   // "Order details"
+  totalField: "entry.107570527"    // "Order total"
 };
 
 // The money symbol shown in front of prices.

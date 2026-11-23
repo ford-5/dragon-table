@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Battle Simulator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="dm">
+  <nav class="top-nav">
+    <a href="index.html">🏠 Home</a>
+    <a href="dice.html">🎲 Dice</a>
+    <a href="character.html">🧙 Characters</a>
+    <a href="dm.html">🛡️ DM Screen</a>
+    <a href="battle.html" class="active">⚔️ Battle</a>
+  </nav>
+
+  <h1>⚔️ Battle Simulator</h1>
+  <p class="hint">Build an encounter, see how hard the rules say it is, then play it out on screen to find out how it might go.</p>
+  <p><a href="dm.html" class="back-link">← Back to the DM Screen</a></p>
+
+  <!-- ===== 1. THE HEROES ===== -->
+  <div class="panel">
+    <h2>1. The heroes</h2>
+    <p class="hint">Tick who fights. Heroes come from your saved characters. Change the attack numbers if you like: weapons aren't on the character sheet, so they start as a simple melee attack.</p>
+    <div id="heroList"></div>
+    <p id="noHeroes" class="hint hidden">No saved characters yet. <a href="character.html">Create some</a>, or add a quick hero below.</p>
+    <button class="small-button" id="addQuickHero">➕ Add a quick hero</button>
+  </div>
+
+  <!-- ===== 2. THE MONSTERS ===== -->
+  <div class="panel">
+    <h2>2. The monsters</h2>
+    <p class="hint">All of the SRD's monsters and animals. Search by name.</p>
+    <div class="settings add-form">
+      <input id="monsterSearch" type="text" class="wide-input" placeholder="Search: goblin, wolf, dragon…" autocomplete="off">
+      <select id="monsterPick" size="1" aria-label="Choose a monster"></select>
+      <input id="monsterCount" type="number" min="1" max="30" value="1" aria-label="How many">
+      <button class="small-button" id="addMonster">➕ Add</button>
+    </div>
+    <div id="monsterInfo" class="info-box"></div>
+    <ul id="encounter" class="request-list"></ul>
+  </div>
+
+  <!-- ===== 3. HOW HARD IS IT? (SRD "Combat Encounters") ===== -->
+  <div class="panel">
+    <h2>3. How hard is it?</h2>
+    <div id="difficulty" class="info-box"></div>
+    <p class="hint">From the SRD's XP Budget table. A single monster is usually Low difficulty for a party whose level equals its Challenge Rating.</p>
+  </div>
+
+  <!-- ===== 4. FIGHT! ===== -->
+  <div class="panel">
+    <h2>4. Fight!</h2>
+    <button id="fightOnce">⚔️ Play out one battle</button>
+    <button id="fightMany">📊 Run 200 battles (the odds)</button>
+    <div id="summary" class="info-box hidden"></div>
+    <div id="battleLog" class="chat-log hidden"></div>
+    <p class="hint">
+      This is a simplified simulation to help you plan: heroes and monsters just attack (heroes pick the weakest foe, monsters pick a random hero). Spells, special abilities, breath weapons, healing, terrain and tactics are NOT simulated, and a hero at 0 HP is simply out. A real table is smarter than this, so treat the result as a guide, not a promise.
+    </p>
+  </div>
+
+  <footer class="site-footer">
+    <p>Monster stat blocks and encounter rules from the System Reference Document 5.2.1 by Wizards of the Coast LLC, licensed under CC-BY-4.0 (see the Home page for the full notice).</p>
+  </footer>
+
+  <script src="dice.js"></script>
+  <script src="rules.js"></script>
+  <script src="monsters.js"></script>
+
+  <script>
+    // =====================================================================
+    // RULES: encounter difficulty (SRD "Combat Encounters")
+    // XP Budget per Character, by the party's level: [Low, Moderate, High]
+    // =====================================================================
+    const XP_BUDGET = {
+      1: [50, 75, 100], 2: [100, 150, 200], 3: [150, 225, 400], 4: [250, 375, 500], 5: [500, 750, 1100],
+      6: [600, 1000, 1400], 7: [750, 1300, 1700], 8: [1000, 1700, 2100], 9: [1300, 2000, 2600], 10: [1600, 2300, 3100],
+      11: [1900, 2900, 4100], 12: [2200, 3700, 4700], 13: [2600, 4200, 5400], 14: [2900, 4900, 6200], 15: [3300, 5400, 7800],
+      16: [3800, 6100, 9800], 17: [4500, 7200, 11700], 18: [5000, 8700, 14200], 19: [5500, 10700, 17200], 20: [6400, 13200, 22000]
+    };
+    const DIFFICULTY_NAMES = ["Low", "Moderate", "High"];
+
+    // Fighters, Barbarians, Monks, Paladins and Rangers get Extra Attack at level 5.
+    const EXTRA_ATTACK_CLASSES = ["Barbarian", "Fighter", "Monk", "Paladin", "Ranger"];
+
+    // =====================================================================
+    // STATE
+    // =====================================================================
+    let heroes = [];      // [{ id, name, ac, hp, maxHp, level, attack, dice, attacks, init, on }]
+    let encounter = [];   // [{ monster, count }]
+    let nextHeroId = 1;
+
+    const el = function (id) {
+      return document.getElementById(id);
+    };
+
+    // =====================================================================
+    // DICE: "2d8+9", "1d6", "1d4-1"
+    // =====================================================================
+    // Understands parts added together: "2d8+10+2d8" is 2d8, plus 10, plus another 2d8.
+    // Returns { dice: [{count, sides}], bonus } or null if it isn't dice.
+    function parseDice(text) {
+      const clean = String(text).replace(/\s+/g, "");
+      if (!/^[+-]?(\d+d\d+|\d+)([+-](\d+d\d+|\d+))*$/.test(clean)) return null;
+      const result = { dice: [], bonus: 0 };
+      for (const part of clean.match(/[+-]?[^+-]+/g)) {
+        const sign = part.startsWith("-") ? -1 : 1;
+        const body = part.replace(/^[+-]/, "");
+        if (body.includes("d")) {
+          const pieces = body.split("d");
+          result.dice.push({ count: Number(pieces[0]), sides: Number(pieces[1]) });
+        } else {
+          result.bonus += sign * Number(body);
+        }
+      }
+      return result;
+    }
+
+    // A critical hit doubles the dice (not the bonus).
+    function rollDamage(text, crit) {
+      const parsed = parseDice(text);
+      if (!parsed) return 1;
+      let total = parsed.bonus;
+      for (const part of parsed.dice) {
+        const count = crit ? part.count * 2 : part.count;
+        for (let i = 0; i < count; i++) total += rollOneDie(part.sides);
+      }
+      return Math.max(total, 0);
+    }
+
+    // =====================================================================
+    // HEROES
+    // =====================================================================
+    function heroFromCharacter(c) {
+      const str = getModifier(getAbilityScore(c, "str"));
+      const dex = getModifier(getAbilityScore(c, "dex"));
+      const best = Math.max(str, dex);
+      const martial = EXTRA_ATTACK_CLASSES.includes(c.className) || (c.secondClass && EXTRA_ATTACK_CLASSES.includes(c.secondClass));
+      return {
+        id: nextHeroId++, name: c.name, ac: getAc(c), hp: c.hp, maxHp: getMaxHp(c), level: c.level,
+        attack: getProficiencyBonus(c.level) + best,
+        dice: "1d8" + (best >= 0 ? "+" : "") + best,
+        attacks: martial && c.level >= 5 ? 2 : 1,
+        init: getModifier(getAbilityScore(c, "dex")),
+        on: true
+      };
+    }
+
+    function loadHeroes() {
+      heroes = loadCharacters().map(heroFromCharacter);   // from rules.js
+      el("noHeroes").classList.toggle("hidden", heroes.length > 0);
+    }
+
+    function addQuickHero() {
+      heroes.push({ id: nextHeroId++, name: "Hero " + nextHeroId, ac: 15, hp: 12, maxHp: 12, level: 1, attack: 4, dice: "1d8+2", attacks: 1, init: 1, on: true });
+      renderHeroes();
+      renderDifficulty();
+    }
+
+    function numberBox(label, value, min, max, onChange) {
+      const wrap = document.createElement("label");
+      wrap.className = "hint";
+      const input = document.createElement("input");
+      input.type = "number";
+      input.min = min;
+      input.max = max;
+      input.value = value;
+      input.className = "mini-number";
+      input.addEventListener("change", function () {
+        onChange(Math.min(Math.max(Math.round(Number(input.value)) || min, min), max));
+        renderHeroes();
+        renderDifficulty();
+      });
+      wrap.append(label + " ", input);
+      return wrap;
+    }
+
+    function renderHeroes() {
+      const box = el("heroList");
+      box.innerHTML = "";
+      for (const hero of heroes) {
+        const card = document.createElement("div");
+        card.className = "request-card";
+
+        const check = document.createElement("input");
+        check.type = "checkbox";
+        check.checked = hero.on;
+        check.setAttribute("aria-label", "Include " + hero.name);
+        check.addEventListener("change", function () {
+          hero.on = check.checked;
+          renderDifficulty();
+        });
+
+        const name = document.createElement("strong");
+        name.textContent = hero.name + " (level " + hero.level + ")";
+
+        const diceInput = document.createElement("input");
+        diceInput.type = "text";
+        diceInput.value = hero.dice;
+        diceInput.className = "mini-number";
+        diceInput.setAttribute("aria-label", "Damage dice");
+        diceInput.addEventListener("change", function () {
+          if (parseDice(diceInput.value)) hero.dice = diceInput.value.replace(/\s+/g, "");
+          diceInput.value = hero.dice;
+        });
+        const diceLabel = document.createElement("label");
+        diceLabel.className = "hint";
+        diceLabel.append("damage ", diceInput);
+
+        card.append(
+          check, name,
+          numberBox("AC", hero.ac, 1, 40, function (v) { hero.ac = v; }),
+          numberBox("HP", hero.hp, 1, 999, function (v) { hero.hp = v; hero.maxHp = Math.max(hero.maxHp, v); }),
+          numberBox("hit +", hero.attack, -5, 20, function (v) { hero.attack = v; }),
+          diceLabel,
+          numberBox("attacks", hero.attacks, 1, 4, function (v) { hero.attacks = v; })
+        );
+        box.append(card);
+      }
+    }
+
+    // =====================================================================
+    // MONSTERS
+    // =====================================================================
+    function crValue(cr) {
+      if (cr.includes("/")) {
+        const parts = cr.split("/");
+        return Number(parts[0]) / Number(parts[1]);
+      }
+      return Number(cr);
+    }
+
+    const sortedMonsters = MONSTERS.slice().sort(function (a, b) {
+      return crValue(a.cr) - crValue(b.cr) || a.n.localeCompare(b.n);
+    });
+
+    function fillMonsterPick() {
+      const filter = el("monsterSearch").value.trim().toLowerCase();
+      const select = el("monsterPick");
+      select.innerHTML = "";
+      for (const m of sortedMonsters) {
+        if (filter && !m.n.toLowerCase().includes(filter)) continue;
+        select.append(new Option(m.n + " (CR " + m.cr + ", " + m.xp + " XP)", m.n));
+      }
+      if (select.options.length === 0) select.append(new Option("No monster matches", ""));
+      showMonsterInfo();
+    }
+
+    function monsterByName(name) {
+      return MONSTERS.find(function (m) {
+        return m.n === name;
+      });
+    }
+
+    function bestAttack(monster) {
+      return monster.atk.slice().sort(function (a, b) {
+        return b.avg - a.avg;
+      })[0];
+    }
+
+    function describeMonster(m) {
+      const mod = function (score) { return formatBonus(getModifier(score)); };
+      const atk = bestAttack(m);
+      return m.size + " " + m.type + " · AC " + m.ac + " · HP " + m.hp + " (" + m.hpDice + ") · Speed " + m.speed +
+        " · Str " + m.abil[0] + " (" + mod(m.abil[0]) + ") Dex " + m.abil[1] + " (" + mod(m.abil[1]) + ") Con " + m.abil[2] + " (" + mod(m.abil[2]) + ")" +
+        " · " + (atk ? "Attack: " + atk.n + " " + formatBonus(atk.hit) + " to hit, " + atk.dice + " " + atk.type + (m.multi > 1 ? " (×" + m.multi + " with Multiattack)" : "")
+                      : "No simple attack: the simulator can't make it fight, so read its stat block in the SRD");
+    }
+
+    function showMonsterInfo() {
+      const m = monsterByName(el("monsterPick").value);
+      el("monsterInfo").textContent = m ? describeMonster(m) : "";
+    }
+
+    function addMonster() {
+      const m = monsterByName(el("monsterPick").value);
+      if (!m) return;
+      const count = Math.min(Math.max(Math.round(Number(el("monsterCount").value)) || 1, 1), 30);
+      const existing = encounter.find(function (e) {
+        return e.monster === m;
+      });
+      if (existing) existing.count = Math.min(existing.count + count, 60);
+      else encounter.push({ monster: m, count: count });
+      renderEncounter();
+    }
+
+    function renderEncounter() {
+      const list = el("encounter");
+      list.innerHTML = "";
+      for (const entry of encounter) {
+        const item = document.createElement("li");
+        item.className = "request-card";
+        const text = document.createElement("div");
+        const title = document.createElement("strong");
+        title.textContent = entry.count + " × " + entry.monster.n;
+        const details = document.createElement("div");
+        details.className = "hint";
+        details.textContent = "CR " + entry.monster.cr + " · " + entry.monster.xp + " XP each · AC " + entry.monster.ac + " · HP " + entry.monster.hp;
+        text.append(title, details);
+
+        const minus = document.createElement("button");
+        minus.className = "small-button";
+        minus.textContent = "−";
+        minus.addEventListener("click", function () {
+          entry.count -= 1;
+          if (entry.count <= 0) encounter = encounter.filter(function (e) { return e !== entry; });
+          renderEncounter();
+        });
+        const plus = document.createElement("button");
+        plus.className = "small-button";
+        plus.textContent = "+";
+        plus.addEventListener("click", function () {
+          entry.count = Math.min(entry.count + 1, 60);
+          renderEncounter();
+        });
+        const remove = document.createElement("button");
+        remove.className = "small-button";
+        remove.textContent = "✕";
+        remove.addEventListener("click", function () {
+          encounter = encounter.filter(function (e) { return e !== entry; });
+          renderEncounter();
+        });
+        item.append(text, minus, plus, remove);
+        list.append(item);
+      }
+      renderDifficulty();
+    }
+
+    // =====================================================================
+    // HOW HARD? (SRD "Combat Encounters", steps 2 and 3)
+    // =====================================================================
+    function activeHeroes() {
+      return heroes.filter(function (h) {
+        return h.on;
+      });
+    }
+
+    function renderDifficulty() {
+      const party = activeHeroes();
+      const monsterXp = encounter.reduce(function (sum, e) {
+        return sum + e.monster.xp * e.count;
+      }, 0);
+      const box = el("difficulty");
+
+      if (party.length === 0) {
+        box.textContent = "Tick at least one hero to see how hard the encounter is.";
+        return;
+      }
+      // The table is per character level: use the party's average level, rounded.
+      const level = Math.min(Math.max(Math.round(party.reduce(function (s, h) { return s + h.level; }, 0) / party.length), 1), 20);
+      const budgets = XP_BUDGET[level].map(function (perHero) {
+        return perHero * party.length;
+      });
+
+      let verdict = "Below Low (a walkover)";
+      if (monsterXp > budgets[2])      verdict = "Over High (deadly: more than the High budget)";
+      else if (monsterXp > budgets[1]) verdict = "High";
+      else if (monsterXp > budgets[0]) verdict = "Moderate";
+      else if (monsterXp > 0)          verdict = "Low";
+      if (monsterXp === 0) verdict = "Add some monsters!";
+
+      box.textContent = "Party: " + party.length + " hero" + (party.length === 1 ? "" : "es") + " at level " + level +
+        " · Monsters: " + monsterXp + " XP · Budgets: Low " + budgets[0] + ", Moderate " + budgets[1] + ", High " + budgets[2] +
+        " · Difficulty: " + verdict;
+
+      // The SRD warns about large crowds.
+      const total = encounter.reduce(function (s, e) { return s + e.count; }, 0);
+      if (total > party.length * 2) {
+        box.textContent += " · ⚠️ More than two creatures per hero: a lucky streak can hurt, so include some fragile ones.";
+      }
+    }
+
+    // =====================================================================
+    // THE SIMULATION
+    // =====================================================================
+    function d20() {
+      return rollOneDie(20);
+    }
+
+    // One attack: returns { hit, damage, crit, roll }.
+    function makeAttack(bonus, targetAc, dice) {
+      const roll = d20();
+      const crit = roll === 20;
+      const hit = crit || (roll !== 1 && roll + bonus >= targetAc);
+      return { roll: roll, hit: hit, crit: crit, damage: hit ? rollDamage(dice, crit) : 0 };
+    }
+
+    // Plays one battle. "log" is a function that records a line (or null to skip logging).
+    function runBattle(log) {
+      const fighters = [];
+      for (const h of activeHeroes()) {
+        fighters.push({ side: "hero", name: h.name, ac: h.ac, hp: h.hp, maxHp: h.hp, hit: h.attack, dice: h.dice, attacks: h.attacks, init: h.init, ref: h });
+      }
+      for (const entry of encounter) {
+        const atk = bestAttack(entry.monster);
+        for (let i = 1; i <= entry.count; i++) {
+          fighters.push({
+            side: "monster", name: entry.count > 1 ? entry.monster.n + " " + i : entry.monster.n,
+            ac: entry.monster.ac, hp: entry.monster.hp, maxHp: entry.monster.hp,
+            hit: atk ? atk.hit : 0, dice: atk ? atk.dice : "", attacks: atk ? entry.monster.multi : 0,
+            init: entry.monster.init
+          });
+        }
+      }
+      for (const f of fighters) f.initRoll = d20() + f.init;
+      fighters.sort(function (a, b) {
+        return b.initRoll - a.initRoll;
+      });
+      if (log) log("Initiative: " + fighters.map(function (f) { return f.name + " " + f.initRoll; }).join(", "));
+
+      const alive = function (side) {
+        return fighters.filter(function (f) { return f.side === side && f.hp > 0; });
+      };
+
+      let round = 0;
+      while (alive("hero").length > 0 && alive("monster").length > 0 && round < 50) {
+        round++;
+        if (log) log("— Round " + round + " —");
+        for (const f of fighters) {
+          if (f.hp <= 0) continue;
+          const foes = alive(f.side === "hero" ? "monster" : "hero");
+          if (foes.length === 0) break;
+          for (let i = 0; i < f.attacks; i++) {
+            const living = foes.filter(function (x) { return x.hp > 0; });
+            if (living.length === 0) break;
+            // Heroes finish off the weakest monster. Monsters pick a random hero.
+            const target = f.side === "hero"
+              ? living.slice().sort(function (a, b) { return a.hp - b.hp; })[0]
+              : living[Math.floor(Math.random() * living.length)];
+            const result = makeAttack(f.hit, target.ac, f.dice);
+            target.hp -= result.damage;
+            if (log) {
+              log(f.name + " attacks " + target.name + ": " + result.roll + " " + formatBonus(f.hit) + " = " + (result.roll + f.hit) + " vs AC " + target.ac + " — " +
+                (result.hit ? (result.crit ? "CRITICAL HIT! " : "hit for ") + result.damage + " (" + Math.max(target.hp, 0) + " HP left)" : "miss") +
+                (result.hit && target.hp <= 0 ? " 💀 " + target.name + (target.side === "hero" ? " is down!" : " is defeated!") : ""));
+            }
+          }
+        }
+      }
+
+      const heroesLeft = alive("hero");
+      const heroList = fighters.filter(function (f) { return f.side === "hero"; });
+      return {
+        won: alive("monster").length === 0 && heroesLeft.length > 0,
+        rounds: round,
+        down: heroList.length - heroesLeft.length,
+        hpLost: heroList.reduce(function (s, f) { return s + (f.maxHp - Math.max(f.hp, 0)); }, 0),
+        hpTotal: heroList.reduce(function (s, f) { return s + f.maxHp; }, 0),
+        timedOut: round >= 50
+      };
+    }
+
+    function canFight() {
+      if (activeHeroes().length === 0) {
+        showSummary("Tick at least one hero first.");
+        return false;
+      }
+      if (encounter.length === 0) {
+        showSummary("Add at least one monster first.");
+        return false;
+      }
+      if (!encounter.some(function (e) { return e.monster.atk.length > 0; })) {
+        showSummary("None of those monsters has a simple attack the simulator can use. Read their stat blocks in the SRD instead.");
+        return false;
+      }
+      return true;
+    }
+
+    function showSummary(text) {
+      el("summary").textContent = text;
+      el("summary").classList.remove("hidden");
+    }
+
+    function fightOnce() {
+      if (!canFight()) return;
+      const logBox = el("battleLog");
+      logBox.innerHTML = "";
+      logBox.classList.remove("hidden");
+      const result = runBattle(function (line) {
+        const row = document.createElement("div");
+        row.className = "chat-note";
+        row.textContent = line;
+        logBox.append(row);
+      });
+      showSummary((result.won ? "🏆 The heroes win" : "💀 The heroes lose") + " after " + result.rounds + " rounds. " +
+        result.down + " hero" + (result.down === 1 ? " was" : "es were") + " knocked out, and the party lost " +
+        result.hpLost + " of " + result.hpTotal + " HP." + (result.timedOut ? " (Stalemate: stopped after 50 rounds.)" : ""));
+      logBox.scrollTop = 0;
+    }
+
+    function fightMany() {
+      if (!canFight()) return;
+      el("battleLog").classList.add("hidden");
+      const runs = 200;
+      let wins = 0, rounds = 0, down = 0, hpLost = 0, hpTotal = 0, anyoneDown = 0;
+      for (let i = 0; i < runs; i++) {
+        const r = runBattle(null);
+        if (r.won) wins++;
+        rounds += r.rounds;
+        down += r.down;
+        if (r.down > 0) anyoneDown++;
+        hpLost += r.hpLost;
+        hpTotal += r.hpTotal;
+      }
+      const pct = function (n) { return Math.round((n / runs) * 100) + "%"; };
+      showSummary("📊 Out of " + runs + " battles: the heroes won " + pct(wins) + ". A typical fight lasted about " + (rounds / runs).toFixed(1) +
+        " rounds. At least one hero was knocked out in " + pct(anyoneDown) + " of them (" + (down / runs).toFixed(1) + " heroes down on average). " +
+        "The party lost about " + Math.round((hpLost / hpTotal) * 100) + "% of its total HP.");
+    }
+
+    // =====================================================================
+    // START UP
+    // =====================================================================
+    loadHeroes();
+    renderHeroes();
+    fillMonsterPick();
+    renderEncounter();
+    el("monsterSearch").addEventListener("input", fillMonsterPick);
+    el("monsterPick").addEventListener("change", showMonsterInfo);
+    el("addMonster").addEventListener("click", addMonster);
+    el("addQuickHero").addEventListener("click", addQuickHero);
+    el("fightOnce").addEventListener("click", fightOnce);
+    el("fightMany").addEventListener("click", fightMany);
+  </script>
+</body>
+</html>

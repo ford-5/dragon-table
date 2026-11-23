@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DM Screen</title>
+
+  <!-- Same shared styles as the player page -->
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<!-- class="dm" switches on the purple DM theme from style.css -->
+<body class="dm">
+  <nav class="top-nav">
+    <a href="index.html">🏠 Home</a>
+    <a href="dice.html">🎲 Dice</a>
+    <a href="character.html">🧙 Characters</a>
+    <a href="dm.html" class="active">🛡️ DM Screen</a>
+    <a href="battle.html">⚔️ Battle</a>
+  </nav>
+
+  <h1>🛡️ DM Screen</h1>
+  <p><a href="dm-start.html" class="back-link">← Back</a> · <a href="dm-learn.html" class="back-link">🎓 Learn to be a DM</a></p>
+
+  <!-- ===================== REQUEST PLAYERS (live game) ===================== -->
+  <div class="panel" id="livePanel">
+    <h2>📣 Request players</h2>
+    <p class="hint">Open a game, share the code, and players ask to join. You accept or decline each one.</p>
+
+    <!-- Before the game is open -->
+    <div id="liveClosed">
+      <label class="sheet-field">Game name (optional) <input id="gameName" type="text" class="wide-input" maxlength="40" placeholder="e.g. The Hollow Crown"></label>
+      <button onclick="openGame()">🚪 Open a game</button>
+    </div>
+
+    <!-- While the game is open -->
+    <div id="liveOpen" class="hidden">
+      <p class="hint">Your game code</p>
+      <div id="gameCode" class="game-code"></div>
+      <button class="small-button" onclick="copyText(gameCode, 'Code copied!')">📋 Copy code</button>
+      <button class="small-button" onclick="copyText(inviteLink, 'Invite link copied!')" id="copyInviteBtn">🔗 Copy invite link</button>
+      <p id="inviteNote" class="hint"></p>
+      <p id="liveStatus" class="hint"></p>
+
+      <h3 class="section-label">Join requests</h3>
+      <ul id="requests" class="request-list"></ul>
+
+      <h3 class="section-label">🎙️ Voice chat</h3>
+      <div id="voiceControls">
+        <button id="voiceStartBtn" onclick="startVoice()">🎙️ Start voice chat</button>
+        <button class="small-button hidden" id="voiceMuteBtn" onclick="toggleDmMute()">🔇 Mute me</button>
+        <button class="small-button hidden" id="voiceStopBtn" onclick="stopVoice()">Stop voice chat</button>
+        <p id="voiceStatus" class="hint">Players choose whether to join. Everyone who joins hears everyone else. Headphones stop echo.</p>
+        <ul id="voiceList" class="voice-list"></ul>
+      </div>
+
+      <h3 class="section-label">Table talk</h3>
+      <div id="talkFeed" class="chat-log short-log"></div>
+      <div class="settings add-form">
+        <input id="announceText" type="text" class="wide-input" maxlength="300" placeholder="Message to all players">
+        <button class="small-button" onclick="sendAnnouncement()">Send</button>
+      </div>
+      <button class="small-button" onclick="closeGame()">Close game</button>
+    </div>
+
+    <p id="liveError" class="chat-error hidden"></p>
+  </div>
+
+  <!-- ===================== BATTLE SIMULATOR ===================== -->
+  <div class="panel">
+    <h2>⚔️ Battle Simulator</h2>
+    <p class="hint">Pick monsters from the SRD, see how hard the fight is by the rules, and play it out.</p>
+    <a class="plain-button" href="battle.html">⚔️ Open the Battle Simulator</a>
+  </div>
+
+  <!-- ===================== SECRET ROLLS ===================== -->
+  <div class="panel">
+    <h2>🤫 Secret Roll</h2>
+    <p class="hint">For rolls the players shouldn't see: hidden checks, monster saves, random encounters.</p>
+
+    <button class="small-button" onclick="secretRoll(4)">d4</button>
+    <button class="small-button" onclick="secretRoll(6)">d6</button>
+    <button class="small-button" onclick="secretRoll(8)">d8</button>
+    <button class="small-button" onclick="secretRoll(10)">d10</button>
+    <button class="small-button" onclick="secretRoll(12)">d12</button>
+    <button class="small-button" onclick="secretRoll(20)">d20</button>
+    <button class="small-button" onclick="secretRoll(100)">d100</button>
+
+    <div id="secretResult" class="big-result">–</div>
+    <p id="secretLabel" class="hint"></p>
+  </div>
+
+  <!-- ===================== THE PARTY ===================== -->
+  <div class="panel">
+    <h2>🧑‍🤝‍🧑 The Party</h2>
+    <p class="hint">Your players at a glance. Saved in this browser.</p>
+
+    <button class="small-button" onclick="importCharacters()">📥 Import from saved characters</button>
+    <p id="importStatus" class="hint"></p>
+
+    <div class="settings add-form">
+      <input id="partyName" type="text" placeholder="Player name">
+      <input id="partyAc" type="number" placeholder="AC">
+      <input id="partyHp" type="number" placeholder="Max HP">
+      <button class="small-button" onclick="addPartyMember()">Add</button>
+    </div>
+
+    <ul id="party" class="combatant-list"></ul>
+  </div>
+
+  <!-- ===================== INITIATIVE TRACKER ===================== -->
+  <div class="panel">
+    <h2>⚔️ Initiative Tracker</h2>
+
+    <!-- The form for adding a creature or player to the fight -->
+    <div class="settings add-form">
+      <input id="combatantName" type="text" placeholder="Name">
+      <input id="combatantInit" type="number" placeholder="Init">
+      <button class="small-button" onclick="rollInitiative()" title="Roll a d20 for initiative">🎲</button>
+      <input id="combatantHp" type="number" placeholder="HP">
+      <button class="small-button" onclick="addCombatant()">Add</button>
+    </div>
+
+    <p id="roundInfo"></p>
+    <ul id="combatants"></ul>
+
+    <button onclick="nextTurn()">Next turn ▶</button>
+    <br>
+    <button class="small-button" onclick="endCombat()">End combat</button>
+  </div>
+
+  <!-- ===================== SESSION NOTES ===================== -->
+  <div class="panel">
+    <h2>📜 Session Notes</h2>
+    <textarea id="notes" placeholder="NPC names, plot hooks, what the party did last session..."></textarea>
+    <p id="notesStatus" class="hint">Notes save automatically in this browser.</p>
+  </div>
+
+  <!-- ===================== RULEBOOKS & REFERENCE ===================== -->
+  <div class="panel">
+    <h2>📚 Rulebooks & Reference</h2>
+
+    <h3 class="section-label">Free official rules</h3>
+    <ul class="book-list">
+      <!-- target="_blank" opens the link in a new tab, so the DM screen stays open -->
+      <li>
+        <a href="https://www.dndbeyond.com/srd" target="_blank">System Reference Document (SRD 5.2.1)</a>
+        <br><span class="hint">The core rules, classes, spells and monsters. Free to read and download.</span>
+      </li>
+      <li>
+        <a href="https://www.dndbeyond.com/sources/dnd/br-2024" target="_blank">D&D Beyond Basic Rules (2024)</a>
+        <br><span class="hint">A free, easy-to-read version of the rules for getting started.</span>
+      </li>
+    </ul>
+
+    <h3 class="section-label">The three core books</h3>
+    <ul class="book-list">
+      <li>📕 <strong>Player's Handbook</strong> <span class="hint">— classes, species, spells, character creation</span></li>
+      <li>📘 <strong>Dungeon Master's Guide</strong> <span class="hint">— running games, building worlds, magic items</span></li>
+      <li>📗 <strong>Monster Manual</strong> <span class="hint">— hundreds of creatures and their stat blocks</span></li>
+      <li>
+        <a href="https://marketplace.dndbeyond.com/" target="_blank">Get them on the D&D Beyond Marketplace</a>
+        <span class="hint">(paid, digital or print)</span>
+      </li>
+    </ul>
+
+    <h3 class="section-label">Conditions quick reference</h3>
+    <p class="hint">Click a condition to see what it does.</p>
+    <!-- Filled in by JavaScript from the CONDITIONS list -->
+    <div id="conditions"></div>
+
+    <p class="hint attribution">
+      Condition summaries are paraphrased from the System Reference Document 5.2.1 by Wizards of the Coast LLC,
+      available at dndbeyond.com/srd, licensed under the Creative Commons Attribution 4.0 International License.
+    </p>
+  </div>
+
+  <!-- Shared dice helpers (rollOneDie). Must load BEFORE the script below. -->
+  <script src="dice.js"></script>
+  <script src="rules.js"></script>
+  <script src="play.js"></script>
+
+  <!-- PeerJS (MIT license, version pinned) connects the DM's browser straight to the players' browsers. -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+
+  <script>
+    // =====================================================================
+    // SECRET ROLLS
+    // =====================================================================
+    function secretRoll(sides) {
+      const roll = rollOneDie(sides);
+      document.getElementById("secretResult").textContent = roll;
+      document.getElementById("secretLabel").textContent = "d" + sides;
+    }
+
+    // =====================================================================
+    // INITIATIVE TRACKER
+    // =====================================================================
+
+    // STATE: the data the tracker remembers. Everything on screen is drawn from these.
+    // "let" (instead of "const") because these values will change.
+    let combatants = [];     // a list of OBJECTS, one per creature
+    let currentId = null;    // the id of whoever's turn it is (null = combat hasn't started)
+    let round = 0;
+    let nextId = 1;          // gives every combatant a unique number
+
+    // Fill the Init box with a d20 roll (reuses our dice function!).
+    function rollInitiative() {
+      document.getElementById("combatantInit").value = rollOneDie(20);
+    }
+
+    function addCombatant() {
+      const nameBox = document.getElementById("combatantName");
+      const initBox = document.getElementById("combatantInit");
+      const hpBox = document.getElementById("combatantHp");
+
+      const name = nameBox.value.trim();   // trim() removes extra spaces
+      if (name === "") {
+        alert("Give your combatant a name!");
+        return;   // stop here, don't add anything
+      }
+
+      const maxHp = Number(hpBox.value) || 1;
+
+      // An OBJECT groups related info together using labels (called "properties").
+      const newCombatant = {
+        id: nextId,
+        name: name,
+        initiative: Number(initBox.value) || 0,
+        hp: maxHp,
+        maxHp: maxHp
+      };
+      combatants.push(newCombatant);
+      nextId++;
+
+      // Empty the form so it's ready for the next creature.
+      nameBox.value = "";
+      initBox.value = "";
+      hpBox.value = "";
+      nameBox.focus();
+
+      render();
+    }
+
+    // Find one combatant in the list by their id.
+    function findCombatant(id) {
+      return combatants.find(function (c) {
+        return c.id === id;
+      });
+    }
+
+    // Keep HP between 0 and max. Used by both the tracker and the party list.
+    function clampHp(hp, maxHp) {
+      hp = Math.max(hp, 0);        // can't go below 0
+      hp = Math.min(hp, maxHp);    // can't heal above max
+      return hp;
+    }
+
+    // Damage is a negative amount, healing is positive.
+    function changeHp(id, amount) {
+      const combatant = findCombatant(id);
+      combatant.hp = clampHp(combatant.hp + amount, combatant.maxHp);
+
+      // If this combatant is a party member, update their party HP too.
+      if (combatant.partyId) {
+        setPartyHp(combatant.partyId, combatant.hp);
+      }
+      render();
+    }
+
+    function removeCombatant(id) {
+      const index = combatants.findIndex(function (c) {
+        return c.id === id;
+      });
+      combatants.splice(index, 1);   // remove 1 item at that position
+
+      // If we removed whoever's turn it was, pass the turn to the next in line.
+      if (currentId === id) {
+        if (combatants.length === 0) {
+          currentId = null;
+        } else {
+          currentId = combatants[index % combatants.length].id;
+        }
+      }
+      render();
+    }
+
+    function nextTurn() {
+      if (combatants.length === 0) return;
+
+      if (currentId === null) {
+        // Start of combat: the highest initiative goes first.
+        currentId = combatants[0].id;
+        round = 1;
+      } else {
+        let index = combatants.findIndex(function (c) {
+          return c.id === currentId;
+        });
+        index++;
+        // Past the bottom of the list? Back to the top, and a new round begins.
+        if (index >= combatants.length) {
+          index = 0;
+          round++;
+        }
+        currentId = combatants[index].id;
+      }
+      render();
+    }
+
+    function endCombat() {
+      if (!confirm("End combat and clear everyone?")) return;
+      combatants = [];
+      currentId = null;
+      round = 0;
+      render();
+    }
+
+    // A helper that makes a small button which runs "onClick" when clicked.
+    function makeButton(text, onClick) {
+      const button = document.createElement("button");
+      button.textContent = text;
+      button.className = "small-button";
+      button.addEventListener("click", onClick);
+      return button;
+    }
+
+    // RENDER: wipe the list and redraw it from the state.
+    // Every function above changes the data, then calls render() to update the screen.
+    function render() {
+      // Sort from highest initiative to lowest.
+      combatants.sort(function (a, b) {
+        return b.initiative - a.initiative;
+      });
+
+      const list = document.getElementById("combatants");
+      list.innerHTML = "";
+
+      for (const c of combatants) {
+        const item = document.createElement("li");
+        item.className = "combatant";
+        if (c.id === currentId) item.classList.add("current-turn");
+        if (c.hp === 0) item.classList.add("down");
+
+        const info = document.createElement("span");
+        info.className = "combatant-info";
+        info.textContent = c.initiative + " · " + c.name + " — HP " + c.hp + "/" + c.maxHp;
+
+        // A small box for how much damage or healing to apply.
+        const amountBox = document.createElement("input");
+        amountBox.type = "number";
+        amountBox.value = 1;
+        amountBox.min = 1;
+
+        const damageButton = makeButton("Damage", function () {
+          changeHp(c.id, -(Number(amountBox.value) || 0));
+        });
+        const healButton = makeButton("Heal", function () {
+          changeHp(c.id, Number(amountBox.value) || 0);
+        });
+        const removeButton = makeButton("✕", function () {
+          removeCombatant(c.id);
+        });
+
+        item.append(info, amountBox, damageButton, healButton, removeButton);
+        list.append(item);
+      }
+
+      // Update the round message.
+      const roundInfo = document.getElementById("roundInfo");
+      if (currentId === null) {
+        roundInfo.textContent = "Add combatants, then press Next turn to start.";
+      } else {
+        roundInfo.textContent = "Round " + round + " — " + findCombatant(currentId).name + "'s turn";
+      }
+    }
+
+    render();   // draw the empty tracker when the page first loads
+
+    // =====================================================================
+    // THE PARTY — player names, AC and HP, saved with localStorage
+    // =====================================================================
+    function loadParty() {
+      try {
+        const savedText = localStorage.getItem("party");
+        if (savedText) return JSON.parse(savedText);
+      } catch (error) {
+        // Storage blocked: the party still works, it just won't be saved.
+      }
+      return [];
+    }
+
+    function saveParty() {
+      try {
+        localStorage.setItem("party", JSON.stringify(party));
+      } catch (error) {
+        // Storage blocked: nothing we can do, keep going.
+      }
+    }
+
+    let party = loadParty();
+
+    // Players connected right now (only while a live game is open). Declared here, before
+    // renderParty() first runs, because the party list shows who is online.
+    const liveConns = new Map();   // player key -> open connection
+
+    // Give new party members an id higher than any saved one.
+    let nextPartyId = 1;
+    for (const member of party) {
+      if (member.id >= nextPartyId) nextPartyId = member.id + 1;
+    }
+
+    function findPartyMember(id) {
+      return party.find(function (m) {
+        return m.id === id;
+      });
+    }
+
+    function addPartyMember() {
+      const nameBox = document.getElementById("partyName");
+      const acBox = document.getElementById("partyAc");
+      const hpBox = document.getElementById("partyHp");
+
+      const name = nameBox.value.trim();
+      if (name === "") {
+        alert("Give the player a name!");
+        return;
+      }
+
+      const maxHp = Number(hpBox.value) || 1;
+      party.push({
+        id: nextPartyId,
+        name: name,
+        ac: Number(acBox.value) || 10,
+        hp: maxHp,
+        maxHp: maxHp
+      });
+      nextPartyId++;
+
+      nameBox.value = "";
+      acBox.value = "";
+      hpBox.value = "";
+      nameBox.focus();
+
+      saveParty();
+      renderParty();
+    }
+
+    // Pull every saved character from the Characters page into the party.
+    // Characters already imported are refreshed (name, AC, max HP) but keep the HP you've tracked.
+    function importCharacters() {
+      const saved = loadCharacters();   // from rules.js
+      const status = document.getElementById("importStatus");
+
+      if (saved.length === 0) {
+        status.textContent = "No saved characters found in this browser yet. Create some on the Characters page.";
+        return;
+      }
+
+      let added = 0;
+      let updated = 0;
+      for (const c of saved) {
+        const maxHp = getMaxHp(c);
+        const existing = party.find(function (m) {
+          return m.characterId === c.id;
+        });
+
+        if (existing) {
+          existing.name = c.name;
+          existing.ac = getAc(c);   // total AC, including bonuses from the player's item
+          existing.maxHp = maxHp;
+          existing.hp = clampHp(existing.hp, maxHp);
+          existing.passive = getPassivePerception(c);
+          existing.summary = describeSavedCharacter(c);
+          existing.item = c.specialItem || null;
+          updated++;
+        } else {
+          party.push({
+            id: nextPartyId,
+            characterId: c.id,   // remembers which saved character this came from
+            name: c.name,
+            ac: getAc(c),   // total AC, including bonuses from the player's item
+            hp: clampHp(c.hp, maxHp),
+            maxHp: maxHp,
+            passive: getPassivePerception(c),
+            summary: describeSavedCharacter(c),
+            item: c.specialItem || null   // the player's special item, so the DM can see it
+          });
+          nextPartyId++;
+          added++;
+        }
+      }
+
+      saveParty();
+      renderParty();
+      render();
+      status.textContent = "Imported " + added + " new, refreshed " + updated + ".";
+    }
+
+    function describeSavedCharacter(c) {
+      return "Lv " + c.level + " " + c.species + " " + classSummary(c);
+    }
+
+    // Set a party member's HP, and keep the initiative tracker in sync.
+    function setPartyHp(partyId, newHp) {
+      const member = findPartyMember(partyId);
+      if (!member) return;   // "!" means NOT: if there's no such member, stop
+      member.hp = newHp;
+
+      // Is this player in combat right now? Update them there too.
+      for (const c of combatants) {
+        if (c.partyId === partyId) c.hp = newHp;
+      }
+
+      // If this is an online player, tell their device their new HP.
+      const connection = liveConns.get(member.remoteKey);
+      if (connection && connection.open) {
+        connection.send({ type: "hp", hp: member.hp, maxHp: member.maxHp });
+      }
+
+      saveParty();
+      renderParty();
+      render();
+    }
+
+    function changePartyHp(id, amount) {
+      const member = findPartyMember(id);
+      setPartyHp(id, clampHp(member.hp + amount, member.maxHp));
+    }
+
+    function removePartyMember(id) {
+      const member = findPartyMember(id);
+      if (!confirm("Remove " + member.name + " from the party?")) return;
+      party = party.filter(function (m) {
+        return m.id !== id;
+      });
+      saveParty();
+      renderParty();
+    }
+
+    // Copy a party member into the initiative tracker.
+    function sendToCombat(id) {
+      const member = findPartyMember(id);
+
+      // .some() asks "is there at least one item that matches?"
+      const alreadyFighting = combatants.some(function (c) {
+        return c.partyId === id;
+      });
+      if (alreadyFighting) {
+        alert(member.name + " is already in combat.");
+        return;
+      }
+
+      // prompt() pops up a box asking the DM to type something.
+      const answer = prompt("What did " + member.name + " roll for initiative?");
+      if (answer === null) return;   // the DM clicked Cancel
+
+      combatants.push({
+        id: nextId,
+        partyId: member.id,   // remembers which party member this is
+        name: member.name,
+        initiative: Number(answer) || 0,
+        hp: member.hp,
+        maxHp: member.maxHp
+      });
+      nextId++;
+      render();
+    }
+
+    function renderParty() {
+      const list = document.getElementById("party");
+      list.innerHTML = "";
+
+      if (party.length === 0) {
+        const empty = document.createElement("li");
+        empty.className = "hint";
+        empty.textContent = "No players yet. Add your party above.";
+        list.append(empty);
+        return;
+      }
+
+      for (const member of party) {
+        const item = document.createElement("li");
+        item.className = "combatant";
+        if (member.hp === 0) item.classList.add("down");
+
+        const info = document.createElement("span");
+        info.className = "combatant-info";
+        let infoText = member.name + " — 🛡️ AC " + member.ac + " — ❤️ " + member.hp + "/" + member.maxHp;
+        if (member.passive) infoText += " — 👁️ PP " + member.passive;   // passive Perception, for imported characters
+        if (member.summary) infoText += "  (" + member.summary + ")";
+        // Players who joined online show a dot: green = connected right now.
+        if (member.remoteKey) infoText = (liveConns.has(member.remoteKey) ? "🟢 " : "⚪ ") + infoText;
+        info.textContent = infoText;
+
+        const amountBox = document.createElement("input");
+        amountBox.type = "number";
+        amountBox.value = 1;
+        amountBox.min = 1;
+
+        item.append(
+          info,
+          amountBox,
+          makeButton("Damage", function () {
+            changePartyHp(member.id, -(Number(amountBox.value) || 0));
+          }),
+          makeButton("Heal", function () {
+            changePartyHp(member.id, Number(amountBox.value) || 0);
+          }),
+          makeButton("⚔️ Fight", function () {
+            sendToCombat(member.id);
+          }),
+          makeButton("✕", function () {
+            removePartyMember(member.id);
+          })
+        );
+
+        // The player's special item: click to read what it looks like and what it does.
+        if (member.item) {
+          const details = document.createElement("details");
+          details.className = "condition party-item";
+
+          const summary = document.createElement("summary");
+          summary.textContent = "✨ " + member.item.name;
+
+          const meta = document.createElement("p");
+          meta.className = "hint";
+          meta.textContent = [member.item.type, member.item.rarity, member.item.attunement].filter(Boolean).join(" · ");
+          details.append(summary, meta);
+
+          if (member.item.appearance) {
+            const looks = document.createElement("p");
+            looks.textContent = "Looks like: " + member.item.appearance;
+            details.append(looks);
+          }
+          if (member.item.powers) {
+            const powers = document.createElement("p");
+            powers.textContent = "Powers: " + member.item.powers;
+            details.append(powers);
+          }
+          item.append(details);
+        }
+        list.append(item);
+      }
+    }
+
+    renderParty();
+
+    // =====================================================================
+    // CONDITIONS QUICK REFERENCE (paraphrased from the SRD 5.2.1)
+    // =====================================================================
+    const CONDITIONS = [
+      { name: "Blinded",       text: "Can't see, and automatically fails any check that needs sight. Attacks against it have advantage; its attacks have disadvantage." },
+      { name: "Charmed",       text: "Can't attack the charmer or target them with harmful abilities or magic. The charmer has advantage on social checks against it." },
+      { name: "Deafened",      text: "Can't hear, and automatically fails any check that needs hearing." },
+      { name: "Exhaustion",    text: "Stacks in levels 1–6. Each level gives −2 to every d20 test and −5 ft of speed. Level 6 means death. A long rest removes one level." },
+      { name: "Frightened",    text: "Disadvantage on ability checks and attacks while the source of fear is in sight. Can't willingly move closer to it." },
+      { name: "Grappled",      text: "Speed is 0. Disadvantage on attacks against anyone except the grappler. The grappler can drag it along (at extra movement cost)." },
+      { name: "Incapacitated", text: "Can't take actions, bonus actions or reactions. Concentration ends, and it can't speak." },
+      { name: "Invisible",     text: "Can't be seen without special senses. Attacks against it have disadvantage; its attacks have advantage. Advantage on initiative." },
+      { name: "Paralyzed",     text: "Incapacitated, speed 0. Automatically fails Strength and Dexterity saves. Attacks against it have advantage, and hits from within 5 ft are critical hits." },
+      { name: "Petrified",     text: "Turned to stone: incapacitated, speed 0. Automatically fails Strength and Dexterity saves; attacks against it have advantage. Resistant to all damage and immune to poison." },
+      { name: "Poisoned",      text: "Disadvantage on attack rolls and ability checks." },
+      { name: "Prone",         text: "Can only crawl, or spend half its speed to stand up. Its attacks have disadvantage. Attacks against it have advantage within 5 ft, disadvantage from farther away." },
+      { name: "Restrained",    text: "Speed 0. Attacks against it have advantage; its attacks have disadvantage. Disadvantage on Dexterity saves." },
+      { name: "Stunned",       text: "Incapacitated. Automatically fails Strength and Dexterity saves. Attacks against it have advantage." },
+      { name: "Unconscious",   text: "Incapacitated and prone, drops what it's holding, unaware of its surroundings. Speed 0, fails Strength and Dexterity saves. Attacks against it have advantage, and hits from within 5 ft are critical hits." }
+    ];
+
+    // <details> + <summary> is built-in HTML for a section you click to open and close.
+    function buildConditions() {
+      const box = document.getElementById("conditions");
+      for (const condition of CONDITIONS) {
+        const details = document.createElement("details");
+        details.className = "condition";
+
+        const summary = document.createElement("summary");
+        summary.textContent = condition.name;
+
+        const text = document.createElement("p");
+        text.textContent = condition.text;
+
+        details.append(summary, text);
+        box.append(details);
+      }
+    }
+
+    buildConditions();
+
+    // =====================================================================
+    // LIVE GAME — players ask to join, the DM accepts or declines
+    // =====================================================================
+    // PeerJS connects the DM's browser straight to each player's browser (encrypted).
+    // A free public "matchmaking" service only introduces them to each other.
+    // Nothing is stored online: when you close this page, the game is over.
+    //
+    // Messages that travel between the browsers are small objects with a "type":
+    //   player -> DM:  request, update, roll, say
+    //   DM -> player:  waiting, accepted, declined, announce, hp, closed
+
+    let peer = null;            // our PeerJS connection to the matchmaking service
+    let gameCode = "";          // e.g. "K7M4QX"
+    let inviteLink = "";
+    let pendingRequests = [];   // [{ conn, character }] waiting for Accept / Decline
+    let openGameName = "";
+
+    function liveError(text) {
+      const box = document.getElementById("liveError");
+      box.textContent = text ? "⚠️ " + text : "";
+      box.classList.toggle("hidden", !text);
+    }
+
+    function setLiveStatus(text) {
+      document.getElementById("liveStatus").textContent = text;
+    }
+
+    // ---------- Opening and closing the game ----------
+    function openGame() {
+      liveError("");
+      if (typeof Peer === "undefined") {
+        liveError("Couldn't load the online connection library. Check your internet connection, then reload this page.");
+        return;
+      }
+      openGameName = document.getElementById("gameName").value.trim();
+      startPeer(makeGameCode(), 0);   // makeGameCode is in play.js
+    }
+
+    function startPeer(code, attempt) {
+      setLiveStatus("Connecting…");
+      peer = new Peer(peerIdFromCode(code));
+
+      peer.on("open", function () {
+        gameCode = code;
+        showOpenGame();
+      });
+
+      peer.on("connection", handleIncoming);
+
+      peer.on("error", function (error) {
+        // Someone else already holds that code (very unlikely): try a different one.
+        if (error.type === "unavailable-id" && attempt < 5) {
+          peer.destroy();
+          startPeer(makeGameCode(), attempt + 1);
+          return;
+        }
+        liveError("The online connection hit a problem (" + error.type + "). Check your internet connection and try again.");
+        if (!gameCode) closeGame();
+      });
+
+      // The connection to the matchmaking service dropped. Players already connected stay connected.
+      peer.on("disconnected", function () {
+        setLiveStatus("Lost contact with the matchmaking service. Reconnecting…");
+        if (peer && !peer.destroyed) peer.reconnect();
+      });
+    }
+
+    async function showOpenGame() {
+      document.getElementById("liveClosed").classList.add("hidden");
+      document.getElementById("liveOpen").classList.remove("hidden");
+      document.getElementById("gameCode").textContent = gameCode;
+      setLiveStatus("🟢 Game open. Waiting for players…");
+      renderRequests();
+      renderTalk();
+
+      // Where can players open the app?
+      //  - on the public website: right next to this page (works for addresses like name.github.io/app/)
+      //  - with "ruby server.rb --share": the helper knows its Wi-Fi address
+      let joinPage = null;
+      if (location.protocol.startsWith("http") && !["localhost", "127.0.0.1"].includes(location.hostname)) {
+        joinPage = new URL("join.html", location.href);
+      } else {
+        try {
+          const status = await (await fetch("api/status")).json();
+          if (status.lan) joinPage = new URL("join.html", status.lan + "/");
+        } catch (error) {
+          // Not served by the helper (for example opened from a file).
+        }
+      }
+
+      const note = document.getElementById("inviteNote");
+      if (joinPage) {
+        joinPage.search = "?code=" + gameCode;
+        inviteLink = joinPage.href;
+        note.textContent = "Send your players this invite link: " + inviteLink +
+          " (or they choose Player → Live Dungeon Master and type the code).";
+      } else {
+        inviteLink = "";
+        note.textContent = "Players need to open this app on their own device and choose Player → Live Dungeon Master, then type the code. " +
+          "To let players on your Wi-Fi open it, start the helper with:  ruby server.rb --share";
+      }
+      document.getElementById("copyInviteBtn").classList.toggle("hidden", !inviteLink);
+    }
+
+    function closeGame() {
+      stopVoice();
+      for (const connection of liveConns.values()) {
+        if (connection.open) connection.send({ type: "closed" });
+      }
+      for (const request of pendingRequests) {
+        if (request.conn.open) request.conn.send({ type: "closed" });
+      }
+      if (peer) peer.destroy();
+      peer = null;
+      gameCode = "";
+      inviteLink = "";
+      pendingRequests = [];
+      liveConns.clear();
+      talkLog.length = 0;
+      document.getElementById("liveOpen").classList.add("hidden");
+      document.getElementById("liveClosed").classList.remove("hidden");
+      renderParty();
+    }
+
+    function copyText(text, doneMessage) {
+      if (!text) return;
+      const done = function () {
+        setLiveStatus(doneMessage);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function () {
+          setLiveStatus("Couldn't copy. Select the code and copy it yourself.");
+        });
+      } else {
+        setLiveStatus("Couldn't copy. Select the code and copy it yourself.");
+      }
+    }
+
+    // ---------- Messages from players ----------
+    function handleIncoming(conn) {
+      conn.on("data", function (data) {
+        handleLiveMessage(conn, data);
+      });
+      conn.on("close", function () {
+        handleLiveClose(conn);
+      });
+      conn.on("error", function () {
+        handleLiveClose(conn);
+      });
+    }
+
+    // Which player (key) does this connection belong to? undefined if none yet.
+    function keyOfConnection(conn) {
+      for (const [key, connection] of liveConns) {
+        if (connection === conn) return key;
+      }
+      return undefined;
+    }
+
+    function handleLiveMessage(conn, data) {
+      // Anything from the internet is untrusted: check the shape before using it.
+      if (!data || typeof data !== "object" || typeof data.type !== "string") return;
+
+      // ----- Someone asks to join -----
+      if (data.type === "request") {
+        const character = cleanSharedCharacter(data.character);   // from play.js
+        if (!character || !character.key) return;
+
+        // A player the DM already accepted (same unguessable key) can come straight back in.
+        const known = party.find(function (m) {
+          return m.remoteKey === character.key;
+        });
+        if (known) {
+          acceptPlayer(conn, character);
+          return;
+        }
+
+        // Too many people waiting? Politely refuse.
+        const alreadyWaiting = pendingRequests.some(function (r) {
+          return r.character.key === character.key;
+        });
+        if (!alreadyWaiting && pendingRequests.length >= 12) {
+          conn.send({ type: "declined", reason: "The DM has too many requests waiting." });
+          return;
+        }
+
+        // Replace an older request from the same player.
+        pendingRequests = pendingRequests.filter(function (r) {
+          return r.character.key !== character.key;
+        });
+        pendingRequests.push({ conn: conn, character: character });
+        conn.send({ type: "waiting" });
+        setLiveStatus("🔔 " + character.name + " wants to join!");
+        renderRequests();
+        return;
+      }
+
+      // ----- Everything else is only allowed from accepted players -----
+      const key = keyOfConnection(conn);
+      if (key === undefined) return;
+      const member = party.find(function (m) {
+        return m.remoteKey === key;
+      });
+      if (!member) return;
+
+      if (data.type === "update") {
+        const character = cleanSharedCharacter(data.character);
+        if (!character) return;
+        applyCharacterToMember(member, character);
+        saveParty();
+        renderParty();
+        render();
+      } else if (data.type === "roll") {
+        talk(member.name + " " + cleanText(data.text, 200));
+      } else if (data.type === "say") {
+        talk(member.name + ": " + cleanText(data.text, 300));
+      } else if (data.type === "voice-ready") {
+        if (voice.on) callPlayer(key, conn);      // they chose to join voice: ring them
+      } else if (data.type === "voice-leave") {
+        dropVoicePlayer(key);
+      }
+    }
+
+    // Copy a shared character's details onto a party member. The DM's tracked HP is kept.
+    function applyCharacterToMember(member, character) {
+      member.name = character.name;
+      member.ac = character.ac;
+      member.maxHp = character.maxHp;
+      member.hp = clampHp(member.hp, character.maxHp);
+      member.passive = character.passive;
+      member.summary = "Lv " + character.level + " " + character.species + " " + character.className;
+      member.item = character.item;
+
+      // If this player is in the initiative tracker, keep their name and max HP current there too.
+      for (const c of combatants) {
+        if (c.partyId === member.id) {
+          c.name = member.name;
+          c.maxHp = member.maxHp;
+          c.hp = clampHp(c.hp, c.maxHp);
+        }
+      }
+    }
+
+    function handleLiveClose(conn) {
+      const before = pendingRequests.length;
+      pendingRequests = pendingRequests.filter(function (r) {
+        return r.conn !== conn;
+      });
+      if (pendingRequests.length !== before) renderRequests();
+
+      const key = keyOfConnection(conn);
+      if (key !== undefined) {
+        const member = party.find(function (m) {
+          return m.remoteKey === key;
+        });
+        dropVoicePlayer(key);
+        liveConns.delete(key);
+        if (member) talk("👋 " + member.name + " disconnected.");
+        renderParty();
+      }
+    }
+
+    // ---------- Accepting and declining ----------
+    function acceptPlayer(conn, character) {
+      let member = party.find(function (m) {
+        return m.remoteKey === character.key;
+      });
+
+      if (!member) {
+        member = {
+          id: nextPartyId,
+          remoteKey: character.key,
+          name: character.name,
+          ac: character.ac,
+          hp: character.hp,
+          maxHp: character.maxHp
+        };
+        nextPartyId++;
+        party.push(member);
+      }
+      applyCharacterToMember(member, character);
+
+      // Only one live connection per player: if they reconnected, drop the old one.
+      const old = liveConns.get(character.key);
+      if (old && old !== conn && old.open) old.close();
+      liveConns.set(character.key, conn);
+
+      pendingRequests = pendingRequests.filter(function (r) {
+        return r.character.key !== character.key;
+      });
+
+      conn.send({ type: "accepted", game: openGameName, hp: member.hp, maxHp: member.maxHp });
+      if (voice.on) conn.send({ type: "voice", on: true });   // voice chat is already running
+      talk("✅ " + member.name + " joined the game.");
+      saveParty();
+      renderParty();
+      renderRequests();
+    }
+
+    function declinePlayer(request) {
+      if (request.conn.open) request.conn.send({ type: "declined", reason: "The DM declined your request." });
+      pendingRequests = pendingRequests.filter(function (r) {
+        return r !== request;
+      });
+      renderRequests();
+    }
+
+    function renderRequests() {
+      const list = document.getElementById("requests");
+      list.innerHTML = "";
+
+      if (pendingRequests.length === 0) {
+        const empty = document.createElement("li");
+        empty.className = "hint";
+        empty.textContent = "No requests right now.";
+        list.append(empty);
+        return;
+      }
+
+      for (const request of pendingRequests) {
+        const c = request.character;
+        const item = document.createElement("li");
+        item.className = "request-card";
+
+        const text = document.createElement("div");
+        const title = document.createElement("strong");
+        title.textContent = c.name;
+        const details = document.createElement("div");
+        details.className = "hint";
+        details.textContent = "Lv " + c.level + " " + c.species + " " + c.className +
+          " · AC " + c.ac + " · HP " + c.hp + "/" + c.maxHp + (c.item ? " · ✨ " + c.item.name : "");
+        text.append(title, details);
+
+        item.append(
+          text,
+          makeButton("✅ Accept", function () {
+            acceptPlayer(request.conn, request.character);
+          }),
+          makeButton("✕ Decline", function () {
+            declinePlayer(request);
+          })
+        );
+        list.append(item);
+      }
+    }
+
+    // ---------- Voice chat ----------
+    // Everyone calls the DM (a "star"). The DM's browser mixes the sound so each player
+    // hears the DM AND the other players, but not themselves.
+    //   microphone → DM's mixer → one output stream per player (everyone except that player)
+    const voice = {
+      on: false,
+      stream: null,      // the DM's microphone
+      ctx: null,         // the Web Audio mixer
+      mic: null,         // the microphone as a mixer input
+      players: new Map() // player key -> { call, dest, source, audio }
+    };
+
+    async function startVoice() {
+      if (!gameCode || voice.on) return;
+      try {
+        voice.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      } catch (error) {
+        document.getElementById("voiceStatus").textContent = "⚠️ Couldn't use your microphone. Allow it for this page in your browser, then try again.";
+        return;
+      }
+      voice.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      voice.mic = voice.ctx.createMediaStreamSource(voice.stream);
+      voice.on = true;
+      for (const connection of liveConns.values()) {
+        if (connection.open) connection.send({ type: "voice", on: true });
+      }
+      document.getElementById("voiceStatus").textContent = "🟢 Voice chat is on. Players can now join it.";
+      talk("🎙️ You started voice chat.");
+      renderVoice();
+    }
+
+    // Ring one accepted player's browser with an audio call.
+    function callPlayer(key, conn) {
+      if (!voice.on || !peer || !conn.open) return;
+      dropVoicePlayer(key);   // a fresh call replaces any old one
+
+      const dest = voice.ctx.createMediaStreamDestination();
+      voice.mic.connect(dest);                       // they hear the DM
+      for (const other of voice.players.values()) {  // ...and everyone already in voice
+        if (other.source) other.source.connect(dest);
+      }
+
+      const call = peer.call(conn.peer, dest.stream);
+      const entry = { call: call, dest: dest, source: null, audio: null };
+      voice.players.set(key, entry);
+
+      call.on("stream", function (remote) {
+        // Some browsers only deliver sound from a remote stream if it is also attached to an
+        // (muted) audio element, so we do that, then use the stream in the mixer.
+        entry.audio = new Audio();
+        entry.audio.srcObject = remote;
+        entry.audio.muted = true;
+        entry.source = voice.ctx.createMediaStreamSource(remote);
+        entry.source.connect(voice.ctx.destination);   // the DM hears them
+        for (const [otherKey, other] of voice.players) {
+          if (otherKey !== key) entry.source.connect(other.dest);   // the other players hear them
+        }
+        if (voice.ctx.state === "suspended") voice.ctx.resume();
+        renderVoice();
+      });
+      call.on("close", function () {
+        if (voice.players.get(key) === entry) dropVoicePlayer(key);
+      });
+      call.on("error", function () {
+        if (voice.players.get(key) === entry) dropVoicePlayer(key);
+      });
+      renderVoice();
+    }
+
+    function dropVoicePlayer(key) {
+      const entry = voice.players.get(key);
+      if (!entry) return;
+      voice.players.delete(key);
+      try {
+        if (entry.source) entry.source.disconnect();
+        entry.call.close();
+      } catch (error) {
+        // Already closed.
+      }
+      if (entry.audio) entry.audio.srcObject = null;
+      renderVoice();
+    }
+
+    function stopVoice() {
+      if (!voice.on) return;
+      for (const key of Array.from(voice.players.keys())) dropVoicePlayer(key);
+      if (voice.stream) {
+        for (const track of voice.stream.getTracks()) track.stop();   // microphone off
+      }
+      if (voice.ctx) voice.ctx.close();
+      for (const connection of liveConns.values()) {
+        if (connection.open) connection.send({ type: "voice", on: false });
+      }
+      voice.on = false;
+      voice.stream = null;
+      voice.ctx = null;
+      voice.mic = null;
+      document.getElementById("voiceStatus").textContent = "Players choose whether to join. Everyone who joins hears everyone else. Headphones stop echo.";
+      renderVoice();
+    }
+
+    function toggleDmMute() {
+      if (!voice.stream) return;
+      const track = voice.stream.getAudioTracks()[0];
+      track.enabled = !track.enabled;
+      document.getElementById("voiceMuteBtn").textContent = track.enabled ? "🔇 Mute me" : "🎙️ Unmute me";
+    }
+
+    function renderVoice() {
+      const button = document.getElementById("voiceStartBtn");
+      if (!button) return;
+      button.classList.toggle("hidden", voice.on);
+      document.getElementById("voiceMuteBtn").classList.toggle("hidden", !voice.on);
+      document.getElementById("voiceStopBtn").classList.toggle("hidden", !voice.on);
+
+      const list = document.getElementById("voiceList");
+      list.innerHTML = "";
+      if (!voice.on) return;
+      for (const key of voice.players.keys()) {
+        const member = party.find(function (m) {
+          return m.remoteKey === key;
+        });
+        const item = document.createElement("li");
+        item.textContent = "🎙️ " + (member ? member.name : "A player") + (voice.players.get(key).source ? " (talking)" : " (connecting…)");
+        list.append(item);
+      }
+    }
+
+    // ---------- Table talk ----------
+    const talkLog = [];
+
+    function talk(text) {
+      talkLog.push(text);
+      if (talkLog.length > 60) talkLog.shift();
+      renderTalk();
+    }
+
+    function renderTalk() {
+      const feed = document.getElementById("talkFeed");
+      if (!feed) return;
+      feed.innerHTML = "";
+      for (const line of talkLog) {
+        const row = document.createElement("div");
+        row.className = "chat-note";
+        row.textContent = line;
+        feed.append(row);
+      }
+      feed.scrollTop = feed.scrollHeight;
+    }
+
+    function sendAnnouncement() {
+      const box = document.getElementById("announceText");
+      const text = box.value.trim();
+      if (text === "") return;
+      for (const connection of liveConns.values()) {
+        if (connection.open) connection.send({ type: "announce", text: text });
+      }
+      talk("📢 You: " + text);
+      box.value = "";
+    }
+
+    // =====================================================================
+    // SESSION NOTES — saved with localStorage
+    // =====================================================================
+    // localStorage is a small storage box inside the browser. Things you put in it
+    // are still there after you close the page. It works like labeled jars:
+    //   localStorage.setItem("label", "text")  -> put text in the jar
+    //   localStorage.getItem("label")          -> read what's in the jar
+    //
+    // try/catch means "try this, and if it fails, do the catch part instead of crashing."
+    // Some browsers (private windows, some previews) block storage.
+    const notesBox = document.getElementById("notes");
+    const notesStatus = document.getElementById("notesStatus");
+
+    try {
+      notesBox.value = localStorage.getItem("dmNotes") || "";
+    } catch (error) {
+      notesStatus.textContent = "⚠️ This browser won't let the page save notes here.";
+    }
+
+    // "input" fires every time the text changes, so notes save as you type.
+    notesBox.addEventListener("input", function () {
+      try {
+        localStorage.setItem("dmNotes", notesBox.value);
+        notesStatus.textContent = "Saved ✓";
+      } catch (error) {
+        notesStatus.textContent = "⚠️ Couldn't save notes in this browser.";
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,358 @@
+// =====================================================================
+// SHARED PLAY HELPERS — used by ai-dm.html, join.html and dm.html.
+// Load AFTER dice.js and rules.js:
+//   <script src="dice.js"></script>
+//   <script src="rules.js"></script>
+//   <script src="play.js"></script>
+// =====================================================================
+
+// "Level 3 Dwarf Fighter", or "Level 3 Dwarf Fighter 2 / Rogue 1" with two classes
+function characterLine(c) {
+  return "Level " + c.level + " " + c.species + " " + classSummary(c);
+}
+
+// ---------------------------------------------------------------------
+// ROLLING CHECKS FROM A CHARACTER SHEET
+// ---------------------------------------------------------------------
+
+// Every roll a character can make: initiative, ability checks, saving throws, skills.
+// Each entry: { label, bonus, skill (only for skills, so items can give Advantage) }.
+function getCheckList(character) {
+  const list = [];
+  list.push({ label: "Initiative", bonus: getModifier(getAbilityScore(character, "dex")) });
+  for (const ability of ABILITIES) {
+    list.push({ label: ability.name + " check", bonus: getModifier(getAbilityScore(character, ability.key)) });
+  }
+  for (const ability of ABILITIES) {
+    list.push({ label: ability.name + " save", bonus: getSaveBonus(character, ability.key) });
+  }
+  for (const skill of SKILLS) {
+    list.push({ label: skill.name, bonus: getSkillBonus(character, skill), skill: skill.name });
+  }
+  return list;
+}
+
+// Roll one check. mode is "normal", "advantage" or "disadvantage".
+// Returns { text, total } where text is ready to show, like "🎲 Stealth: 14 +3 = 17".
+function rollCharacterCheck(character, entry, mode) {
+  let note = "";
+
+  // A magic item can give Advantage on a skill. Advantage and Disadvantage cancel out (SRD).
+  if (entry.skill && itemGivesAdvantage(character, entry.skill)) {
+    if (mode === "disadvantage") {
+      mode = "normal";
+      note = " (Advantage from " + character.specialItem.name + " cancels Disadvantage)";
+    } else {
+      mode = "advantage";
+      note = " from " + character.specialItem.name;
+    }
+  }
+
+  let roll;
+  let shown;
+  if (mode === "normal") {
+    roll = rollOneDie(20);
+    shown = String(roll) + note;
+  } else {
+    const result = rollD20WithMode(mode);   // from dice.js
+    roll = result.kept;
+    shown = roll + " (rolled " + result.rolls.join(" & ") + ", " + mode + note + ")";
+  }
+
+  const total = roll + entry.bonus;
+  let text = "🎲 " + entry.label + ": " + shown + " " + formatBonus(entry.bonus) + " = " + total;
+  if (roll === 20) text += "  🎉 Natural 20!";
+  if (roll === 1)  text += "  💀 Natural 1...";
+  return { text: text, total: total };
+}
+
+// Fill a <select> with every check the character can roll (the option value is its position).
+function fillCheckSelect(select, character) {
+  select.innerHTML = "";
+  getCheckList(character).forEach(function (entry, index) {
+    select.append(new Option(entry.label + " (" + formatBonus(entry.bonus) + ")", index));
+  });
+}
+
+// ---------------------------------------------------------------------
+// AI DUNGEON MASTER TAGS
+// The AI ends some replies with hidden tags like [ROLL: Perception] or [MUSIC: battle].
+// These functions find them, and remove them before the text is shown or read aloud.
+// ---------------------------------------------------------------------
+const MUSIC_TAG_MOODS = ["calm", "tavern", "exploration", "mystery", "danger", "battle", "victory"];
+
+function stripDmTags(text) {
+  return String(text)
+    .replace(/\[(ROLL|MUSIC)\s*:[^\]]*\]/gi, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+// "battle", or null if the reply has no (valid) music tag.
+function findMusicTag(text) {
+  const match = String(text).match(/\[MUSIC\s*:\s*([a-z]+)\s*\]/i);
+  if (!match) return null;
+  const mood = match[1].toLowerCase();
+  return MUSIC_TAG_MOODS.includes(mood) ? mood : null;
+}
+
+// What roll does the Dungeon Master want? Returns null, or one of:
+//   { type: "check", entry, index, mode, label }        a roll from the sheet (the bonus comes from the sheet)
+//   { type: "dice", count, sides, modifier, mode, label } dice the DM wrote out (attacks, damage)
+function findRollRequest(text, character) {
+  const tag = String(text).match(/\[ROLL\s*:\s*([^\]]+)\]/i);
+  if (tag) return parseRollRequest(tag[1], character);
+  return guessRollFromText(stripDmTags(text), character);
+}
+
+function parseRollRequest(raw, character) {
+  let words = String(raw).trim().toLowerCase();
+
+  let mode = "normal";
+  if (/\bdisadvantage\b/.test(words)) mode = "disadvantage";
+  else if (/\badvantage\b/.test(words)) mode = "advantage";
+  words = words.replace(/\s*(with\s+)?(dis)?advantage\b/g, "").trim();
+
+  // Dice written out, like "1d20+5 attack", "2d6 damage" or "d20-1"
+  const dice = words.match(/^(\d*)\s*d\s*(\d+)\s*([+-]\s*\d+)?\s*(.*)$/);
+  if (dice) {
+    const count = Math.min(Math.max(Number(dice[1] || 1), 1), 20);
+    const sides = Number(dice[2]);
+    if (![4, 6, 8, 10, 12, 20, 100].includes(sides)) return null;
+    const modifier = dice[3] ? Math.min(Math.max(Number(dice[3].replace(/\s/g, "")), -50), 50) : 0;
+    const what = dice[4].trim();
+    const label = (what ? what.charAt(0).toUpperCase() + what.slice(1) + " " : "") +
+      "(" + count + "d" + sides + formatModifier(modifier) + ")";
+    // Advantage only makes sense for a single d20.
+    return { type: "dice", count: count, sides: sides, modifier: modifier,
+             mode: count === 1 && sides === 20 ? mode : "normal", label: label };
+  }
+
+  const found = findCheckEntry(words, character);
+  if (!found) return null;
+  return { type: "check", entry: found.entry, index: found.index, mode: mode, label: found.entry.label };
+}
+
+// Match words like "perception", "dex save", "strength saving throw", "initiative"
+// to an entry in the character's check list.
+function findCheckEntry(words, character) {
+  const list = getCheckList(character);
+  let w = words.replace(/saving throw/g, "save").replace(/[()]/g, " ").replace(/\s+/g, " ").trim();
+  for (const ability of ABILITIES) {
+    w = w.replace(new RegExp("\\b" + ability.key + "\\b"), ability.name.toLowerCase());   // "dex" -> "dexterity"
+  }
+  const attempts = [w, w.replace(/ check$/, ""), w + " check"];
+  for (const attempt of attempts) {
+    const index = list.findIndex(function (entry) {
+      return entry.label.toLowerCase() === attempt;
+    });
+    if (index !== -1) return { entry: list[index], index: index };
+  }
+  return null;
+}
+
+// If the AI forgot the tag, look for "Make a Perception check" or "a Dexterity saving throw"
+// near the END of the reply (earlier mentions are usually describing a past result).
+function guessRollFromText(text, character) {
+  const tail = text.toLowerCase().slice(-220);
+  if (/roll (for )?initiative/.test(tail)) return parseRollRequest("initiative", character);
+  for (const skill of SKILLS) {
+    if (new RegExp("\\b" + skill.name.toLowerCase() + "\\)? check").test(tail)) return parseRollRequest(skill.name, character);
+  }
+  for (const ability of ABILITIES) {
+    const name = ability.name.toLowerCase();
+    if (new RegExp("\\b" + name + " (saving throw|save)").test(tail)) return parseRollRequest(name + " save", character);
+    if (new RegExp("\\b" + name + " check").test(tail)) return parseRollRequest(name + " check", character);
+  }
+  return null;
+}
+
+// The button text for a request: "🎲 Roll Perception (+2)".
+function describeRollRequest(request) {
+  const extra = request.mode !== "normal" ? " with " + request.mode : "";
+  if (request.type === "check") {
+    return "🎲 Roll " + request.label + " (" + formatBonus(request.entry.bonus) + ")" + extra;
+  }
+  return "🎲 Roll " + request.label + extra;
+}
+
+// Roll whatever was requested. Returns { text, total }.
+function rollRequest(character, request) {
+  if (request.type === "check") return rollCharacterCheck(character, request.entry, request.mode);
+
+  let rolls = [];
+  let shown;
+  if (request.mode !== "normal") {
+    const result = rollD20WithMode(request.mode);
+    rolls = [result.kept];
+    shown = result.kept + " (rolled " + result.rolls.join(" & ") + ", " + request.mode + ")";
+  } else {
+    for (let i = 0; i < request.count; i++) rolls.push(rollOneDie(request.sides));
+    shown = rolls.length > 1 ? "[" + rolls.join(", ") + "]" : String(rolls[0]);
+  }
+
+  const total = rolls.reduce(function (sum, n) { return sum + n; }, 0) + request.modifier;
+  let text = "🎲 " + request.label + ": " + shown +
+    (request.modifier ? " " + formatBonus(request.modifier) : "") + " = " + total;
+  if (request.sides === 20 && rolls.length === 1) {
+    if (rolls[0] === 20) text += "  🎉 Natural 20!";
+    if (rolls[0] === 1)  text += "  💀 Natural 1...";
+  }
+  return { text: text, total: total };
+}
+
+// ---------------------------------------------------------------------
+// THE CHARACTER SHEET AS TEXT (sent to the AI Dungeon Master)
+// ---------------------------------------------------------------------
+function makeSheetText(c) {
+  const species = findByName(SPECIES, c.species);
+  const lines = [];
+
+  lines.push("Name: " + c.name);
+  lines.push(characterLine(c) + (c.background ? " (" + c.background + " background)" : ""));
+  lines.push("HP " + c.hp + "/" + getMaxHp(c) + " | AC " + getAc(c) + " | Speed " + getSpeed(c) + " ft | " +
+             "Proficiency " + formatBonus(getProficiencyBonus(c.level)) + " | Passive Perception " + getPassivePerception(c));
+
+  lines.push("Abilities: " + ABILITIES.map(function (a) {
+    const score = getAbilityScore(c, a.key);
+    return a.key.toUpperCase() + " " + score + " (" + formatBonus(getModifier(score)) + ")";
+  }).join(", "));
+
+  lines.push("Saving throws: " + ABILITIES.map(function (a) {
+    return a.key.toUpperCase() + " " + formatBonus(getSaveBonus(c, a.key)) + (isSaveProficient(c, a.key) ? "*" : "");
+  }).join(", ") + "  (* = proficient)");
+
+  const trained = SKILLS.filter(function (s) {
+    return c.proficientSkills.includes(s.name);
+  }).map(function (s) {
+    return s.name + " " + formatBonus(getSkillBonus(c, s));
+  });
+  lines.push("Skill proficiencies: " + (trained.length ? trained.join(", ") : "none"));
+
+  for (const entry of getClassLevels(c)) {
+    if (entry.data) lines.push(entry.name + " features: " + entry.data.features.join(", "));
+  }
+  if (species)    lines.push("Species traits: " + species.traits.join(", "));
+
+  if (c.specialItem) {
+    const item = c.specialItem;
+    const tidy = function (s) {
+      return String(s).trim().replace(/[.\s]+$/, "");   // drop trailing full stops so we don't print ".."
+    };
+    let text = "Special item: " + item.name + " (" + [item.type, item.rarity].filter(Boolean).join(", ") + ")";
+    if (item.powers)     text += ". Powers: " + tidy(item.powers);
+    if (item.appearance) text += ". Looks like: " + tidy(item.appearance);
+    lines.push(text + ".");
+  }
+  return lines.join("\n");
+}
+
+// ---------------------------------------------------------------------
+// LIVE GAMES: identity, game codes, and what a player shares with a DM
+// ---------------------------------------------------------------------
+
+// Every browser gets a random id, so a DM can recognise a returning player.
+// (It's random and unguessable, but it is not a password.)
+let cachedClientId = null;
+function getClientId() {
+  if (cachedClientId) return cachedClientId;
+  try {
+    cachedClientId = localStorage.getItem("clientId");
+  } catch (error) {
+    cachedClientId = null;
+  }
+  if (!cachedClientId) {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);   // the browser's secure random number generator
+    cachedClientId = Array.from(bytes).map(function (b) {
+      return b.toString(16).padStart(2, "0");
+    }).join("");
+    try {
+      localStorage.setItem("clientId", cachedClientId);
+    } catch (error) {
+      // Storage blocked: the id lasts only until the page closes.
+    }
+  }
+  return cachedClientId;
+}
+
+// Game codes avoid look-alike characters (no 0/O, 1/I).
+const CODE_LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const PEER_PREFIX = "dndtable-";
+
+function makeGameCode() {
+  const bytes = new Uint8Array(6);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map(function (b) {
+    return CODE_LETTERS[b % CODE_LETTERS.length];
+  }).join("");
+}
+
+// Accepts "k7m-4qx", " K7M4QX " and so on.
+function normalizeCode(text) {
+  return String(text || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+function peerIdFromCode(code) {
+  return PEER_PREFIX + normalizeCode(code);
+}
+
+// The small summary of a character that a player sends to the DM.
+// Deliberately leaves out inventory notes and the player's real name.
+function makeSharedCharacter(c) {
+  const item = c.specialItem;
+  return {
+    key: getClientId() + ":" + c.id,
+    name: c.name,
+    className: classSummary(c),   // "Fighter" or "Fighter 2 / Rogue 1"
+    species: c.species,
+    level: c.level,
+    hp: c.hp,
+    maxHp: getMaxHp(c),
+    ac: getAc(c),
+    passive: getPassivePerception(c),
+    item: item ? {
+      name: item.name, type: item.type, rarity: item.rarity, attunement: item.attunement,
+      appearance: item.appearance, powers: item.powers
+    } : null
+  };
+}
+
+// Anything that arrives over the internet is untrusted. Make sure it is the right
+// shape and a sensible size before using it. (The pages also only ever show it with
+// textContent, never as HTML.)
+function cleanText(value, maxLength) {
+  return String(value === undefined || value === null ? "" : value).slice(0, maxLength);
+}
+
+function cleanNumber(value, min, max, fallback) {
+  const n = Math.round(Number(value));
+  if (!isFinite(n)) return fallback;
+  return Math.min(Math.max(n, min), max);
+}
+
+function cleanSharedCharacter(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const item = raw.item && typeof raw.item === "object" ? {
+    name: cleanText(raw.item.name, 60),
+    type: cleanText(raw.item.type, 40),
+    rarity: cleanText(raw.item.rarity, 20),
+    attunement: cleanText(raw.item.attunement, 60),
+    appearance: cleanText(raw.item.appearance, 400),
+    powers: cleanText(raw.item.powers, 600)
+  } : null;
+
+  const maxHp = cleanNumber(raw.maxHp, 1, 999, 1);
+  return {
+    key: cleanText(raw.key, 80),
+    name: cleanText(raw.name, 40) || "Unnamed adventurer",
+    className: cleanText(raw.className, 40),
+    species: cleanText(raw.species, 30),
+    level: cleanNumber(raw.level, 1, 20, 1),
+    maxHp: maxHp,
+    hp: cleanNumber(raw.hp, 0, maxHp, maxHp),
+    ac: cleanNumber(raw.ac, 0, 99, 10),
+    passive: cleanNumber(raw.passive, 0, 99, 10),
+    item: item && item.name ? item : null
+  };
+}

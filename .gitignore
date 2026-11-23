@@ -1,0 +1,4 @@
+# Files Git should IGNORE (never save in the project's history).
+
+# macOS creates this hidden file in folders you open in Finder. It's not part of the app.
+.DS_Store

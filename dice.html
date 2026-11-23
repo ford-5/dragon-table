@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dice Roller</title>
+
+  <!-- The styles now live in their own file, shared with dm.html -->
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <!-- Links to switch between the player page and the DM page -->
+  <nav class="top-nav">
+    <a href="index.html">🏠 Home</a>
+    <a href="dice.html" class="active">🎲 Dice</a>
+    <a href="character.html">🧙 Characters</a>
+    <a href="dm.html">🛡️ DM Screen</a>
+  </nav>
+
+  <h1>🎲 Dice Roller</h1>
+
+  <div class="panel">
+    <!-- Inputs: let the player choose how many dice and what to add -->
+    <div class="settings">
+      <label>
+        Number of dice
+        <input id="count" type="number" value="1" min="1" max="20">
+      </label>
+      <label>
+        Modifier
+        <input id="modifier" type="number" value="0" min="-20" max="20">
+      </label>
+    </div>
+
+    <!-- Advantage / disadvantage: only applies to a single d20, like in the rules -->
+    <p>
+      <label>
+        d20 roll type
+        <select id="rollMode">
+          <option value="normal">Normal</option>
+          <option value="advantage">Advantage</option>
+          <option value="disadvantage">Disadvantage</option>
+        </select>
+      </label>
+    </p>
+
+    <!-- Each button calls rollDice() with the number of sides on that die -->
+    <button onclick="rollDice(4)">d4</button>
+    <button onclick="rollDice(6)">d6</button>
+    <button onclick="rollDice(8)">d8</button>
+    <button onclick="rollDice(10)">d10</button>
+    <button onclick="rollDice(12)">d12</button>
+    <button onclick="rollDice(20)">d20</button>
+    <button onclick="rollDice(100)">d100</button>
+
+    <div id="result" class="big-result">–</div>
+    <p id="details"></p>
+  </div>
+
+  <div class="panel">
+    <h2>Roll History</h2>
+    <ul id="history"></ul>
+    <button class="small-button" onclick="clearHistory()">Clear history</button>
+  </div>
+
+  <!-- Shared dice helpers (rollOneDie, formatModifier). Must load BEFORE the script below. -->
+  <script src="dice.js"></script>
+
+  <script>
+    // JavaScript: what the page DOES
+
+    // Roll several dice, add the modifier, and show everything on the page.
+    function rollDice(sides) {
+      // Read what the player typed. Inputs give us text, so Number() turns it into a number.
+      // "|| 1" and "|| 0" are fallbacks in case the box is empty.
+      const count = Number(document.getElementById("count").value) || 1;
+      const modifier = Number(document.getElementById("modifier").value) || 0;
+
+      // Advantage and disadvantage only apply to a single d20 roll.
+      const mode = document.getElementById("rollMode").value;
+      const usingMode = mode !== "normal" && sides === 20 && count === 1;
+
+      // An ARRAY is a list. We start with an empty list and add each roll to it.
+      let rolls = [];
+      let modeNote = "";
+      if (usingMode) {
+        const result = rollD20WithMode(mode);   // from dice.js: rolls two d20s, keeps one
+        rolls = [result.kept];
+        modeNote = " (" + mode + ": rolled " + result.rolls.join(" & ") + ")";
+      } else {
+        for (let i = 0; i < count; i++) {   // a LOOP: repeat "count" times
+          rolls.push(rollOneDie(sides));
+        }
+      }
+
+      // Add up every roll in the list, then add the modifier.
+      let total = 0;
+      for (const roll of rolls) {
+        total = total + roll;
+      }
+      total = total + modifier;
+
+      // Build a label like "3d6+2".
+      const label = count + "d" + sides + formatModifier(modifier);
+
+      // Build the breakdown like "[4, 2, 6] +2".
+      const breakdown = "[" + rolls.join(", ") + "] " + formatModifier(modifier);
+
+      // Show the total.
+      const resultBox = document.getElementById("result");
+      resultBox.textContent = total;
+
+      // Natural 20 / natural 1 only count when rolling a single d20.
+      let message = label + ": " + breakdown + modeNote;
+      resultBox.className = "big-result";   // reset to the normal look (clears any crit color)
+      if (sides === 20 && count === 1) {
+        if (rolls[0] === 20) {
+          message = "🎉 NATURAL 20! " + message;
+          resultBox.classList.add("crit-success");
+        } else if (rolls[0] === 1) {
+          message = "💀 Natural 1... " + message;
+          resultBox.classList.add("crit-fail");
+        }
+      }
+      document.getElementById("details").textContent = message;
+
+      addToHistory(label + " → " + total + "   " + breakdown + modeNote);
+    }
+
+    // Add a line to the top of the history list, keeping only the last 10.
+    function addToHistory(text) {
+      const historyList = document.getElementById("history");
+
+      const item = document.createElement("li");   // make a new <li> element
+      item.textContent = text;
+      historyList.prepend(item);                   // put it at the TOP of the list
+
+      // If there are more than 10 items, remove the oldest (the last one).
+      if (historyList.children.length > 10) {
+        historyList.lastElementChild.remove();
+      }
+    }
+
+    function clearHistory() {
+      document.getElementById("history").innerHTML = "";
+    }
+  </script>
+</body>
+</html>

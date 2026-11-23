@@ -1,0 +1,1637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Characters</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <nav class="top-nav">
+    <a href="index.html">🏠 Home</a>
+    <a href="dice.html">🎲 Dice</a>
+    <a href="character.html" class="active">🧙 Characters</a>
+    <a href="dm.html">🛡️ DM Screen</a>
+  </nav>
+
+  <h1 id="pageTitle">🧙 Characters</h1>
+  <p id="saveStatus" class="hint">Characters save automatically in this browser.</p>
+
+  <!-- =================================================================
+       VIEW 1: THE ROSTER — a list of every saved character
+       ================================================================= -->
+  <section id="rosterView">
+    <div class="panel">
+      <h2>The Party's Characters</h2>
+      <p class="hint">Every player can create their own character. Click one to open their sheet.</p>
+      <ul id="roster" class="roster-list"></ul>
+      <button onclick="startCreator()">✨ Create a new character</button>
+    </div>
+  </section>
+
+  <!-- =================================================================
+       VIEW 2: THE CREATOR — build a character by the fifth-edition rules
+       ================================================================= -->
+  <section id="creatorView" class="hidden">
+    <!-- Shown when the page was opened with a guide level (beginner / intermediate / advanced) -->
+    <p id="guideBanner" class="guide-banner hidden"></p>
+    <div class="panel creator-step" data-step="name">
+      <h2>1. Who are you?</h2>
+      <div class="sheet-grid">
+        <label class="sheet-field">Character name <input id="newName" type="text" placeholder="e.g. Thora Ironfist"></label>
+        <label class="sheet-field">Player name    <input id="newPlayer" type="text" placeholder="Who plays them?"></label>
+      </div>
+    </div>
+
+    <div class="panel creator-step" data-step="class">
+      <h2>2. Choose a class</h2>
+      <select id="newClass"></select>
+      <div id="classInfo" class="info-box"></div>
+    </div>
+
+    <div class="panel creator-step" data-step="class2">
+      <h2>2b. A second class? (optional)</h2>
+      <label><input type="checkbox" id="useSecondClass"> Give my character two classes (multiclass)</label>
+      <div id="secondClassArea" class="hidden">
+        <p class="hint">By the rules, you only gain a second class when you level up, so a two-class hero starts at level 2 or higher.</p>
+        <div class="sheet-grid">
+          <label class="sheet-field">Second class <select id="newSecondClass"></select></label>
+          <label class="sheet-field">Starting level (both classes together) <select id="newStartLevel"></select></label>
+          <label class="sheet-field">Levels in the second class <select id="newSecondLevels"></select></label>
+        </div>
+        <div id="secondClassInfo" class="info-box"></div>
+      </div>
+    </div>
+
+    <div class="panel creator-step" data-step="species">
+      <h2>3. Choose a species</h2>
+      <select id="newSpecies"></select>
+      <div id="speciesInfo" class="info-box"></div>
+    </div>
+
+    <div class="panel creator-step" data-step="background">
+      <h2>4. Choose a background</h2>
+      <select id="newBackground"></select>
+      <div id="backgroundInfo" class="info-box"></div>
+    </div>
+
+    <div class="panel creator-step" data-step="scores">
+      <h2>5. Ability scores</h2>
+      <p class="hint">Pick a method, then assign each number to an ability. Each number can be used once.</p>
+      <button class="small-button" onclick="useStandardArray()">Use the Standard Array</button>
+      <button class="small-button" onclick="rollScores()">🎲 Roll 4d6, drop the lowest</button>
+      <button class="small-button" onclick="usePointCost()">🧮 Point Cost (27 points)</button>
+      <p id="poolDisplay" class="hint"></p>
+      <div id="assignGrid" class="ability-grid"></div>
+
+      <h3 class="section-label">Background bonus</h3>
+      <div id="bonusArea">
+        <label><input type="radio" name="bonusMode" value="2-1" checked> +2 to one, +1 to another</label><br>
+        <label><input type="radio" name="bonusMode" value="1-1-1"> +1 to all three</label>
+        <div id="bonusPickers" class="settings add-form">
+          <label>+2 <select id="plusTwo"></select></label>
+          <label>+1 <select id="plusOne"></select></label>
+        </div>
+      </div>
+
+      <h3 class="section-label">Final scores</h3>
+      <div id="finalScores" class="ability-grid"></div>
+    </div>
+
+    <div class="panel creator-step" data-step="skills">
+      <h2>6. Choose skills</h2>
+      <div id="skillChoices"></div>
+    </div>
+
+    <div class="panel creator-step" data-step="review">
+      <h2>7. Review</h2>
+      <div id="review"></div>
+      <ul id="createProblems" class="problem-list"></ul>
+      <button onclick="createCharacter()">✅ Create character</button>
+      <br>
+      <button class="small-button" onclick="cancelCreator()">Cancel</button>
+    </div>
+
+    <!-- Beginner mode shows ONE step at a time, with these buttons to move between them -->
+    <div id="stepNav" class="step-nav hidden">
+      <button class="small-button" id="stepBack">← Back</button>
+      <span id="stepCount" class="hint"></span>
+      <button id="stepNext">Next →</button>
+      <p id="stepProblems" class="hint"></p>
+    </div>
+  </section>
+
+  <!-- =================================================================
+       VIEW 3: THE SHEET — one character, with stats worked out by the rules
+       ================================================================= -->
+  <section id="sheetView" class="hidden">
+    <button class="small-button" onclick="showRoster()">← All characters</button>
+
+    <div class="panel">
+      <input id="sheetName" type="text" aria-label="Character name">
+      <p id="sheetSubtitle"></p>
+      <div class="level-controls">
+        <button class="small-button" onclick="changeLevel(-1)">−</button>
+        <span>Level <strong id="sheetLevel">1</strong></span>
+        <button class="small-button" onclick="changeLevel(1)">Level up ⬆</button>
+      </div>
+      <!-- Which class gets the new level (or loses one). Any class you qualify for can be a second class. -->
+      <label class="hint">Level up / down in <select id="levelClass"></select></label>
+      <p id="levelClassNote" class="hint"></p>
+      <label class="hint">
+        Roll with
+        <select id="rollMode">
+          <option value="normal">Normal</option>
+          <option value="advantage">Advantage</option>
+          <option value="disadvantage">Disadvantage</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="panel">
+      <h2>Combat</h2>
+      <div class="stat-grid">
+        <div class="stat-tile">
+          Armor Class
+          <div id="sheetAcTotal" class="stat-display"></div>
+          <!-- The number you enter is your AC from armor; item bonuses are added on top -->
+          <label class="base-ac">base <input id="sheetAc" type="number"></label>
+        </div>
+        <div class="stat-tile">Current HP <input id="sheetHp" type="number"></div>
+        <div class="stat-tile">Max HP <div id="sheetMaxHp" class="stat-display"></div></div>
+        <div class="stat-tile">Initiative <button id="sheetInit" class="small-button"></button></div>
+        <div class="stat-tile">Speed <div id="sheetSpeed" class="stat-display"></div></div>
+        <div class="stat-tile">Proficiency <div id="sheetProf" class="stat-display"></div></div>
+        <div class="stat-tile">Passive Perception <div id="sheetPassive" class="stat-display"></div></div>
+        <div class="stat-tile">Hit Dice <div id="sheetHitDice" class="stat-display"></div></div>
+      </div>
+      <p class="hint">The big Armor Class number is your total. The "base" box is your AC from armor: it starts as your unarmored AC, so change it when you put on armor or pick up a shield. Bonuses from your special item are added on top.</p>
+    </div>
+
+    <div class="panel">
+      <h2>Ability Scores</h2>
+      <p class="hint">Click a modifier to roll a check.</p>
+      <div id="sheetAbilities" class="ability-grid"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Saving Throws</h2>
+      <p class="hint">● = proficient (from your class). Click to roll.</p>
+      <ul id="sheetSaves" class="skill-list"></ul>
+    </div>
+
+    <div class="panel">
+      <h2>Skills</h2>
+      <p class="hint">Ticked skills add your proficiency bonus. Click a bonus to roll.</p>
+      <ul id="sheetSkills" class="skill-list"></ul>
+    </div>
+
+    <div class="panel">
+      <h2>Features & Traits</h2>
+      <div id="sheetFeatures"></div>
+      <p class="hint">
+        Look up the details in the <a href="https://www.dndbeyond.com/srd" target="_blank">free SRD</a>
+        or your Player's Handbook.
+      </p>
+    </div>
+
+    <div class="panel" id="itemPanel">
+      <h2>✨ Special Item</h2>
+
+      <!-- Shows the character's item (or invites them to pick one) -->
+      <div id="itemDisplay"></div>
+
+      <!-- The editor: hidden until the player chooses to pick or create an item -->
+      <div id="itemEditor" class="item-form hidden">
+        <div class="item-mode-buttons">
+          <button class="small-button" onclick="openItemEditor('list')">📜 From the list</button>
+          <button class="small-button" onclick="openItemEditor('custom')">🖋️ My own</button>
+        </div>
+
+        <!-- List mode -->
+        <div id="itemListRow">
+          <label class="sheet-field">Pick a magic item <select id="itemSelect"></select></label>
+          <div id="itemListInfo" class="info-box"></div>
+        </div>
+
+        <!-- Custom mode -->
+        <div id="itemCustomRow">
+          <label class="sheet-field">Name <input id="itemName" type="text" placeholder="e.g. Emberfang, the Last Ember"></label>
+          <label class="sheet-field">Kind of item <select id="itemType"></select></label>
+        </div>
+
+        <label class="sheet-field">
+          <span id="itemAppearanceLabel">What does it look like?</span>
+          <textarea id="itemAppearance" class="notes-box short-notes" placeholder="Pitted black iron with a thin vein of glowing orange running through it..."></textarea>
+        </label>
+
+        <label id="itemPowersRow" class="sheet-field">
+          What can it do?
+          <textarea id="itemPowers" class="notes-box short-notes" placeholder="Once per day, it can set its blade alight for one minute..."></textarea>
+        </label>
+        <p id="itemCustomHint" class="hint">A homemade item's real powers are for you and your DM to agree on, so it stays fair for the whole party.</p>
+
+        <button onclick="saveItem()">Keep this item</button>
+        <button class="small-button" onclick="closeItemEditor()">Cancel</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Inventory & Notes</h2>
+      <textarea id="sheetInventory" class="notes-box" placeholder="Longsword, 50 ft of rope, 12 gold pieces..."></textarea>
+    </div>
+
+    <button class="small-button" onclick="deleteCharacter()">🗑️ Delete this character</button>
+  </section>
+
+  <!-- The pop-up that shows roll results -->
+  <div id="rollToast" class="roll-toast hidden"></div>
+
+  <!-- Shared code: dice first, then the game rules, then this page's own script -->
+  <script src="dice.js"></script>
+  <script src="rules.js"></script>
+
+  <script>
+    // =====================================================================
+    // STATE
+    // =====================================================================
+    let characters = loadCharacters();   // from rules.js
+    let currentCharacter = null;         // the one whose sheet is open
+    let draft = null;                    // the character being created
+
+    // Give each character a unique id.
+    function getNextCharacterId() {
+      let highest = 0;
+      for (const c of characters) {
+        if (c.id > highest) highest = c.id;
+      }
+      return highest + 1;
+    }
+
+    // Save the list, and tell the player whether it worked.
+    function persist() {
+      if (saveCharacters(characters)) {
+        showSaveStatus("Saved ✓");
+      } else {
+        showSaveStatus("⚠️ This browser won't let the page save. Changes will be lost when you close it.");
+      }
+    }
+
+    function showSaveStatus(text) {
+      document.getElementById("saveStatus").textContent = text;
+    }
+
+    // The old version of this page saved ONE character under "character".
+    // Move it into the new list so nobody loses their work.
+    function migrateOldCharacter() {
+      try {
+        const oldText = localStorage.getItem("character");
+        if (!oldText) return;
+        const old = JSON.parse(oldText);
+        old.id = getNextCharacterId();
+        old.playerName = old.playerName || "";
+        old.background = old.background || "";
+        characters.push(old);
+        persist();
+        localStorage.removeItem("character");
+      } catch (error) {
+        // Storage blocked: nothing to move.
+      }
+    }
+
+    // =====================================================================
+    // SWITCHING BETWEEN THE THREE VIEWS
+    // =====================================================================
+    function showView(viewId) {
+      for (const id of ["rosterView", "creatorView", "sheetView"]) {
+        document.getElementById(id).classList.toggle("hidden", id !== viewId);
+      }
+      window.scrollTo(0, 0);
+    }
+
+    function setTitle(text) {
+      document.getElementById("pageTitle").textContent = text;
+      document.title = text.replace(/^\S+\s/, "");   // the tab title, without the emoji
+    }
+
+    // =====================================================================
+    // VIEW 1: ROSTER
+    // =====================================================================
+    function showRoster() {
+      renderRoster();
+      setTitle("🧙 Characters");
+      showView("rosterView");
+    }
+
+    function describeCharacter(c) {
+      return "Level " + c.level + " " + (c.species || "") + " " + classSummary(c);
+    }
+
+    function renderRoster() {
+      const list = document.getElementById("roster");
+      list.innerHTML = "";
+
+      if (characters.length === 0) {
+        const empty = document.createElement("li");
+        empty.className = "hint";
+        empty.textContent = "No characters yet. Create the first one!";
+        list.append(empty);
+        return;
+      }
+
+      for (const c of characters) {
+        const item = document.createElement("li");
+        const card = document.createElement("button");
+        card.className = "roster-card";
+
+        const name = document.createElement("strong");
+        name.textContent = c.name;
+        const details = document.createElement("span");
+        details.className = "hint";
+        details.textContent = describeCharacter(c) + (c.playerName ? " · played by " + c.playerName : "");
+
+        card.append(name, details);
+        card.addEventListener("click", function () {
+          openSheet(c.id);
+        });
+        item.append(card);
+        list.append(item);
+      }
+    }
+
+    // =====================================================================
+    // VIEW 2: CREATOR
+    // =====================================================================
+
+    // Fill a dropdown with a placeholder plus every item's name.
+    function fillSelect(select, list, placeholder) {
+      select.innerHTML = "";
+      select.append(new Option(placeholder, ""));
+      for (const item of list) {
+        select.append(new Option(item.name, item.name));
+      }
+    }
+
+    function startCreator() {
+      draft = {
+        method: "pool",                      // "pool" = hand out a list of numbers; "pointbuy" = spend points
+        pointBuy: startingPointBuy(),
+        pool: STANDARD_ARRAY.slice(),        // the six numbers to hand out
+        poolLabel: "Standard Array: 15, 14, 13, 12, 10, 8",
+        assignments: { str: 0, dex: 1, con: 2, int: 3, wis: 4, cha: 5 },  // ability -> position in pool
+        chosenSkills: { class: [], species: [], multiclass: [] }
+      };
+      document.getElementById("newName").value = "";
+      document.getElementById("newPlayer").value = "";
+      document.getElementById("newClass").value = "";
+      document.getElementById("newSpecies").value = "";
+      document.getElementById("newBackground").value = "";
+      document.getElementById("useSecondClass").checked = false;
+      document.getElementById("newSecondClass").value = "";
+      document.getElementById("newStartLevel").value = "2";
+      fillSecondLevels();
+      currentStep = 0;
+      document.querySelector('input[name="bonusMode"][value="2-1"]').checked = true;
+
+      buildAssignSelects();
+      buildBonusPickers();
+      updateCreator();
+      setTitle("✨ New Character");
+      showView("creatorView");
+    }
+
+    // The currently chosen class / species / background objects (or undefined).
+    function chosenClass()      { return findByName(CLASSES, document.getElementById("newClass").value); }
+    function chosenSpecies()    { return findByName(SPECIES, document.getElementById("newSpecies").value); }
+    function chosenBackground() { return findByName(BACKGROUNDS, document.getElementById("newBackground").value); }
+
+    // ---------- A second class (multiclassing) ----------
+    function wantsSecondClass() { return document.getElementById("useSecondClass").checked; }
+    function chosenSecondClass() {
+      return wantsSecondClass() ? findByName(CLASSES, document.getElementById("newSecondClass").value) : undefined;
+    }
+    function chosenStartLevel()   { return wantsSecondClass() ? Number(document.getElementById("newStartLevel").value) : 1; }
+    function chosenSecondLevels() { return wantsSecondClass() ? Number(document.getElementById("newSecondLevels").value) : 0; }
+
+    // The second class can have 1 level up to (starting level - 1): the first class keeps at least 1.
+    function fillSecondLevels() {
+      const select = document.getElementById("newSecondLevels");
+      const old = Number(select.value) || 1;
+      const max = Number(document.getElementById("newStartLevel").value) - 1;
+      select.innerHTML = "";
+      for (let n = 1; n <= max; n++) select.append(new Option(String(n), String(n)));
+      select.value = String(Math.min(old, max));
+    }
+
+    // ---------- Ability scores ----------
+
+    // Point Cost starts with every ability at 8.
+    function startingPointBuy() {
+      const scores = {};
+      for (const ability of ABILITIES) {
+        scores[ability.key] = POINT_BUY_MIN;
+      }
+      return scores;
+    }
+
+    function usePointCost() {
+      draft.method = "pointbuy";
+      draft.pointBuy = startingPointBuy();
+      buildAssignSelects();
+      updateCreator();
+    }
+
+    // Change one ability by +1 or -1, as long as the rules and the budget allow it.
+    function changePointBuy(key, amount) {
+      const newScore = draft.pointBuy[key] + amount;
+      if (newScore < POINT_BUY_MIN || newScore > POINT_BUY_MAX) return;
+
+      const trial = Object.assign({}, draft.pointBuy);   // a copy to try the change on
+      trial[key] = newScore;
+      if (getPointCost(trial) > POINT_BUY_BUDGET) return;   // can't afford it
+
+      draft.pointBuy[key] = newScore;
+      buildAssignSelects();
+      updateCreator();
+    }
+
+    // One ability's box for the Point Cost method: [−] score [+] and what it costs.
+    function buildPointBuyBox(ability) {
+      const score = draft.pointBuy[ability.key];
+      const spent = getPointCost(draft.pointBuy);
+
+      const box = document.createElement("div");
+      box.className = "ability-box";
+
+      const name = document.createElement("div");
+      name.className = "ability-name";
+      name.textContent = ability.name;
+
+      const controls = document.createElement("div");
+      controls.className = "level-controls";
+
+      const minus = document.createElement("button");
+      minus.className = "small-button";
+      minus.textContent = "−";
+      minus.disabled = score <= POINT_BUY_MIN;
+      minus.addEventListener("click", function () {
+        changePointBuy(ability.key, -1);
+      });
+
+      const value = document.createElement("strong");
+      value.textContent = score;
+
+      const plus = document.createElement("button");
+      plus.className = "small-button";
+      plus.textContent = "+";
+      // Disabled if already at 15, or if the next point would go over the budget.
+      const nextCost = score < POINT_BUY_MAX ? spent - POINT_COSTS[score] + POINT_COSTS[score + 1] : Infinity;
+      plus.disabled = nextCost > POINT_BUY_BUDGET;
+      plus.addEventListener("click", function () {
+        changePointBuy(ability.key, 1);
+      });
+
+      controls.append(minus, value, plus);
+
+      const cost = document.createElement("div");
+      cost.className = "hint";
+      cost.textContent = "costs " + POINT_COSTS[score];
+
+      box.append(name, controls, cost);
+      return box;
+    }
+
+    function useStandardArray() {
+      draft.method = "pool";
+      draft.pool = STANDARD_ARRAY.slice();
+      draft.poolLabel = "Standard Array: 15, 14, 13, 12, 10, 8";
+      draft.assignments = { str: 0, dex: 1, con: 2, int: 3, wis: 4, cha: 5 };
+      buildAssignSelects();
+      updateCreator();
+    }
+
+    function rollScores() {
+      draft.method = "pool";
+      const results = [];
+      for (let i = 0; i < 6; i++) {
+        results.push(rollAbilityScore());   // from dice.js
+      }
+      // Highest first, so it's easy to hand out the big numbers.
+      results.sort(function (a, b) {
+        return b.total - a.total;
+      });
+
+      draft.pool = results.map(function (r) {
+        return r.total;
+      });
+      draft.poolLabel = "Rolled: " + results.map(function (r) {
+        return r.total + " [" + r.dice.join(",") + "]";
+      }).join("  ");
+      draft.assignments = { str: 0, dex: 1, con: 2, int: 3, wis: 4, cha: 5 };
+      buildAssignSelects();
+      updateCreator();
+    }
+
+    // One dropdown per ability, listing the six numbers in the pool.
+    function buildAssignSelects() {
+      const grid = document.getElementById("assignGrid");
+      grid.innerHTML = "";
+
+      for (const ability of ABILITIES) {
+        // Point Cost uses [−] [+] buttons instead of dropdowns.
+        if (draft.method === "pointbuy") {
+          grid.append(buildPointBuyBox(ability));
+          continue;   // skip the dropdown code below and go to the next ability
+        }
+
+        const box = document.createElement("label");
+        box.className = "ability-box";
+
+        const name = document.createElement("div");
+        name.className = "ability-name";
+        name.textContent = ability.name;
+
+        const select = document.createElement("select");
+        draft.pool.forEach(function (number, index) {
+          select.append(new Option(number, index));   // shows the number, remembers its position
+        });
+        select.value = draft.assignments[ability.key];
+        select.addEventListener("change", function () {
+          draft.assignments[ability.key] = Number(select.value);
+          updateCreator();
+        });
+
+        box.append(name, select);
+        grid.append(box);
+      }
+    }
+
+    // The +2 / +1 dropdowns only offer the background's three abilities.
+    function buildBonusPickers() {
+      const background = chosenBackground();
+      const plusTwo = document.getElementById("plusTwo");
+      const plusOne = document.getElementById("plusOne");
+      plusTwo.innerHTML = "";
+      plusOne.innerHTML = "";
+      if (!background) return;
+
+      for (const key of background.abilities) {
+        plusTwo.append(new Option(abilityName(key), key));
+        plusOne.append(new Option(abilityName(key), key));
+      }
+      plusTwo.value = background.abilities[0];
+      plusOne.value = background.abilities[1];
+    }
+
+    function getBonusMode() {
+      return document.querySelector('input[name="bonusMode"]:checked').value;
+    }
+
+    // Work out the final scores: the assigned number + any background bonus (max 20).
+    function getDraftScores() {
+      const scores = {};
+      for (const ability of ABILITIES) {
+        if (draft.method === "pointbuy") {
+          scores[ability.key] = draft.pointBuy[ability.key];
+        } else {
+          scores[ability.key] = draft.pool[draft.assignments[ability.key]];
+        }
+      }
+
+      const background = chosenBackground();
+      if (background) {
+        if (getBonusMode() === "1-1-1") {
+          for (const key of background.abilities) scores[key] += 1;
+        } else {
+          scores[document.getElementById("plusTwo").value] += 2;
+          scores[document.getElementById("plusOne").value] += 1;
+        }
+      }
+
+      for (const key in scores) {
+        scores[key] = Math.min(scores[key], 20);
+      }
+      return scores;
+    }
+
+    // ---------- Skills ----------
+
+    // The groups of skills the player gets to choose, based on class and species.
+    function getSkillGroups() {
+      const groups = [];
+      const charClass = chosenClass();
+      const species = chosenSpecies();
+      if (charClass) {
+        groups.push({ key: "class", label: charClass.name + ": choose " + charClass.skillCount,
+                      count: charClass.skillCount, options: charClass.skillOptions });
+      }
+      if (species && species.skillChoice) {
+        groups.push({ key: "species", label: species.name + ": choose " + species.skillChoice.count,
+                      count: species.skillChoice.count, options: species.skillChoice.options });
+      }
+      // SRD: a Bard, Ranger or Rogue taken as a SECOND class gives one skill.
+      const second = chosenSecondClass();
+      if (second && second.multiclassSkill) {
+        groups.push({ key: "multiclass", label: second.name + " (second class): choose 1",
+                      count: 1, options: second.skillOptions });
+      }
+      return groups;
+    }
+
+    function getBackgroundSkills() {
+      const background = chosenBackground();
+      return background ? background.skills : [];
+    }
+
+    function renderSkillChoices() {
+      const box = document.getElementById("skillChoices");
+      box.innerHTML = "";
+
+      const backgroundSkills = getBackgroundSkills();
+      if (backgroundSkills.length > 0) {
+        const p = document.createElement("p");
+        p.textContent = "✓ From your background: " + backgroundSkills.join(", ");
+        box.append(p);
+      }
+
+      const groups = getSkillGroups();
+      if (groups.length === 0) {
+        const p = document.createElement("p");
+        p.className = "hint";
+        p.textContent = "Choose a class first to see your skill options.";
+        box.append(p);
+        return;
+      }
+
+      for (const group of groups) {
+        const chosen = draft.chosenSkills[group.key];
+
+        const heading = document.createElement("h3");
+        heading.className = "section-label";
+        heading.textContent = group.label + " (" + chosen.length + "/" + group.count + ")";
+        box.append(heading);
+
+        const grid = document.createElement("div");
+        grid.className = "choice-grid";
+
+        for (const skillName of group.options) {
+          // Already granted by the background, or picked in the OTHER group?
+          const takenElsewhere = backgroundSkills.includes(skillName) ||
+            Object.keys(draft.chosenSkills).some(function (key) {
+              return key !== group.key && draft.chosenSkills[key].includes(skillName);
+            });
+          const isChosen = chosen.includes(skillName);
+
+          const label = document.createElement("label");
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.checked = isChosen;
+          // Can't tick it if someone else already gave it, or if this group is full.
+          checkbox.disabled = takenElsewhere || (!isChosen && chosen.length >= group.count);
+          checkbox.addEventListener("change", function () {
+            if (checkbox.checked) {
+              chosen.push(skillName);
+            } else {
+              chosen.splice(chosen.indexOf(skillName), 1);
+            }
+            updateCreator();
+          });
+
+          label.append(checkbox, " " + skillName);
+          if (takenElsewhere) label.classList.add("hint");
+          grid.append(label);
+        }
+        box.append(grid);
+      }
+    }
+
+    // ---------- Putting the draft together ----------
+
+    // Build a character object from everything chosen so far.
+    function buildDraftCharacter() {
+      const charClass = chosenClass();
+      const species = chosenSpecies();
+      const background = chosenBackground();
+      const character = {
+        id: getNextCharacterId(),
+        name: document.getElementById("newName").value.trim(),
+        playerName: document.getElementById("newPlayer").value.trim(),
+        className: charClass ? charClass.name : "",
+        species: species ? species.name : "",
+        background: background ? background.name : "",
+        level: chosenStartLevel(),
+        abilities: getDraftScores(),
+        // "..." (spread) pours the items of each list into one new list
+        proficientSkills: [...getBackgroundSkills(), ...draft.chosenSkills.class, ...draft.chosenSkills.species,
+                           ...(chosenSecondClass() ? draft.chosenSkills.multiclass : [])],
+        inventory: ""
+      };
+      if (chosenSecondClass()) {
+        character.secondClass = chosenSecondClass().name;
+        character.secondClassLevel = chosenSecondLevels();
+      }
+      character.ac = getUnarmoredAc(character);
+      character.hp = getMaxHp(character);
+      return character;
+    }
+
+    // What's still missing on ONE step of the creator. Empty list = that step is done.
+    function getStepProblems(step) {
+      const problems = [];
+      if (step === "name" && document.getElementById("newName").value.trim() === "") problems.push("Give your character a name.");
+      if (step === "class" && !chosenClass())         problems.push("Choose a class.");
+      if (step === "species" && !chosenSpecies())     problems.push("Choose a species.");
+      if (step === "background" && !chosenBackground()) problems.push("Choose a background.");
+
+      if (step === "class2" && wantsSecondClass() && !chosenSecondClass()) {
+        problems.push("Choose your second class (or untick \"two classes\").");
+      }
+
+      if (step === "scores") {
+        // Two classes need 13+ in each class's main ability. It's checked here, against your
+        // FINAL scores (after the background bonus), because this is where you can fix it.
+        if (chosenClass() && chosenSecondClass()) {
+          problems.push(...getMulticlassProblems(getDraftScores(), chosenClass(), chosenSecondClass()));
+        }
+        // A Set only keeps unique values, so 6 assignments should make a Set of size 6.
+        if (draft.method === "pool") {
+          const used = new Set(Object.values(draft.assignments));
+          if (used.size !== 6) problems.push("Each ability score number can only be used once.");
+        }
+        if (chosenBackground() && getBonusMode() === "2-1" &&
+            document.getElementById("plusTwo").value === document.getElementById("plusOne").value) {
+          problems.push("Your +2 and +1 must go to different abilities.");
+        }
+      }
+
+      if (step === "skills") {
+        if (!chosenClass()) problems.push("Choose a class first, then come back for skills.");
+        for (const group of getSkillGroups()) {
+          const chosen = draft.chosenSkills[group.key].length;
+          if (chosen !== group.count) problems.push("Skills — " + group.label + " (you have " + chosen + ").");
+        }
+      }
+      return problems;
+    }
+
+    // Every step's problems together. Empty list = ready to create.
+    function getCreatorProblems() {
+      let problems = [];
+      for (const step of CREATOR_STEPS) {
+        problems = problems.concat(getStepProblems(step));
+      }
+      return problems;
+    }
+
+    // ---------- Showing it all ----------
+    function renderInfoBoxes() {
+      const charClass = chosenClass();
+      document.getElementById("classInfo").textContent = charClass
+        ? "Hit die: d" + charClass.hitDie +
+          " · Main ability: " + describePrimary(charClass) +
+          " · Saving throws: " + charClass.saves.map(abilityName).join(", ") +
+          " · Skills: choose " + charClass.skillCount +
+          " · Level 1 features: " + charClass.features.join(", ")
+        : "Pick a class to see its details.";
+
+      document.getElementById("secondClassArea").classList.toggle("hidden", !wantsSecondClass());
+      const second = chosenSecondClass();
+      document.getElementById("secondClassInfo").textContent = second
+        ? "Hit die: d" + second.hitDie + " · Needs 13+ in " + describePrimary(second) +
+          (charClass ? " (and your " + charClass.name + " needs 13+ in " + describePrimary(charClass) + ")" : "") +
+          " · You get its level 1 features: " + second.features.join(", ") +
+          ". Saving throws stay the ones from your first class. You'll check the 13+ rule when you set your ability scores."
+        : "Pick a second class to see what it needs.";
+
+      const species = chosenSpecies();
+      document.getElementById("speciesInfo").textContent = species
+        ? "Size: " + species.size + " · Speed: " + species.speed + " ft · Traits: " + species.traits.join(", ")
+        : "Pick a species to see its details.";
+
+      const background = chosenBackground();
+      document.getElementById("backgroundInfo").textContent = background
+        ? "Ability scores: " + background.abilities.map(abilityName).join(", ") +
+          " · Skills: " + background.skills.join(", ") +
+          " · Tool: " + background.tool +
+          " · Feat: " + background.feat
+        : "Pick a background to see its details.";
+    }
+
+    function renderFinalScores() {
+      if (draft.method === "pointbuy") {
+        const spent = getPointCost(draft.pointBuy);
+        document.getElementById("poolDisplay").textContent =
+          "Point Cost: " + spent + " of " + POINT_BUY_BUDGET + " points spent (" + (POINT_BUY_BUDGET - spent) + " left). Scores run 8 to 15 before your background bonus.";
+      } else {
+        document.getElementById("poolDisplay").textContent = draft.poolLabel;
+      }
+
+      const background = chosenBackground();
+      document.getElementById("bonusArea").classList.toggle("hidden", !background);
+      document.getElementById("bonusPickers").classList.toggle("hidden", getBonusMode() !== "2-1");
+
+      const scores = getDraftScores();
+      const grid = document.getElementById("finalScores");
+      grid.innerHTML = "";
+      for (const ability of ABILITIES) {
+        const box = document.createElement("div");
+        box.className = "ability-box";
+        const name = document.createElement("div");
+        name.className = "ability-name";
+        name.textContent = ability.name;
+        const value = document.createElement("div");
+        value.className = "stat-display";
+        value.textContent = scores[ability.key] + " (" + formatBonus(getModifier(scores[ability.key])) + ")";
+        box.append(name, value);
+        grid.append(box);
+      }
+    }
+
+    function renderReview() {
+      const review = document.getElementById("review");
+      const problemsList = document.getElementById("createProblems");
+      review.innerHTML = "";
+      problemsList.innerHTML = "";
+
+      if (chosenClass() && chosenSpecies()) {
+        const c = buildDraftCharacter();
+        const lines = [
+          (c.name || "Your character") + " — Level " + c.level + " " + c.species + " " + classSummary(c) +
+            (c.background ? " (" + c.background + ")" : ""),
+          "❤️ Max HP " + getMaxHp(c) + "   🛡️ AC " + c.ac + " (no armor)   👟 Speed " + chosenSpecies().speed + " ft",
+          "Initiative " + formatBonus(getModifier(c.abilities.dex)) +
+            "   Proficiency " + formatBonus(getProficiencyBonus(c.level)) + "   Passive Perception " + getPassivePerception(c) +
+            "   Hit Dice " + getHitDiceText(c),
+          "Saving throws: " + chosenClass().saves.map(abilityName).join(", "),
+          "Skills: " + (c.proficientSkills.join(", ") || "none yet")
+        ];
+        for (const line of lines) {
+          const p = document.createElement("p");
+          p.textContent = line;
+          review.append(p);
+        }
+      }
+
+      for (const problem of getCreatorProblems()) {
+        const li = document.createElement("li");
+        li.textContent = "• " + problem;
+        problemsList.append(li);
+      }
+    }
+
+    // Redraw every part of the creator that depends on the choices.
+    function updateCreator() {
+      renderInfoBoxes();
+      renderFinalScores();
+      renderSkillChoices();
+      renderReview();
+      renderGuide();
+    }
+
+    function createCharacter() {
+      if (getCreatorProblems().length > 0) {
+        alert("Almost there! Check the list above the Create button.");
+        return;
+      }
+      const character = buildDraftCharacter();
+      characters.push(character);
+      persist();
+      // Came here from the AI Dungeon Master's setup? Go straight back with the new hero.
+      if (returnTo) {
+        location.href = returnTo + "?hero=" + character.id;
+        return;
+      }
+      openSheet(character.id);
+    }
+
+    function cancelCreator() {
+      if (returnTo) {
+        location.href = returnTo;
+      } else {
+        showRoster();
+      }
+    }
+
+    // Connect the creator's boxes (once, when the page loads).
+    function connectCreator() {
+      fillSelect(document.getElementById("newClass"), CLASSES, "— Choose a class —");
+      fillSelect(document.getElementById("newSpecies"), SPECIES, "— Choose a species —");
+      fillSelect(document.getElementById("newBackground"), BACKGROUNDS, "— Choose a background —");
+
+      document.getElementById("newName").addEventListener("input", function () {
+        renderReview();
+        renderGuide();   // a beginner's Next button waits for a name
+      });
+      document.getElementById("newPlayer").addEventListener("input", renderReview);
+
+      document.getElementById("newClass").addEventListener("change", function () {
+        draft.chosenSkills.class = [];   // new class, new skill list
+        updateCreator();
+      });
+
+      fillSelect(document.getElementById("newSecondClass"), CLASSES, "— Choose a second class —");
+      const startLevel = document.getElementById("newStartLevel");
+      for (let n = 2; n <= 20; n++) startLevel.append(new Option("Level " + n, String(n)));
+      document.getElementById("useSecondClass").addEventListener("change", updateCreator);
+      document.getElementById("newSecondClass").addEventListener("change", function () {
+        draft.chosenSkills.multiclass = [];
+        updateCreator();
+      });
+      startLevel.addEventListener("change", function () {
+        fillSecondLevels();
+        updateCreator();
+      });
+      document.getElementById("newSecondLevels").addEventListener("change", updateCreator);
+      document.getElementById("newSpecies").addEventListener("change", function () {
+        draft.chosenSkills.species = [];
+        updateCreator();
+      });
+      document.getElementById("newBackground").addEventListener("change", function () {
+        // Drop any picks the new background now gives for free.
+        const free = getBackgroundSkills();
+        for (const key of ["class", "species", "multiclass"]) {
+          draft.chosenSkills[key] = draft.chosenSkills[key].filter(function (s) {
+            return !free.includes(s);
+          });
+        }
+        buildBonusPickers();
+        updateCreator();
+      });
+      for (const radio of document.querySelectorAll('input[name="bonusMode"]')) {
+        radio.addEventListener("change", updateCreator);
+      }
+      document.getElementById("plusTwo").addEventListener("change", updateCreator);
+      document.getElementById("plusOne").addEventListener("change", updateCreator);
+    }
+
+    // =====================================================================
+    // VIEW 3: SHEET
+    // =====================================================================
+    function openSheet(id) {
+      currentCharacter = characters.find(function (c) {
+        return c.id === id;
+      });
+      buildSheet();
+      setTitle("🧙 " + currentCharacter.name);
+      showView("sheetView");
+    }
+
+    function buildSheet() {
+      const c = currentCharacter;
+      document.getElementById("sheetName").value = c.name;
+      document.getElementById("sheetAc").value = c.ac;
+      document.getElementById("sheetHp").value = c.hp;
+      document.getElementById("sheetInventory").value = c.inventory || "";
+
+      // ----- Ability scores -----
+      const abilityGrid = document.getElementById("sheetAbilities");
+      abilityGrid.innerHTML = "";
+      for (const ability of ABILITIES) {
+        const box = document.createElement("div");
+        box.className = "ability-box";
+
+        const name = document.createElement("div");
+        name.className = "ability-name";
+        name.textContent = ability.name;
+
+        // Scores can still change later (e.g. Ability Score Improvements at level 4).
+        const scoreBox = document.createElement("input");
+        scoreBox.type = "number";
+        scoreBox.min = 1;
+        scoreBox.max = 30;
+        scoreBox.value = c.abilities[ability.key];
+        scoreBox.addEventListener("input", function () {
+          c.abilities[ability.key] = Number(scoreBox.value) || 0;
+          updateSheet();
+          persist();
+        });
+
+        const modButton = document.createElement("button");
+        modButton.className = "mod-button";
+        modButton.id = "mod-" + ability.key;
+        modButton.addEventListener("click", function () {
+          rollCheck(ability.name + " check", getModifier(getAbilityScore(c, ability.key)));
+        });
+
+        // Shows e.g. "✨ 19 from item" when a magic item is raising this score.
+        const itemNote = document.createElement("div");
+        itemNote.className = "hint";
+        itemNote.id = "itemnote-" + ability.key;
+
+        box.append(name, scoreBox, modButton, itemNote);
+        abilityGrid.append(box);
+      }
+
+      // ----- Saving throws -----
+      const saveList = document.getElementById("sheetSaves");
+      saveList.innerHTML = "";
+      for (const ability of ABILITIES) {
+        const row = document.createElement("li");
+        row.className = "skill-row";
+
+        const dot = document.createElement("span");
+        dot.textContent = isSaveProficient(c, ability.key) ? "●" : "○";
+
+        const name = document.createElement("span");
+        name.className = "skill-name";
+        name.textContent = ability.name;
+
+        const bonusButton = document.createElement("button");
+        bonusButton.className = "small-button";
+        bonusButton.id = "save-" + ability.key;
+        bonusButton.addEventListener("click", function () {
+          rollCheck(ability.name + " save", getSaveBonus(c, ability.key));
+        });
+
+        row.append(dot, name, bonusButton);
+        saveList.append(row);
+      }
+
+      // ----- Skills -----
+      const skillList = document.getElementById("sheetSkills");
+      skillList.innerHTML = "";
+      SKILLS.forEach(function (skill, index) {
+        const row = document.createElement("li");
+        row.className = "skill-row";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = c.proficientSkills.includes(skill.name);
+        checkbox.addEventListener("change", function () {
+          if (checkbox.checked) {
+            c.proficientSkills.push(skill.name);
+          } else {
+            c.proficientSkills = c.proficientSkills.filter(function (name) {
+              return name !== skill.name;
+            });
+          }
+          updateSheet();
+          persist();
+        });
+
+        const name = document.createElement("span");
+        name.className = "skill-name";
+        name.id = "skill-name-" + index;   // updateSheet() adds an "advantage" tag here when an item gives it
+
+        const bonusButton = document.createElement("button");
+        bonusButton.className = "small-button";
+        bonusButton.id = "skill-" + index;
+        bonusButton.addEventListener("click", function () {
+          rollCheck(skill.name, getSkillBonus(c, skill), skill.name);   // 3rd value: lets items give Advantage
+        });
+
+        row.append(checkbox, name, bonusButton);
+        skillList.append(row);
+      });
+
+      // ----- Features -----
+      const features = document.getElementById("sheetFeatures");
+      features.innerHTML = "";
+      const species = findByName(SPECIES, c.species);
+      const background = findByName(BACKGROUNDS, c.background);
+      for (const entry of getClassLevels(c)) {
+        if (entry.data) addFeatureList(features, entry.name + " features (level 1)", entry.data.features);
+      }
+      if (species)    addFeatureList(features, c.species + " traits", species.traits);
+      if (background) addFeatureList(features, c.background + " background", ["Feat: " + background.feat, "Tool proficiency: " + background.tool]);
+
+      closeItemEditor();
+      renderItemPanel();
+      updateSheet();
+    }
+
+    function addFeatureList(container, title, items) {
+      const heading = document.createElement("h3");
+      heading.className = "section-label";
+      heading.textContent = title;
+      const list = document.createElement("ul");
+      list.className = "book-list";
+      for (const item of items) {
+        const li = document.createElement("li");
+        li.textContent = item;
+        list.append(li);
+      }
+      container.append(heading, list);
+    }
+
+    // Recalculate every number on the sheet from the rules.
+    function updateSheet() {
+      const c = currentCharacter;
+      const charClass = findByName(CLASSES, c.className);
+      const species = findByName(SPECIES, c.species);
+      const maxHp = getMaxHp(c);
+
+      document.getElementById("sheetSubtitle").textContent =
+        describeCharacter(c) + (c.background ? " · " + c.background : "") +
+        (c.playerName ? " · played by " + c.playerName : "");
+      document.getElementById("sheetLevel").textContent = c.level;
+      document.getElementById("sheetMaxHp").textContent = maxHp;
+      document.getElementById("sheetInit").textContent = formatBonus(getModifier(getAbilityScore(c, "dex")));
+      document.getElementById("sheetAcTotal").textContent = getAc(c);
+
+      // Speed, plus a climb speed if an item gives one (Slippers of Spider Climbing).
+      const speed = getSpeed(c);
+      const effects = getActiveItemEffects(c);
+      document.getElementById("sheetSpeed").textContent =
+        speed + " ft" + (effects.climbSpeed ? " · climb " + speed + " ft" : "");
+
+      document.getElementById("sheetProf").textContent = formatBonus(getProficiencyBonus(c.level));
+      document.getElementById("sheetPassive").textContent = getPassivePerception(c);
+      document.getElementById("sheetHitDice").textContent = getHitDiceText(c);
+      fillLevelClassSelect();
+
+      for (const ability of ABILITIES) {
+        const score = getAbilityScore(c, ability.key);
+        document.getElementById("mod-" + ability.key).textContent = formatBonus(getModifier(score));
+        document.getElementById("save-" + ability.key).textContent = formatBonus(getSaveBonus(c, ability.key));
+
+        // Tell the player when an item is overriding the score they typed.
+        document.getElementById("itemnote-" + ability.key).textContent =
+          score !== c.abilities[ability.key] ? "✨ " + score + " from item" : "";
+      }
+      SKILLS.forEach(function (skill, index) {
+        document.getElementById("skill-" + index).textContent = formatBonus(getSkillBonus(c, skill));
+        document.getElementById("skill-name-" + index).textContent =
+          skill.name + " (" + skill.ability.toUpperCase() + ")" +
+          (itemGivesAdvantage(c, skill.name) ? " ✨ advantage" : "");
+      });
+    }
+
+    // =====================================================================
+    // SPECIAL ITEM — pick one from the SRD list, or invent your own
+    // =====================================================================
+    // A character's item is an object saved on the character, like:
+    //   { source: "srd" or "custom", name, type, rarity, attunement, appearance, powers }
+    // Characters without an item simply don't have a "specialItem" property.
+
+    let itemMode = null;   // null = editor closed, otherwise "list" or "custom"
+
+    // "Wondrous Item · Uncommon · Requires attunement"
+    function describeItem(item) {
+      return [item.type, item.rarity, item.attunement].filter(Boolean).join(" · ");
+    }
+
+    function makeSheetButton(text, onClick) {
+      const button = document.createElement("button");
+      button.className = "small-button";
+      button.textContent = text;
+      button.addEventListener("click", onClick);
+      return button;
+    }
+
+    function addLabeledLine(container, label, text) {
+      const p = document.createElement("p");
+      const strong = document.createElement("strong");
+      strong.textContent = label + " ";
+      p.append(strong, text);   // append() accepts elements AND plain text
+      container.append(p);
+    }
+
+    // Draw either the character's item, or an invitation to choose one.
+    function renderItemPanel() {
+      const item = currentCharacter.specialItem;
+      const display = document.getElementById("itemDisplay");
+      display.innerHTML = "";
+
+      if (!item) {
+        const intro = document.createElement("p");
+        intro.className = "hint";
+        intro.textContent = "Every adventurer carries something special. Choose a magic item from the list, or invent your own: give it a name, a look and powers.";
+        display.append(intro);
+        display.append(
+          makeSheetButton("📜 Choose from the list", function () { openItemEditor("list"); }),
+          makeSheetButton("🖋️ Create my own", function () { openItemEditor("custom"); })
+        );
+        return;
+      }
+
+      const card = document.createElement("div");
+      card.className = "item-card";
+
+      const title = document.createElement("h3");
+      title.textContent = item.name;
+      const meta = document.createElement("p");
+      meta.className = "hint";
+      meta.textContent = describeItem(item);
+      card.append(title, meta);
+
+      if (item.appearance) addLabeledLine(card, "Looks like:", item.appearance);
+      if (item.powers)     addLabeledLine(card, "Powers:", item.powers);
+
+      // Items that need attunement only work while the character is attuned (SRD rule).
+      const data = item.source === "srd" ? findByName(MAGIC_ITEMS, item.name) : null;
+      if (data && data.attunement) {
+        const label = document.createElement("label");
+        const box = document.createElement("input");
+        box.type = "checkbox";
+        box.checked = item.attuned !== false;   // items from before this feature count as attuned
+        box.addEventListener("change", function () {
+          item.attuned = box.checked;
+          persist();
+          updateSheet();
+          renderItemPanel();
+        });
+        label.append(box, " Attuned (bonded to it during a Short Rest)");
+        card.append(label);
+      }
+
+      // Say plainly what the item does to the numbers on the sheet.
+      const effectLines = data && data.effects ? describeItemEffects(data.effects) : [];
+      const effectNote = document.createElement("p");
+      effectNote.className = "item-effects";
+      if (effectLines.length > 0) {
+        const working = Object.keys(getActiveItemEffects(currentCharacter)).length > 0;
+        effectNote.textContent = working
+          ? "✅ Applied to your sheet: " + effectLines.join("; ") + "."
+          : "⏸️ Not applied until you are attuned: " + effectLines.join("; ") + ".";
+      } else if (item.source === "srd") {
+        effectNote.textContent = "ℹ️ This item's powers don't change the numbers on your sheet. Use them at the table with your DM.";
+      } else {
+        effectNote.textContent = "ℹ️ A custom item's powers are for you and your DM to run at the table.";
+      }
+      card.append(effectNote);
+      display.append(card);
+
+      display.append(
+        makeSheetButton("✏️ Change item", function () {
+          openItemEditor(item.source === "custom" ? "custom" : "list");
+        }),
+        makeSheetButton("🗑️ Remove item", removeItem)
+      );
+    }
+
+    // Show the list of SRD items (the name and rarity, e.g. "Cloak of Protection (Uncommon)").
+    function fillItemSelects() {
+      const select = document.getElementById("itemSelect");
+      select.innerHTML = "";
+      select.append(new Option("— Choose an item —", ""));
+      for (const item of MAGIC_ITEMS) {
+        select.append(new Option(item.name + " (" + item.rarity + ")", item.name));
+      }
+
+      const typeSelect = document.getElementById("itemType");
+      typeSelect.innerHTML = "";
+      for (const type of ITEM_TYPES) {
+        typeSelect.append(new Option(type, type));
+      }
+    }
+
+    function showSelectedItemInfo() {
+      const item = findByName(MAGIC_ITEMS, document.getElementById("itemSelect").value);
+      document.getElementById("itemListInfo").textContent = item
+        ? describeItem(item) + " — " + item.powers
+        : "Pick an item to read what it does.";
+    }
+
+    // Open the editor in "list" or "custom" mode, filled in with the current item if it matches.
+    function openItemEditor(mode) {
+      itemMode = mode;
+      const existing = currentCharacter.specialItem;
+      const sameKind = existing && (existing.source === "custom") === (mode === "custom");
+
+      document.getElementById("itemEditor").classList.remove("hidden");
+      document.getElementById("itemDisplay").classList.add("hidden");
+
+      // Each mode shows different boxes.
+      document.getElementById("itemListRow").classList.toggle("hidden", mode !== "list");
+      document.getElementById("itemCustomRow").classList.toggle("hidden", mode !== "custom");
+      document.getElementById("itemPowersRow").classList.toggle("hidden", mode !== "custom");
+      document.getElementById("itemCustomHint").classList.toggle("hidden", mode !== "custom");
+      document.getElementById("itemAppearanceLabel").textContent = mode === "list"
+        ? "What does it look like? (optional: the rules describe the powers, you choose the look)"
+        : "What does it look like?";
+
+      document.getElementById("itemSelect").value = sameKind && mode === "list" ? existing.name : "";
+      document.getElementById("itemName").value = sameKind && mode === "custom" ? existing.name : "";
+      document.getElementById("itemType").value = sameKind && mode === "custom" ? existing.type : "Wondrous item";
+      document.getElementById("itemPowers").value = sameKind && mode === "custom" ? (existing.powers || "") : "";
+      document.getElementById("itemAppearance").value = sameKind ? (existing.appearance || "") : "";
+      showSelectedItemInfo();
+    }
+
+    function closeItemEditor() {
+      itemMode = null;
+      document.getElementById("itemEditor").classList.add("hidden");
+      document.getElementById("itemDisplay").classList.remove("hidden");
+    }
+
+    function saveItem() {
+      const appearance = document.getElementById("itemAppearance").value.trim();
+      let item;
+
+      if (itemMode === "list") {
+        const chosen = findByName(MAGIC_ITEMS, document.getElementById("itemSelect").value);
+        if (!chosen) {
+          alert("Pick an item from the list first.");
+          return;
+        }
+        item = makeSrdItem(chosen.name, appearance);   // from rules.js
+      } else {
+        const name = document.getElementById("itemName").value.trim();
+        if (name === "") {
+          alert("Give your item a name!");
+          return;
+        }
+        item = makeCustomItem(name, document.getElementById("itemType").value,
+                              document.getElementById("itemPowers").value.trim(), appearance);
+      }
+
+      currentCharacter.specialItem = item;
+      persist();
+      closeItemEditor();
+      renderItemPanel();
+      updateSheet();   // the item may change AC, saves, ability scores...
+      showToast("✨ " + currentCharacter.name + " now carries " + item.name + "!");
+    }
+
+    function removeItem() {
+      if (!confirm("Remove " + currentCharacter.specialItem.name + " from " + currentCharacter.name + "?")) return;
+      delete currentCharacter.specialItem;   // delete removes a property from an object
+      persist();
+      renderItemPanel();
+      updateSheet();   // take the item's bonuses away again
+    }
+
+    // The "Level up / down in" dropdown: your class(es), plus (if you only have one)
+    // every other class as a possible second class, marked if you don't qualify yet.
+    function fillLevelClassSelect() {
+      const c = currentCharacter;
+      const select = document.getElementById("levelClass");
+      const old = select.value;
+      select.innerHTML = "";
+      for (const entry of getClassLevels(c)) {
+        select.append(new Option(entry.name + " (level " + entry.levels + ")", entry.name));
+      }
+      if (!c.secondClass || getClassLevels(c).length === 1) {
+        const first = findByName(CLASSES, c.className);
+        for (const other of CLASSES) {
+          if (other.name === c.className) continue;
+          const ok = first && getMulticlassProblems(c.abilities, first, other).length === 0;
+          const option = new Option("+ " + other.name + " as a second class" + (ok ? "" : " (needs 13+ " + describePrimary(other) + ")"), other.name);
+          select.append(option);
+        }
+      }
+      if ([...select.options].some(function (o) { return o.value === old; })) select.value = old;
+      document.getElementById("levelClassNote").textContent = c.secondClass && getClassLevels(c).length > 1
+        ? "Saving throws come from your first class (" + c.className + "). Proficiency uses your total level."
+        : "";
+    }
+
+    // Level up adds the new max HP to your current HP too; level down removes it.
+    function changeLevel(amount) {
+      const c = currentCharacter;
+      const chosen = document.getElementById("levelClass").value || c.className;
+      const levels = getClassLevels(c);
+      const oldMax = getMaxHp(c);
+
+      if (amount > 0) {
+        if (c.level >= 20) return;
+        if (chosen !== c.className && !levels.some(function (e) { return e.name === chosen; })) {
+          // Starting a second class: check the rules first.
+          const problems = getMulticlassProblems(c.abilities, findByName(CLASSES, c.className), findByName(CLASSES, chosen));
+          if (problems.length > 0) {
+            alert(problems.join("\n"));
+            return;
+          }
+          c.secondClass = chosen;
+          c.secondClassLevel = 0;
+        }
+        c.level = c.level + 1;
+        if (chosen === c.secondClass) c.secondClassLevel = (Number(c.secondClassLevel) || 0) + 1;
+      } else {
+        if (c.level <= 1) return;
+        const inSecond = chosen === c.secondClass && levels.length > 1;
+        if (!inSecond && levels[0].levels <= 1) {
+          alert("Your first class needs at least 1 level. Pick your second class to level down instead.");
+          return;
+        }
+        c.level = c.level - 1;
+        if (inSecond) c.secondClassLevel = c.secondClassLevel - 1;
+      }
+      if (c.secondClass && !(c.secondClassLevel > 0)) {   // no levels left in it: drop it
+        delete c.secondClass;
+        delete c.secondClassLevel;
+      }
+
+      const newMax = getMaxHp(c);
+      c.hp = clampHp(c.hp + (newMax - oldMax), newMax);
+
+      document.getElementById("sheetHp").value = c.hp;
+      buildSheet();   // features may have changed (a new class)
+      persist();
+      if (amount > 0) showToast("⬆️ " + c.name + " is now level " + c.level + " (" + classSummary(c) + ")! Max HP " + newMax + ".");
+    }
+
+    function clampHp(hp, maxHp) {
+      return Math.min(Math.max(hp, 0), maxHp);
+    }
+
+    function deleteCharacter() {
+      if (!confirm("Delete " + currentCharacter.name + " forever?")) return;
+      characters = characters.filter(function (c) {
+        return c !== currentCharacter;
+      });
+      persist();
+      showRoster();
+    }
+
+    // Connect the sheet's fixed boxes (once, when the page loads).
+    function connectSheet() {
+      document.getElementById("sheetName").addEventListener("input", function (event) {
+        currentCharacter.name = event.target.value;
+        updateSheet();
+        persist();
+      });
+      document.getElementById("sheetAc").addEventListener("input", function (event) {
+        currentCharacter.ac = Number(event.target.value) || 0;
+        updateSheet();   // recalculate the total AC shown above
+        persist();
+      });
+      document.getElementById("sheetHp").addEventListener("change", function (event) {
+        currentCharacter.hp = clampHp(Number(event.target.value) || 0, getMaxHp(currentCharacter));
+        event.target.value = currentCharacter.hp;
+        persist();
+      });
+      document.getElementById("sheetInventory").addEventListener("input", function (event) {
+        currentCharacter.inventory = event.target.value;
+        persist();
+      });
+      document.getElementById("sheetInit").addEventListener("click", function () {
+        rollCheck("Initiative", getModifier(getAbilityScore(currentCharacter, "dex")));
+      });
+    }
+
+    // =====================================================================
+    // ROLLING (uses the Normal / Advantage / Disadvantage setting)
+    // =====================================================================
+    // skillName is optional. When it's given, the character's item can grant Advantage on it.
+    function rollCheck(label, bonus, skillName) {
+      let mode = document.getElementById("rollMode").value;
+      let itemNote = "";
+
+      if (skillName && itemGivesAdvantage(currentCharacter, skillName)) {
+        const itemName = currentCharacter.specialItem.name;
+        if (mode === "disadvantage") {
+          // SRD rule: Advantage and Disadvantage cancel each other out.
+          mode = "normal";
+          itemNote = " (Advantage from " + itemName + " cancels your Disadvantage)";
+        } else {
+          mode = "advantage";
+          itemNote = " from " + itemName;
+        }
+      }
+
+      let roll;
+      let shown;
+      if (mode === "normal") {
+        roll = rollOneDie(20);
+        shown = String(roll) + itemNote;
+      } else {
+        const result = rollD20WithMode(mode);   // from dice.js
+        roll = result.kept;
+        shown = roll + " (rolled " + result.rolls.join(" & ") + ", " + mode + itemNote + ")";
+      }
+
+      let message = "🎲 " + label + ": " + shown + " " + formatBonus(bonus) + " = " + (roll + bonus);
+      if (roll === 20) message += "  🎉 Natural 20!";
+      if (roll === 1)  message += "  💀 Natural 1...";
+      showToast(message);
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById("rollToast");
+      toast.textContent = message;
+      toast.classList.remove("hidden");
+    }
+
+    // =====================================================================
+    // THE GUIDE: beginner / intermediate / advanced help while creating
+    // =====================================================================
+    // Opened as character.html?guide=beginner&return=ai-dm.html
+    //   beginner:     one step at a time, with a friendly lesson on each step
+    //   intermediate: every step on one page, with a one-line tip on each
+    //   advanced:     every step, no tips (the same as opening the page normally)
+    const CREATOR_STEPS = ["name", "class", "class2", "species", "background", "scores", "skills", "review"];
+
+    const CREATOR_TIPS = {
+      name: {
+        long: "Welcome! In a tabletop adventure you play one hero: your character. Everything about them goes on a character sheet, and this page fills it in for you, one step at a time. Start with a name. Heroic, funny, anything goes.",
+        short: "Name your hero. The player name helps the DM tell sheets apart."
+      },
+      class: {
+        long: "Your class is your hero's job, and it decides how you fight and what you're good at. Great first picks: Fighter (tough and simple to play), Rogue (sneaky and skillful) or Cleric (heals friends with magic). The hit die shows how tough the class is: a bigger die means more Hit Points.",
+        short: "Class sets your hit die, saving throws and level 1 features."
+      },
+      class2: {
+        long: "Multiclassing means mixing two classes, like a Fighter who learned some Wizard magic. It's an extra rule: you only add a second class when you level up, and you need 13 or more in the main ability of BOTH classes. Most new players skip this step, and that's completely fine. Just press Next.",
+        short: "Optional. Two classes need 13+ in both classes' main ability, and start at level 2+."
+      },
+      species: {
+        long: "Your species is the kind of people your hero comes from: humans, elves, dwarves and more. Each one gives a few special traits, like seeing in the dark (Darkvision) or being extra lucky (Halfling Luck).",
+        short: "Species gives your size, speed and special traits."
+      },
+      background: {
+        long: "Your background is what your hero did before adventuring. It gives you two skills, a tool you know how to use, a feat (a special talent), and a boost to three ability scores, which you'll hand out in the next step.",
+        short: "Background gives 2 skills, a tool, a feat and the ability boosts."
+      },
+      scores: {
+        long: "Six ability scores describe your hero: Strength (muscle), Dexterity (speed and aim), Constitution (toughness), Intelligence (memory and reasoning), Wisdom (noticing things) and Charisma (force of personality). 10 is average. The number in brackets is the modifier: it's what you add when you roll a d20. Put your best numbers where your class needs them.",
+        short: "Put your highest scores in your class's main ability."
+      },
+      skills: {
+        long: "Skills are things your hero is trained at, like Stealth or Persuasion. When you try one in the game, you roll a d20 and add the skill's bonus. Trained skills add your proficiency bonus (+2 at level 1), so pick ones that fit your hero's story.",
+        short: "Trained skills add your proficiency bonus."
+      },
+      review: {
+        long: "Here's your hero! Look it over. Hit Points (HP) are how much damage you can take, and Armor Class (AC) is how hard you are to hit. You can still change things later on the character sheet. When you're happy, press Create.",
+        short: "Check it over, then create."
+      }
+    };
+
+    // Read the guide level and where to go afterwards from the page's address.
+    const pageParams = new URLSearchParams(location.search);
+    const guideLevel = ["beginner", "intermediate", "advanced"].includes(pageParams.get("guide")) ? pageParams.get("guide") : "";
+    // Only ever go back to OUR OWN page (never an address someone put in a link).
+    const returnTo = pageParams.get("return") === "ai-dm.html" ? "ai-dm.html" : "";
+    let currentStep = 0;
+
+    // Advice that depends on what's been chosen so far.
+    function extraTip(step) {
+      const charClass = chosenClass();
+      if (step === "scores" && charClass) {
+        return " A " + charClass.name + "'s main ability is " + describePrimary(charClass) + ".";
+      }
+      return "";
+    }
+
+    function renderGuide() {
+      const panels = document.querySelectorAll("#creatorView .creator-step");
+      const oneAtATime = guideLevel === "beginner";
+
+      panels.forEach(function (panel, index) {
+        const step = panel.dataset.step;   // data-step="..." in the HTML
+        let tip = panel.querySelector(".tutor-box");
+        if (!tip) {
+          tip = document.createElement("div");
+          tip.className = "tutor-box";
+          panel.querySelector("h2").after(tip);
+        }
+        const tips = CREATOR_TIPS[step];
+        if (guideLevel === "beginner")          tip.textContent = "🧭 " + tips.long + extraTip(step);
+        else if (guideLevel === "intermediate") tip.textContent = "💡 " + tips.short + extraTip(step);
+        tip.classList.toggle("hidden", guideLevel !== "beginner" && guideLevel !== "intermediate");
+
+        panel.classList.toggle("hidden", oneAtATime && index !== currentStep);
+      });
+
+      const nav = document.getElementById("stepNav");
+      nav.classList.toggle("hidden", !oneAtATime);
+      if (!oneAtATime) return;
+
+      const step = CREATOR_STEPS[currentStep];
+      const problems = getStepProblems(step);
+      document.getElementById("stepCount").textContent = "Step " + (currentStep + 1) + " of " + CREATOR_STEPS.length;
+      document.getElementById("stepBack").disabled = currentStep === 0;
+      document.getElementById("stepNext").classList.toggle("hidden", step === "review");
+      document.getElementById("stepNext").disabled = problems.length > 0;
+      document.getElementById("stepProblems").textContent = problems.length > 0 ? "To go on: " + problems.join(" ") : "";
+    }
+
+    function goToStep(amount) {
+      currentStep = Math.min(Math.max(currentStep + amount, 0), CREATOR_STEPS.length - 1);
+      renderGuide();
+      window.scrollTo(0, 0);
+    }
+
+    function startGuide() {
+      const banners = {
+        beginner: "🌱 Beginner: one step at a time, with a short lesson on each step.",
+        intermediate: "⚔️ Intermediate: all the steps on one page, with quick tips.",
+        advanced: "🐉 Advanced: all the steps, no tutorial."
+      };
+      const banner = document.getElementById("guideBanner");
+      banner.textContent = banners[guideLevel] || "";
+      banner.classList.toggle("hidden", !guideLevel);
+      document.getElementById("stepBack").addEventListener("click", function () { goToStep(-1); });
+      document.getElementById("stepNext").addEventListener("click", function () { goToStep(1); });
+    }
+
+    // =====================================================================
+    // START UP
+    // =====================================================================
+    migrateOldCharacter();
+    connectCreator();
+    connectSheet();
+    fillItemSelects();
+    document.getElementById("itemSelect").addEventListener("change", showSelectedItemInfo);
+    startGuide();
+    // Sent here to make a hero (from the AI Dungeon Master's setup)? Go straight to the creator.
+    if (guideLevel || returnTo) {
+      startCreator();
+    } else {
+      showRoster();
+    }
+  </script>
+</body>
+</html>

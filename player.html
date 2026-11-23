@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Player</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <nav class="top-nav">
+    <a href="index.html" class="active">🏠 Home</a>
+    <a href="dice.html">🎲 Dice</a>
+    <a href="character.html">🧙 Characters</a>
+    <a href="dm.html">🛡️ DM Screen</a>
+  </nav>
+
+  <h1>🧙 Player</h1>
+  <p class="lead">Who is running your game?</p>
+
+  <!-- Step 2 (players only): an AI Dungeon Master, or a real one? -->
+  <div class="choice-stack">
+    <a class="big-choice" href="ai-dm.html">
+      <span class="big-choice-icon">🤖</span>
+      <strong>AI Dungeon Master</strong>
+      <span class="hint">Play on your own. Pick Beginner, Intermediate or Advanced help, make your hero, set up a campaign, and an AI tells the story.</span>
+    </a>
+
+    <a class="big-choice" href="join.html">
+      <span class="big-choice-icon">👥</span>
+      <strong>Live Dungeon Master</strong>
+      <span class="hint">Join a real DM's game with a game code. You wait in a waiting room until your DM shows up.</span>
+    </a>
+  </div>
+
+  <div class="panel">
+    <h2>First, a character</h2>
+    <p class="hint">Both ways of playing use your saved characters.</p>
+    <a class="plain-button" href="character.html">🧙 Create or edit a character</a>
+    <a class="plain-button" href="dice.html">🎲 Just roll some dice</a>
+  </div>
+
+  <p><a href="index.html" class="back-link">← Back</a></p>
+</body>
+</html>

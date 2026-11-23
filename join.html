@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Join a Live Game</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <nav class="top-nav">
+    <a href="index.html" class="active">🏠 Home</a>
+    <a href="dice.html">🎲 Dice</a>
+    <a href="character.html">🧙 Characters</a>
+    <a href="dm.html">🛡️ DM Screen</a>
+  </nav>
+
+  <h1>👥 Live Dungeon Master</h1>
+  <p><a href="player.html" class="back-link">← Back</a></p>
+
+  <!-- =============== STEP 1: ask to join =============== -->
+  <div class="panel" id="joinPanel">
+   <div id="joinForm">
+    <h2>1. Game code</h2>
+    <p class="hint">Your DM gives you a 6-letter code. If they haven't opened the game yet, you'll wait in the waiting room until they show up.</p>
+    <input id="codeInput" type="text" class="code-input" maxlength="10" placeholder="K7M4QX" autocomplete="off" autocapitalize="characters">
+
+    <h2>2. Choose your hero</h2>
+    <select id="heroSelect"></select>
+    <div id="heroInfo" class="info-box"></div>
+
+    <p><button id="joinBtn">🙋 Go to the waiting room</button></p>
+   </div>
+
+    <!-- The waiting room: shown until the DM shows up and lets you in -->
+    <div id="waitRoom" class="wait-room hidden">
+      <div class="big-choice-icon">⏳</div>
+      <h2>Waiting room</h2>
+      <p id="waitHero"></p>
+      <p id="joinStatus" class="hint"></p>
+      <button class="small-button" id="stopWaitBtn">Stop waiting</button>
+    </div>
+    <p id="joinError" class="chat-error hidden"></p>
+
+    <p class="hint">
+      🔒 Your hero's name, class, AC, HP and special item are sent to your DM's browser, and only your DM sees them.
+      If you join voice chat, your voice goes to your DM and the other players at the table.
+      A free matchmaking service introduces the two browsers; the game itself is not stored anywhere.
+    </p>
+  </div>
+
+  <!-- =============== STEP 2: at the table =============== -->
+  <div class="panel hidden" id="tablePanel">
+    <h2 id="tableTitle">At the table</h2>
+    <p>❤️ Your HP (kept by your DM): <strong id="hpDisplay">–</strong></p>
+
+    <!-- Voice chat: appears when the DM turns it on -->
+    <div id="voiceBox" class="voice-box hidden">
+      <p id="voiceText">🎙️ Your DM started voice chat.</p>
+      <button id="voiceJoinBtn">🎙️ Join voice chat</button>
+      <button class="small-button hidden" id="voiceMuteBtn">🔇 Mute me</button>
+      <button class="small-button hidden" id="voiceLeaveBtn">Leave voice chat</button>
+      <p class="hint">Voice goes straight between your browsers. Nothing is recorded.</p>
+    </div>
+
+    <div id="feed" class="chat-log short-log" aria-live="polite"></div>
+
+    <div class="roll-row">
+      <select id="checkSelect" aria-label="Choose a roll"></select>
+      <select id="modeSelect" aria-label="Roll type">
+        <option value="normal">Normal</option>
+        <option value="advantage">Advantage</option>
+        <option value="disadvantage">Disadvantage</option>
+      </select>
+      <button class="small-button" id="rollBtn">🎲 Roll</button>
+    </div>
+    <div class="roll-row">
+      <button class="small-button" data-die="4">d4</button>
+      <button class="small-button" data-die="6">d6</button>
+      <button class="small-button" data-die="8">d8</button>
+      <button class="small-button" data-die="10">d10</button>
+      <button class="small-button" data-die="12">d12</button>
+      <button class="small-button" data-die="20">d20</button>
+    </div>
+    <p class="hint">Every roll is shown to your DM.</p>
+
+    <div class="settings add-form">
+      <input id="sayText" type="text" class="wide-input" maxlength="300" placeholder="Say something to your DM">
+      <button class="small-button" id="sayBtn">Send</button>
+    </div>
+
+    <p>
+      <button class="small-button" id="updateBtn">📤 Send my updated sheet</button>
+      <button class="small-button" id="leaveBtn">🚪 Leave game</button>
+    </p>
+  </div>
+
+  <script src="dice.js"></script>
+  <script src="rules.js"></script>
+  <script src="play.js"></script>
+
+  <!-- PeerJS (MIT license, version pinned) connects your browser straight to your DM's browser. -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+
+  <script>
+    // =====================================================================
+    // STATE
+    // =====================================================================
+    let heroes = loadCharacters();   // from rules.js
+    let peer = null;                 // our connection to the matchmaking service
+    let conn = null;                 // our direct connection to the DM
+    let joined = false;              // has the DM accepted us?
+    let waitTimer = null;
+    let retryTimer = null;           // checks again for a DM who hasn't shown up yet
+    let waitingSince = 0;
+    let dmPeerId = "";               // the DM's address, from the game code
+
+    // Voice chat
+    let dmVoiceOn = false;           // has the DM turned voice chat on?
+    let voiceStream = null;          // our microphone, once we choose to join
+    let voiceCall = null;            // the audio call with the DM
+    let voiceAudio = null;           // plays what we hear
+
+    const el = function (id) {
+      return document.getElementById(id);
+    };
+
+    // =====================================================================
+    // CHOOSING A HERO
+    // =====================================================================
+    function fillHeroSelect() {
+      const select = el("heroSelect");
+      select.innerHTML = "";
+
+      if (heroes.length === 0) {
+        select.append(new Option("No characters yet", ""));
+        el("heroInfo").textContent = "You need a character first. ";
+        const link = document.createElement("a");
+        link.className = "plain-button";
+        link.href = "character.html";
+        link.textContent = "🧙 Create a character";
+        el("heroInfo").append(link);
+        el("joinBtn").disabled = true;
+        return;
+      }
+
+      for (const hero of heroes) {
+        select.append(new Option(hero.name + " (" + characterLine(hero) + ")", hero.id));
+      }
+      showHeroInfo();
+    }
+
+    function selectedHero() {
+      const id = Number(el("heroSelect").value);
+      return loadCharacters().find(function (h) {
+        return h.id === id;
+      });
+    }
+
+    function showHeroInfo() {
+      const hero = selectedHero();
+      if (!hero) return;
+      el("heroInfo").textContent =
+        "HP " + hero.hp + "/" + getMaxHp(hero) + " · AC " + getAc(hero) +
+        (hero.specialItem ? " · ✨ " + hero.specialItem.name : "");
+    }
+
+    // =====================================================================
+    // MESSAGES ON SCREEN
+    // =====================================================================
+    function setStatus(text) {
+      el("joinStatus").textContent = text;
+    }
+
+    function showError(text) {
+      el("joinError").textContent = text ? "⚠️ " + text : "";
+      el("joinError").classList.toggle("hidden", !text);
+    }
+
+    function addToFeed(text) {
+      const row = document.createElement("div");
+      row.className = "chat-note";
+      row.textContent = text;   // textContent: never treated as HTML
+      el("feed").append(row);
+      el("feed").scrollTop = el("feed").scrollHeight;
+    }
+
+    // =====================================================================
+    // ASKING TO JOIN
+    // =====================================================================
+    function requestJoin() {
+      showError("");
+      const code = normalizeCode(el("codeInput").value);
+      const hero = selectedHero();
+
+      if (code.length !== 6) {
+        showError("The game code is 6 letters and numbers. Check it with your DM.");
+        return;
+      }
+      if (!hero) {
+        showError("Choose a hero first.");
+        return;
+      }
+      if (typeof Peer === "undefined") {
+        showError("Couldn't load the online connection library. Check your internet connection, then reload this page.");
+        return;
+      }
+
+      leaveGame(true);   // clean up any earlier attempt
+      dmPeerId = peerIdFromCode(code);
+      waitingSince = Date.now();
+      showWaitingRoom(true);
+      el("waitHero").textContent = hero.name + " is ready to play. Game code " + code + ".";
+      setStatus("Connecting…");
+
+      peer = new Peer();   // the matchmaking service gives us a random id
+      peer.on("open", function () {
+        connectToDm(hero);
+      });
+      peer.on("call", handleVoiceCall);
+
+      peer.on("error", function (error) {
+        if (error.type === "peer-unavailable") {
+          // No game with this code YET: the DM may not have opened it. Keep checking.
+          if (Date.now() - waitingSince > 30 * 60 * 1000) {
+            stopWaiting("Your DM still hasn't opened the game after 30 minutes. Check the code with them.");
+            return;
+          }
+          setStatus("Waiting for your DM to show up and open the game… (checking every 5 seconds)");
+          clearTimeout(retryTimer);
+          retryTimer = setTimeout(function () {
+            if (peer && !peer.destroyed && !joined) connectToDm(hero);
+          }, 5000);
+        } else {
+          stopWaiting("The online connection hit a problem (" + error.type + "). Check your internet connection and try again.");
+        }
+      });
+    }
+
+    // One try at reaching the DM's browser.
+    function connectToDm(hero) {
+      const attempt = peer.connect(dmPeerId, { reliable: true });
+      let opened = false;
+      conn = attempt;
+
+      attempt.on("open", function () {
+        opened = true;
+        attempt.send({ type: "request", character: makeSharedCharacter(hero) });   // from play.js
+        setStatus("Your DM is here! Asking to join…");
+        clearTimeout(waitTimer);
+        waitTimer = setTimeout(function () {
+          if (!joined) setStatus("Still waiting for your DM to let you in. They may be busy: hang on, or tell them you're here.");
+        }, 60000);
+      });
+      attempt.on("data", handleDmMessage);
+      // A failed try (DM not here yet) also closes: only a real, opened connection counts as "lost".
+      attempt.on("close", function () {
+        if (opened && conn === attempt) handleConnectionLost();
+      });
+      attempt.on("error", function () {
+        if (opened && conn === attempt) handleConnectionLost();
+      });
+    }
+
+    function showWaitingRoom(on) {
+      el("joinForm").classList.toggle("hidden", on);
+      el("waitRoom").classList.toggle("hidden", !on);
+    }
+
+    function stopWaiting(errorText) {
+      leaveGame(true);
+      showWaitingRoom(false);
+      setStatus("");
+      showError(errorText || "");
+    }
+
+    // =====================================================================
+    // MESSAGES FROM THE DM (untrusted: check the shape first)
+    // =====================================================================
+    function handleDmMessage(data) {
+      if (!data || typeof data !== "object" || typeof data.type !== "string") return;
+
+      if (data.type === "waiting") {
+        setStatus("The DM has your request. Waiting for them to accept…");
+      } else if (data.type === "accepted") {
+        enterTable(cleanText(data.game, 40), data.hp, data.maxHp);
+      } else if (data.type === "declined") {
+        stopWaiting(cleanText(data.reason, 100) || "The DM declined your request.");
+      } else if (data.type === "announce" && joined) {
+        addToFeed("📢 DM: " + cleanText(data.text, 300));
+      } else if (data.type === "hp" && joined) {
+        showHp(data.hp, data.maxHp);
+        saveHpToSheet(data.hp);   // keep the character sheet in step with what the DM tracks
+      } else if (data.type === "voice" && joined) {
+        dmVoiceOn = data.on === true;
+        if (!dmVoiceOn) leaveVoice(true);
+        renderVoice();
+      } else if (data.type === "closed") {
+        handleConnectionLost();
+      }
+    }
+
+    function enterTable(gameName, hp, maxHp) {
+      clearTimeout(waitTimer);
+      joined = true;
+      const hero = selectedHero();
+      showWaitingRoom(false);
+      el("joinPanel").classList.add("hidden");
+      el("tablePanel").classList.remove("hidden");
+      el("tableTitle").textContent = gameName ? "At the table: " + gameName : "At the table";
+      fillCheckSelect(el("checkSelect"), hero);   // from play.js
+      showHp(hp, maxHp);
+      addToFeed("✅ The DM accepted you. Welcome, " + hero.name + "!");
+    }
+
+    function showHp(hp, maxHp) {
+      const current = cleanNumber(hp, 0, 999, 0);
+      const max = cleanNumber(maxHp, 1, 999, 1);
+      el("hpDisplay").textContent = current + " / " + max;
+    }
+
+    // The DM keeps the official HP in a live game, so write it onto the saved sheet too.
+    function saveHpToSheet(hp) {
+      const hero = selectedHero();
+      if (!hero) return;
+      const all = loadCharacters();
+      const saved = all.find(function (h) {
+        return h.id === hero.id;
+      });
+      if (saved) {
+        saved.hp = cleanNumber(hp, 0, 999, saved.hp);
+        saveCharacters(all);
+      }
+    }
+
+    function handleConnectionLost() {
+      clearTimeout(waitTimer);
+      const wasJoined = joined;
+      joined = false;
+      dmVoiceOn = false;
+      leaveVoice(true);
+      renderVoice();
+      if (wasJoined) {
+        addToFeed("⚠️ Disconnected from the DM. Press Leave game, then ask to join again.");
+      } else {
+        stopWaiting("The connection to the DM closed.");
+      }
+    }
+
+    // =====================================================================
+    // AT THE TABLE: rolling, talking, updating
+    // =====================================================================
+    function send(message) {
+      if (conn && conn.open) conn.send(message);
+    }
+
+    function rollSelectedCheck() {
+      const hero = selectedHero();
+      const entry = getCheckList(hero)[Number(el("checkSelect").value)];
+      const result = rollCharacterCheck(hero, entry, el("modeSelect").value);
+      addToFeed("You " + result.text);
+      send({ type: "roll", text: result.text });   // the DM sees every roll
+    }
+
+    function rollDie(sides) {
+      const text = "🎲 d" + sides + ": " + rollOneDie(sides);
+      addToFeed("You " + text);
+      send({ type: "roll", text: text });
+    }
+
+    function say() {
+      const box = el("sayText");
+      const text = box.value.trim();
+      if (text === "") return;
+      addToFeed("You: " + text);
+      send({ type: "say", text: text });
+      box.value = "";
+    }
+
+    function sendUpdatedSheet() {
+      const hero = selectedHero();
+      if (!hero) return;
+      send({ type: "update", character: makeSharedCharacter(hero) });
+      addToFeed("📤 Sent your updated sheet to the DM.");
+    }
+
+    function leaveGame(quiet) {
+      clearTimeout(waitTimer);
+      clearTimeout(retryTimer);
+      leaveVoice(true);
+      dmVoiceOn = false;
+      renderVoice();
+      joined = false;
+      if (conn) {
+        try {
+          conn.close();
+        } catch (error) {
+          // Already closed.
+        }
+      }
+      if (peer) peer.destroy();
+      conn = null;
+      peer = null;
+      if (!quiet) {
+        el("tablePanel").classList.add("hidden");
+        el("joinPanel").classList.remove("hidden");
+        el("feed").innerHTML = "";
+        el("joinBtn").disabled = heroes.length === 0;
+        showWaitingRoom(false);
+        setStatus("");
+      }
+    }
+
+    // =====================================================================
+    // VOICE CHAT (the DM turns it on; you choose whether to join)
+    // =====================================================================
+    async function joinVoice() {
+      if (!joined || !dmVoiceOn) return;
+      try {
+        voiceStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      } catch (error) {
+        el("voiceText").textContent = "🎙️ Couldn't use your microphone. Allow it for this page in your browser, then try again.";
+        return;
+      }
+      send({ type: "voice-ready" });   // the DM's browser now calls us
+      el("voiceText").textContent = "🎙️ Connecting voice…";
+      renderVoice();
+    }
+
+    // Only answer an audio call from OUR DM, and only after we chose to join.
+    function handleVoiceCall(call) {
+      if (call.peer !== dmPeerId || !voiceStream || !joined) {
+        call.close();
+        return;
+      }
+      if (voiceCall) voiceCall.close();
+      voiceCall = call;
+      call.answer(voiceStream);
+      call.on("stream", function (remote) {
+        if (!voiceAudio) voiceAudio = new Audio();
+        voiceAudio.srcObject = remote;
+        voiceAudio.play().catch(function () {
+          // The browser blocked sound; it plays after the next click.
+        });
+        el("voiceText").textContent = "🟢 You're in voice chat with your table.";
+      });
+      call.on("close", function () {
+        if (voiceCall === call) leaveVoice(true);
+      });
+    }
+
+    function toggleVoiceMute() {
+      if (!voiceStream) return;
+      const track = voiceStream.getAudioTracks()[0];
+      track.enabled = !track.enabled;
+      el("voiceMuteBtn").textContent = track.enabled ? "🔇 Mute me" : "🎙️ Unmute me";
+    }
+
+    // quiet = we're leaving because of something else, so don't tell the DM.
+    function leaveVoice(quiet) {
+      if (!voiceStream && !voiceCall) return;
+      if (!quiet) send({ type: "voice-leave" });
+      if (voiceCall) {
+        try {
+          voiceCall.close();
+        } catch (error) {
+          // Already closed.
+        }
+      }
+      if (voiceStream) {
+        for (const track of voiceStream.getTracks()) track.stop();   // turns the microphone off
+      }
+      if (voiceAudio) voiceAudio.srcObject = null;
+      voiceCall = null;
+      voiceStream = null;
+      el("voiceMuteBtn").textContent = "🔇 Mute me";
+      el("voiceText").textContent = "🎙️ Your DM started voice chat.";
+      renderVoice();
+    }
+
+    function renderVoice() {
+      el("voiceBox").classList.toggle("hidden", !(joined && dmVoiceOn));
+      const inVoice = Boolean(voiceStream);
+      el("voiceJoinBtn").classList.toggle("hidden", inVoice);
+      el("voiceMuteBtn").classList.toggle("hidden", !inVoice);
+      el("voiceLeaveBtn").classList.toggle("hidden", !inVoice);
+    }
+
+    // =====================================================================
+    // START UP
+    // =====================================================================
+    fillHeroSelect();
+    el("heroSelect").addEventListener("change", showHeroInfo);
+
+    // An invite link looks like join.html?code=K7M4QX, so fill the code in for the player.
+    const codeFromLink = new URLSearchParams(location.search).get("code");
+    if (codeFromLink) el("codeInput").value = normalizeCode(codeFromLink);
+
+    el("joinBtn").addEventListener("click", requestJoin);
+    el("stopWaitBtn").addEventListener("click", function () {
+      stopWaiting("");
+    });
+    el("voiceJoinBtn").addEventListener("click", joinVoice);
+    el("voiceMuteBtn").addEventListener("click", toggleVoiceMute);
+    el("voiceLeaveBtn").addEventListener("click", function () {
+      leaveVoice(false);
+    });
+    el("codeInput").addEventListener("keydown", function (event) {
+      if (event.key === "Enter") requestJoin();
+    });
+    el("rollBtn").addEventListener("click", rollSelectedCheck);
+    for (const button of document.querySelectorAll("[data-die]")) {
+      button.addEventListener("click", function () {
+        rollDie(Number(button.dataset.die));
+      });
+    }
+    el("sayBtn").addEventListener("click", say);
+    el("sayText").addEventListener("keydown", function (event) {
+      if (event.key === "Enter") say();
+    });
+    el("updateBtn").addEventListener("click", sendUpdatedSheet);
+    el("leaveBtn").addEventListener("click", function () {
+      leaveGame(false);
+    });
+
+    // If the sheet is edited in another tab while we're at the table, tell the DM automatically.
+    window.addEventListener("storage", function (event) {
+      if (event.key === "characters" && joined) sendUpdatedSheet();
+    });
+    window.addEventListener("beforeunload", function () {
+      leaveGame(true);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Dungeon Master</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <nav class="top-nav">
+    <a href="index.html" class="active">🏠 Home</a>
+    <a href="dice.html">🎲 Dice</a>
+    <a href="character.html">🧙 Characters</a>
+    <a href="dm.html">🛡️ DM Screen</a>
+  </nav>
+
+  <h1>🤖 AI Dungeon Master</h1>
+  <p><a href="player.html" class="back-link">← Back</a></p>
+
+  <!-- Is the helper server running, and is the AI set up? Filled in by the script. -->
+  <div class="panel" id="statusPanel"></div>
+
+  <!-- =============== SETUP, one step at a time ===============
+       1 help level → 2 hero → 3 campaign → 4 special item → 5 begin.
+       Each step appears once the one before it is done. -->
+  <div id="setupArea">
+    <div class="panel setup-step" id="levelStep">
+      <h2>1. How much help do you want?</h2>
+      <div class="choice-row">
+        <button class="big-choice" data-guide="beginner">
+          <span class="big-choice-icon">🌱</span><strong>Beginner</strong>
+          <span class="hint">Very step by step, with a tutorial on the basics</span>
+        </button>
+        <button class="big-choice" data-guide="intermediate">
+          <span class="big-choice-icon">⚔️</span><strong>Intermediate</strong>
+          <span class="hint">Less hand-holding, quick tips, straight fifth-edition rules</span>
+        </button>
+        <button class="big-choice" data-guide="advanced">
+          <span class="big-choice-icon">🐉</span><strong>Advanced</strong>
+          <span class="hint">All the steps, no tutorial</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="panel setup-step hidden" id="heroStep">
+      <h2>2. Your hero</h2>
+      <div class="tutor-box guide-tip" data-tip="hero"></div>
+      <select id="heroSelect"></select>
+      <div id="heroInfo" class="info-box"></div>
+      <p><a id="newHeroLink" class="plain-button" href="character.html">✨ Create a new hero</a></p>
+    </div>
+
+    <div class="panel setup-step hidden" id="campaignStep">
+      <h2>3. Set up your campaign</h2>
+      <div class="tutor-box guide-tip" data-tip="campaign"></div>
+      <div id="campaignForm">
+        <div class="sheet-grid">
+          <label class="sheet-field">Campaign name (optional) <input id="campaignName" type="text" maxlength="60" placeholder="e.g. The Sunken Crown"></label>
+          <label class="sheet-field">Where does it happen?
+            <select id="campaignSetting">
+              <option value="">— Choose a setting —</option>
+              <option>A classic fantasy kingdom of castles and villages</option>
+              <option>Dark, spooky lands of haunted woods and old graveyards</option>
+              <option>A wild frontier of forests and mountains</option>
+              <option>The high seas, with islands, ships and pirates</option>
+              <option>A desert of buried ruins and lost tombs</option>
+              <option>The frozen north</option>
+              <option>A big city full of thieves, guilds and secrets</option>
+              <option>Surprise me</option>
+            </select>
+          </label>
+          <label class="sheet-field">What kind of story?
+            <select id="campaignStory">
+              <option value="">— Choose a story —</option>
+              <option>A mystery to solve</option>
+              <option>A monster to hunt</option>
+              <option>A dungeon full of treasure and traps</option>
+              <option>A rescue mission</option>
+              <option>A journey across dangerous lands</option>
+              <option>Plots, politics and double-crosses</option>
+              <option>Surprise me</option>
+            </select>
+          </label>
+          <label class="sheet-field">How long?
+            <select id="campaignLength">
+              <option value="one-shot">One evening (a one-shot adventure)</option>
+              <option value="campaign">An ongoing campaign</option>
+            </select>
+          </label>
+        </div>
+        <label class="sheet-field">Anything else the DM should know? (optional)
+          <input id="tone" type="text" class="wide-input" maxlength="120" placeholder="e.g. lots of jokes, no spiders, a talking cat sidekick">
+        </label>
+      </div>
+      <p id="campaignSaved" class="hint hidden"></p>
+    </div>
+
+    <div class="panel setup-step hidden" id="itemStep">
+      <h2>4. Choose your special item</h2>
+      <div class="tutor-box guide-tip" data-tip="item"></div>
+      <div id="itemCurrent"></div>
+      <div id="itemPicker" class="item-form">
+        <div class="item-mode-buttons">
+          <button class="small-button" data-item-mode="list">📜 From the list</button>
+          <button class="small-button" data-item-mode="custom">🖋️ My own</button>
+        </div>
+        <div id="pickList">
+          <label class="sheet-field">Pick a magic item <select id="pickItem"></select></label>
+          <div id="pickItemInfo" class="info-box"></div>
+        </div>
+        <div id="pickCustom" class="hidden">
+          <label class="sheet-field">Name <input id="pickName" type="text" maxlength="60" placeholder="e.g. Emberfang, the Last Ember"></label>
+          <label class="sheet-field">Kind of item <select id="pickType"></select></label>
+          <label class="sheet-field">What can it do?
+            <textarea id="pickPowers" class="notes-box short-notes" maxlength="600" placeholder="Once per day, it can set its blade alight for one minute..."></textarea>
+          </label>
+          <p class="hint">A homemade item's powers are a suggestion: the Dungeon Master keeps them fair.</p>
+        </div>
+        <label class="sheet-field">What does it look like?
+          <textarea id="pickLooks" class="notes-box short-notes" maxlength="400" placeholder="Pitted black iron with a thin vein of glowing orange..."></textarea>
+        </label>
+        <button id="pickSave">✨ Keep this item</button>
+      </div>
+    </div>
+
+    <div class="panel setup-step hidden" id="setupPanel">
+      <h2>5. Begin!</h2>
+      <div class="tutor-box guide-tip" data-tip="begin"></div>
+      <p><button id="startBtn" disabled>⚔️ Begin adventure</button></p>
+      <p id="startError" class="chat-error hidden"></p>
+      <p class="hint">
+        💬 Your messages, your campaign choices and your hero's sheet (name, class, stats and item) are sent to Anthropic's Claude
+        to write the Dungeon Master's replies. Using the AI costs money on the account that owns the API key.
+      </p>
+    </div>
+  </div>
+
+  <!-- =============== THE GAME =============== -->
+  <div class="panel hidden" id="gamePanel">
+    <h2 id="gameTitle"></h2>
+
+    <!-- Scene music, chosen by the Dungeon Master as the story changes -->
+    <div class="roll-row music-row">
+      <button class="small-button" id="musicBtn">🎵 Music: off</button>
+      <span id="musicMood" class="hint"></span>
+      <input id="musicVolume" type="range" min="0" max="100" value="40" aria-label="Music volume">
+    </div>
+
+    <!-- Beginners get a short "how to play" lesson, which they can hide -->
+    <details id="howToPlay" class="tutor-box hidden">
+      <summary><strong>🧭 How to play</strong></summary>
+      <p>1. Read what the Dungeon Master describes. 2. Type (or 🎤 say) what your hero does, in your own words, like "I sneak up to the door and listen", then press Send.</p>
+      <p>3. When something is risky, the DM asks for a roll and a big button appears. Click it: it rolls a d20 and adds your bonus for you. Higher is better!</p>
+      <p>4. In a fight, everyone takes turns. On your turn you can move and do one main thing, such as attack or cast a spell. Your Armor Class (AC) is how hard you are to hit, and Hit Points (HP) are how much damage you can take.</p>
+      <p>Stuck? Just ask the DM "What can I do?" They'll explain.</p>
+    </details>
+
+    <div id="chat" class="chat-log" aria-live="polite"></div>
+
+    <!-- When the Dungeon Master asks for a roll, this button is set up and ready -->
+    <div id="readyRoll" class="ready-roll hidden">
+      <p class="hint">The Dungeon Master asks for a roll:</p>
+      <button id="readyRollBtn"></button>
+      <p class="hint">One click rolls it with your bonus and sends it to the Dungeon Master.</p>
+    </div>
+
+    <div class="roll-row">
+      <select id="checkSelect" aria-label="Choose a roll"></select>
+      <select id="modeSelect" aria-label="Roll type">
+        <option value="normal">Normal</option>
+        <option value="advantage">Advantage</option>
+        <option value="disadvantage">Disadvantage</option>
+      </select>
+      <button class="small-button" id="rollBtn">🎲 Roll</button>
+    </div>
+    <div class="roll-row">
+      <button class="small-button" data-die="4">d4</button>
+      <button class="small-button" data-die="6">d6</button>
+      <button class="small-button" data-die="8">d8</button>
+      <button class="small-button" data-die="10">d10</button>
+      <button class="small-button" data-die="12">d12</button>
+      <button class="small-button" data-die="20">d20</button>
+    </div>
+    <p class="hint">Rolls go into the message box below. Press Send to tell the Dungeon Master.</p>
+
+    <textarea id="chatInput" class="notes-box chat-input" placeholder="What do you do? (Enter to send, Shift+Enter for a new line)"></textarea>
+
+    <!-- Voice: speak your reply, and have the Dungeon Master read aloud -->
+    <div class="roll-row">
+      <button class="small-button" id="micBtn">🎤 Speak your reply</button>
+      <label class="hint"><input type="checkbox" id="autoRead"> 🔊 Read new replies aloud</label>
+    </div>
+    <p id="voiceStatus" class="hint"></p>
+
+    <p>
+      <button id="sendBtn">Send</button>
+      <button class="small-button" id="newBtn">🔄 New adventure</button>
+    </p>
+    <p class="hint">The Dungeon Master tracks your HP in the story. Update your sheet yourself when it changes.</p>
+    <p class="hint">🎤 Voice typing uses your browser's speech service, which may send your voice to Google (Chrome) or Apple (Safari) to turn it into text.</p>
+  </div>
+
+  <script src="dice.js"></script>
+  <script src="rules.js"></script>
+  <script src="play.js"></script>
+  <script src="music.js"></script>
+
+  <script>
+    // =====================================================================
+    // STATE
+    // =====================================================================
+    let heroes = loadCharacters();      // from rules.js
+    let adventure = null;               // { heroId, messages: [ {role, content}, ... ] }
+    let serverState = "checking";       // "checking" | "missing" | "no-key" | "ready"
+    let busy = false;
+    let guide = "";                     // "beginner" | "intermediate" | "advanced"
+    let itemPickMode = "list";
+
+    const el = function (id) {
+      return document.getElementById(id);
+    };
+
+    // =====================================================================
+    // IS THE HELPER SERVER RUNNING? IS THE AI SET UP?
+    // =====================================================================
+    async function checkServer() {
+      try {
+        // A relative address ("api/status", no leading slash) works wherever the app is hosted.
+        const response = await fetch("api/status");
+        const status = await response.json();
+        serverState = status.ai ? "ready" : "no-key";
+        renderStatus(status);
+      } catch (error) {
+        // The page was opened straight from a file, or the server isn't running.
+        serverState = "missing";
+        renderStatus(null);
+      }
+      updateSetup();
+    }
+
+    function addCodeBlock(container, text) {
+      const pre = document.createElement("pre");
+      pre.className = "code-block";
+      pre.textContent = text;
+      container.append(pre);
+    }
+
+    function renderStatus(status) {
+      const panel = el("statusPanel");
+      panel.innerHTML = "";
+      const title = document.createElement("h2");
+      const body = document.createElement("p");
+
+      if (serverState === "ready") {
+        title.textContent = "✅ The AI Dungeon Master is ready";
+        body.className = "hint";
+        body.textContent = "Connected to the helper server (model: " + status.model + ").";
+        panel.append(title, body);
+        return;
+      }
+
+      if (serverState === "no-key") {
+        title.textContent = "🔑 One step left: add your API key";
+        body.textContent = "The helper server is running, but it was started without an API key. Stop it (Control-C in Terminal), then type this yourself, with your own key:";
+        panel.append(title, body);
+        addCodeBlock(panel, 'export ANTHROPIC_API_KEY="paste-your-key-here"\nruby server.rb');
+      } else {
+        // On the public website there is no helper (and there must never be a key there).
+        const onlineCopy = location.protocol.startsWith("http") && !["localhost", "127.0.0.1"].includes(location.hostname);
+        title.textContent = onlineCopy ? "🖥️ The AI Dungeon Master runs on your own computer" : "🖥️ Start the helper server first";
+        body.textContent = (onlineCopy
+          ? "The online version can't use the AI, because the AI needs your private API key, and that must stay on your computer. On a computer with this app downloaded, open Terminal and run:"
+          : "The AI needs a small helper program on your computer. It keeps your API key private. Open Terminal and run:");
+        panel.append(title, body);
+        addCodeBlock(panel,
+          'cd ~/Documents/dnd-app\n' +
+          'export ANTHROPIC_API_KEY="paste-your-key-here"\n' +
+          'ruby server.rb');
+        const next = document.createElement("p");
+        next.textContent = "Then open http://localhost:8787/ai-dm.html in your browser.";
+        panel.append(next);
+      }
+
+      const note = document.createElement("p");
+      note.className = "hint";
+      note.textContent = "Get a key from console.anthropic.com and type it into Terminal yourself. Never paste it into a web page, a file, or a chat.";
+      panel.append(note);
+    }
+
+    // =====================================================================
+    // SETUP STEP 1: HOW MUCH HELP?
+    // =====================================================================
+    const GUIDE_TIPS = {
+      beginner: {
+        hero: "Your hero is the character you play. If you don't have one yet, press \"Create a new hero\": it walks you through every step and explains it.",
+        campaign: "A campaign is your story: where it happens and what kind of adventure it is. Pick anything that sounds fun. The Dungeon Master builds the story from your choices.",
+        item: "Every hero gets one special item to start with. Pick a real magic item from the rules, or invent your own and describe what it looks like and what it does.",
+        begin: "Ready! The Dungeon Master will describe the opening scene. Then you say what your hero does. Since you picked Beginner, the DM will explain the rules as they come up and suggest things you could try."
+      },
+      intermediate: {
+        hero: "Pick a hero, or make a new one.",
+        campaign: "Choose a setting and a kind of story.",
+        item: "From the list, or invent your own.",
+        begin: "The DM will give short rule reminders when an unusual rule comes up."
+      }
+    };
+
+    function setGuide(level) {
+      guide = level;
+      try {
+        localStorage.setItem("playerGuide", level);   // remember it for next time
+      } catch (error) {
+        // Storage blocked: it's remembered until the page closes.
+      }
+      for (const button of document.querySelectorAll("[data-guide]")) {
+        button.classList.toggle("picked", button.dataset.guide === level);
+      }
+      for (const box of document.querySelectorAll(".guide-tip")) {
+        const tips = GUIDE_TIPS[level];
+        box.textContent = tips ? (level === "beginner" ? "🧭 " : "💡 ") + tips[box.dataset.tip] : "";
+        box.classList.toggle("hidden", !tips);
+      }
+      // A new hero is built with the same amount of help, then comes straight back here.
+      el("newHeroLink").href = "character.html?guide=" + level + "&return=ai-dm.html";
+      updateSetup();
+    }
+
+    // =====================================================================
+    // SETUP STEP 2: CHOOSING A HERO
+    // =====================================================================
+    function fillHeroSelect(preselectId) {
+      const select = el("heroSelect");
+      select.innerHTML = "";
+
+      if (heroes.length === 0) {
+        select.append(new Option("No characters yet", ""));
+        select.classList.add("hidden");
+        el("heroInfo").textContent = "You need a hero first. Press the button below to make one.";
+        return;
+      }
+
+      select.classList.remove("hidden");
+      select.append(new Option("— Choose your hero —", ""));
+      for (const hero of heroes) {
+        select.append(new Option(hero.name + " (" + characterLine(hero) + ")", hero.id));
+      }
+      if (preselectId && heroes.some(function (h) { return h.id === preselectId; })) {
+        select.value = String(preselectId);
+      }
+      showHeroInfo();
+    }
+
+    function selectedHero() {
+      const id = Number(el("heroSelect").value);
+      return heroes.find(function (h) {
+        return h.id === id;
+      });
+    }
+
+    function showHeroInfo() {
+      const hero = selectedHero();
+      if (!hero) {
+        if (heroes.length > 0) el("heroInfo").textContent = "Pick a hero above, or create a new one.";
+        return;
+      }
+      el("heroInfo").textContent =
+        "HP " + hero.hp + "/" + getMaxHp(hero) + " · AC " + getAc(hero) + " · Passive Perception " + getPassivePerception(hero);
+    }
+
+    // =====================================================================
+    // SETUP STEP 3: THE CAMPAIGN
+    // =====================================================================
+    // A saved adventure keeps its campaign; a new one uses what's chosen on the page.
+    function savedAdventureFor(hero) {
+      const saved = hero ? loadAdventure(hero.id) : null;
+      return saved && saved.messages.length ? saved : null;
+    }
+
+    function campaignFromPage() {
+      return {
+        name: el("campaignName").value.trim(),
+        setting: el("campaignSetting").value,
+        story: el("campaignStory").value,
+        length: el("campaignLength").value,
+        extra: el("tone").value.trim()
+      };
+    }
+
+    function campaignDone() {
+      const campaign = campaignFromPage();
+      return Boolean(campaign.setting && campaign.story);
+    }
+
+    // The campaign as plain text for the AI Dungeon Master.
+    function makeCampaignText(campaign) {
+      if (!campaign) return "";
+      const lines = [];
+      if (campaign.name)    lines.push("Campaign name: " + campaign.name);
+      if (campaign.setting) lines.push("Setting: " + campaign.setting);
+      if (campaign.story)   lines.push("Kind of story: " + campaign.story);
+      lines.push("Length: " + (campaign.length === "campaign"
+        ? "an ongoing campaign with many sessions"
+        : "a one-shot: finish the story with a satisfying ending in one sitting (roughly 20 to 30 exchanges)"));
+      if (campaign.extra)   lines.push("The player also asked for: " + campaign.extra);
+      return lines.join("\n");
+    }
+
+    // =====================================================================
+    // SETUP STEP 4: THE SPECIAL ITEM (saved on the hero's character sheet)
+    // =====================================================================
+    function fillItemPicker() {
+      const select = el("pickItem");
+      select.append(new Option("— Choose an item —", ""));
+      for (const item of MAGIC_ITEMS) {
+        select.append(new Option(item.name + " (" + item.rarity + ")", item.name));
+      }
+      for (const type of ITEM_TYPES) {
+        el("pickType").append(new Option(type, type));
+      }
+      el("pickType").value = "Wondrous item";
+      showPickedItemInfo();
+    }
+
+    function showPickedItemInfo() {
+      const item = findByName(MAGIC_ITEMS, el("pickItem").value);
+      el("pickItemInfo").textContent = item
+        ? [item.type, item.rarity, item.attunement].filter(Boolean).join(" · ") + " — " + item.powers
+        : "Pick an item to read what it does.";
+    }
+
+    function setItemPickMode(mode) {
+      itemPickMode = mode;
+      el("pickList").classList.toggle("hidden", mode !== "list");
+      el("pickCustom").classList.toggle("hidden", mode !== "custom");
+      for (const button of document.querySelectorAll("[data-item-mode]")) {
+        button.classList.toggle("picked", button.dataset.itemMode === mode);
+      }
+    }
+
+    function showItemStep() {
+      const hero = selectedHero();
+      const box = el("itemCurrent");
+      box.innerHTML = "";
+      if (!hero) return;
+
+      const item = hero.specialItem;
+      el("itemPicker").classList.toggle("hidden", Boolean(item));
+      if (!item) return;
+
+      const p = document.createElement("p");
+      p.textContent = "✨ " + hero.name + " carries " + item.name +
+        (item.powers ? ": " + item.powers : "") + (item.appearance ? " It looks like: " + item.appearance : "");
+      p.className = "info-box";
+      const change = document.createElement("button");
+      change.className = "small-button";
+      change.textContent = "✏️ Choose a different item";
+      change.addEventListener("click", function () {
+        el("itemPicker").classList.remove("hidden");
+        change.remove();
+      });
+      box.append(p, change);
+    }
+
+    function saveItemFromPicker() {
+      const hero = selectedHero();
+      if (!hero) return;
+      const looks = el("pickLooks").value.trim();
+      let item;
+      if (itemPickMode === "list") {
+        item = makeSrdItem(el("pickItem").value, looks);   // from rules.js
+        if (!item) {
+          alert("Pick an item from the list first.");
+          return;
+        }
+      } else {
+        const name = el("pickName").value.trim();
+        if (!name) {
+          alert("Give your item a name!");
+          return;
+        }
+        item = makeCustomItem(name, el("pickType").value, el("pickPowers").value.trim(), looks);
+      }
+
+      // Save it onto the hero's real character sheet.
+      const all = loadCharacters();
+      const saved = all.find(function (h) { return h.id === hero.id; });
+      if (saved) {
+        saved.specialItem = item;
+        saveCharacters(all);
+      }
+      hero.specialItem = item;
+      showItemStep();
+      updateSetup();
+    }
+
+    // =====================================================================
+    // SHOWING THE RIGHT STEPS
+    // =====================================================================
+    function updateSetup() {
+      const hero = selectedHero();
+      const saved = savedAdventureFor(hero);
+
+      // Continuing a story: its campaign is already set, so that step just says so.
+      el("campaignForm").classList.toggle("hidden", Boolean(saved));
+      el("campaignSaved").classList.toggle("hidden", !saved);
+      if (saved) {
+        el("campaignSaved").textContent = "📖 " + hero.name + " already has a story going" +
+          (saved.campaign && saved.campaign.name ? ": " + saved.campaign.name : "") +
+          ". Press Continue below, or start a new adventure from inside the game.";
+      }
+
+      const steps = [
+        { id: "levelStep",    done: Boolean(guide) },
+        { id: "heroStep",     done: Boolean(hero) },
+        { id: "campaignStep", done: Boolean(saved) || campaignDone() },
+        { id: "itemStep",     done: Boolean(hero && hero.specialItem) },
+        { id: "setupPanel",   done: false }
+      ];
+      // Show each step only once every step before it is done.
+      let reachable = true;
+      for (const step of steps) {
+        el(step.id).classList.toggle("hidden", !reachable);
+        reachable = reachable && step.done;
+      }
+
+      el("startBtn").textContent = saved ? "▶ Continue adventure" : "⚔️ Begin adventure";
+      el("startBtn").disabled = !(serverState === "ready" && hero && hero.specialItem);
+    }
+
+    // =====================================================================
+    // SAVED ADVENTURES (one per hero, in this browser)
+    // =====================================================================
+    function adventureKey(heroId) {
+      return "aiAdventure-" + heroId;
+    }
+
+    function loadAdventure(heroId) {
+      try {
+        const text = localStorage.getItem(adventureKey(heroId));
+        if (text) return JSON.parse(text);
+      } catch (error) {
+        // Storage blocked or damaged: start fresh.
+      }
+      return null;
+    }
+
+    function saveAdventure() {
+      try {
+        localStorage.setItem(adventureKey(adventure.heroId), JSON.stringify(adventure));
+      } catch (error) {
+        // Can't save: the adventure still works until the page closes.
+      }
+    }
+
+    // =====================================================================
+    // THE CHAT
+    // =====================================================================
+    function renderChat() {
+      const log = el("chat");
+      log.innerHTML = "";
+
+      adventure.messages.forEach(function (message, index) {
+        const bubble = document.createElement("div");
+        if (index === 0) {
+          // The first message just tells the DM to begin. Show it as a quiet note.
+          bubble.className = "chat-note";
+          bubble.textContent = "✨ The adventure begins";
+        } else {
+          bubble.className = "chat-msg " + (message.role === "user" ? "chat-user" : "chat-dm");
+          const text = document.createElement("div");
+          // stripDmTags hides the [ROLL: ...] and [MUSIC: ...] tags meant for the app.
+          // textContent: never treated as HTML.
+          text.textContent = message.role === "assistant" ? stripDmTags(message.content) : message.content;
+          bubble.append(text);
+
+          // The Dungeon Master's messages get a "read aloud" button.
+          if (message.role === "assistant" && canSpeak()) {
+            const speakButton = document.createElement("button");
+            speakButton.className = "small-button speak-btn";
+            speakButton.dataset.index = index;   // which message this button reads
+            speakButton.addEventListener("click", function () {
+              toggleSpeaking(stripDmTags(message.content), index);
+            });
+            bubble.append(speakButton);
+          }
+        }
+        log.append(bubble);
+      });
+
+      updateSpeakButtons();
+
+      if (busy) {
+        const thinking = document.createElement("div");
+        thinking.className = "chat-note";
+        thinking.textContent = "…the Dungeon Master is thinking";
+
+        log.append(thinking);
+
+        // While the DM is still thinking (the answer isn't on screen yet), the move can be taken back.
+        if (canRedo()) {
+          const row = document.createElement("div");
+          row.className = "redo-row";   // its own line, so it isn't faded like the "thinking" note
+          const redo = document.createElement("button");
+          redo.className = "small-button";
+          redo.id = "redoBtn";
+          redo.textContent = "↩ Redo my move";
+          redo.addEventListener("click", redoMove);
+          row.append(redo);
+          log.append(row);
+        }
+      }
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function showChatError(text) {
+      const bubble = document.createElement("div");
+      bubble.className = "chat-error";
+      bubble.textContent = "⚠️ " + text;
+      el("chat").append(bubble);
+      el("chat").scrollTop = el("chat").scrollHeight;
+    }
+
+    function setBusy(value) {
+      busy = value;
+      el("sendBtn").disabled = value;
+      el("rollBtn").disabled = value;
+      el("readyRollBtn").disabled = value;
+      renderChat();
+    }
+
+    // The most recent saved version of the hero (HP and so on may change on the sheet).
+    function currentHero() {
+      const saved = loadCharacters().find(function (h) {
+        return h.id === adventure.heroId;
+      });
+      return saved || heroes.find(function (h) {
+        return h.id === adventure.heroId;
+      });
+    }
+
+    // Add what the player said, ask the server, add the Dungeon Master's answer.
+    async function askDm(playerText) {
+      // Remember this request, so "Redo my move" can cancel it and a late answer is ignored.
+      const request = { controller: new AbortController() };
+      currentRequest = request;
+
+      adventure.messages.push({ role: "user", content: playerText });
+      saveAdventure();
+      setBusy(true);
+
+      // Only the last 40 messages are sent. The conversation must start with the player.
+      const recent = adventure.messages.slice(-40);
+      while (recent.length > 1 && recent[0].role !== "user") recent.shift();
+
+      try {
+        const response = await fetch("api/dm", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            character: makeSheetText(currentHero()),
+            campaign: makeCampaignText(adventure.campaign),
+            guide: adventure.guide,
+            messages: recent
+          }),
+          signal: request.controller.signal   // lets Redo cancel the request
+        });
+        const data = await response.json().catch(function () {
+          return null;
+        });
+
+        // The player pressed Redo while we waited: throw this answer away unseen.
+        if (currentRequest !== request) return;
+        currentRequest = null;
+
+        if (!response.ok || !data || !data.text) {
+          throw new Error((data && data.error) || "The Dungeon Master didn't answer.");
+        }
+
+        adventure.messages.push({ role: "assistant", content: data.text });
+        saveAdventure();
+        setBusy(false);
+        updateReadyRoll();          // did the DM ask for a roll?
+        applyMusicTag(data.text);   // did the DM change the mood?
+        if (el("autoRead").checked) toggleSpeaking(stripDmTags(data.text), adventure.messages.length - 1);
+        if (data.truncated) showChatError("That reply was cut short. Ask the DM to continue.");
+      } catch (error) {
+        // Cancelled by Redo (or replaced by a newer request): Redo already tidied up.
+        if (currentRequest !== request) return;
+        currentRequest = null;
+
+        // Take back the message so the player can try again.
+        adventure.messages.pop();
+        const message = error.message || "Something went wrong. Try again.";
+
+        if (adventure.messages.length === 0) {
+          // The very first request failed, so there is no story yet: go back to the setup screen.
+          try {
+            localStorage.removeItem(adventureKey(adventure.heroId));
+          } catch (storageError) {
+            // Nothing to remove.
+          }
+          adventure = null;
+          busy = false;
+          el("gamePanel").classList.add("hidden");
+          el("setupArea").classList.remove("hidden");
+          updateSetup();
+          el("startError").textContent = "⚠️ " + message;
+          el("startError").classList.remove("hidden");
+          showHeroInfo();
+          return;
+        }
+
+        saveAdventure();
+        setBusy(false);
+        el("chatInput").value = playerText;   // give the message back so they can retry
+        showChatError(message);
+      }
+    }
+
+    // =====================================================================
+    // REDO MY MOVE (only while the Dungeon Master is still thinking)
+    // =====================================================================
+    let currentRequest = null;   // the request waiting for the DM's answer, if any
+
+    // Redo is allowed only while the answer is still on its way, and not for:
+    //  - the very first "begin the adventure" message, and
+    //  - moves with a dice roll (otherwise you could take back a bad roll and roll again).
+    function canRedo() {
+      if (!busy || !currentRequest || !adventure) return false;
+      const last = adventure.messages[adventure.messages.length - 1];
+      return adventure.messages.length > 1 && last.role === "user" && !last.content.includes("🎲");
+    }
+
+    function redoMove() {
+      if (!canRedo()) return;
+      const request = currentRequest;
+      currentRequest = null;           // from now on, any answer to it is ignored
+      request.controller.abort();      // and stop waiting for it
+
+      const move = adventure.messages.pop();
+      saveAdventure();
+      setBusy(false);
+
+      el("chatInput").value = move.content;   // the move comes back so it can be changed
+      el("chatInput").focus();
+      const note = document.createElement("div");
+      note.className = "chat-note";
+      note.textContent = "↩ Move taken back. Change it, then press Send.";
+      el("chat").append(note);
+      el("chat").scrollTop = el("chat").scrollHeight;
+    }
+
+    function sendMessage() {
+      const text = el("chatInput").value.trim();
+      if (busy || text === "") return;
+      el("chatInput").value = "";
+      askDm(text);
+    }
+
+    // =====================================================================
+    // ROLLING DICE INTO THE MESSAGE BOX
+    // =====================================================================
+    function addToInput(text) {
+      const box = el("chatInput");
+      box.value = box.value ? box.value + "\n" + text : text;
+      box.focus();
+    }
+
+    function rollSelectedCheck() {
+      const hero = currentHero();
+      const entry = getCheckList(hero)[Number(el("checkSelect").value)];
+      const result = rollCharacterCheck(hero, entry, el("modeSelect").value);
+      addToInput(result.text);
+    }
+
+    // =====================================================================
+    // VOICE 1: READING THE DUNGEON MASTER ALOUD (text-to-speech)
+    // =====================================================================
+    // speechSynthesis is built into the browser. It turns text into speech on your device.
+    let speakingIndex = null;   // which message is being read right now (null = none)
+
+    function canSpeak() {
+      return "speechSynthesis" in window;
+    }
+
+    // Pick a voice that matches the browser's language, if there is one.
+    function pickVoice() {
+      const voices = speechSynthesis.getVoices();
+      const language = (navigator.language || "en-US").toLowerCase();
+      return voices.find(function (v) { return v.lang.toLowerCase() === language; }) ||
+             voices.find(function (v) { return v.lang.toLowerCase().startsWith(language.slice(0, 2)); }) ||
+             null;
+    }
+
+    // Press once to read, press again to stop.
+    function toggleSpeaking(text, index) {
+      if (!canSpeak()) return;
+      const wasThisOne = speakingIndex === index;
+      speechSynthesis.cancel();   // stop whatever is being read
+      speakingIndex = null;
+      if (wasThisOne) {
+        duckMusic(false);
+        updateSpeakButtons();
+        return;
+      }
+
+      // Long text is read one sentence at a time (some browsers stop reading long text halfway).
+      const sentences = text.match(/[^.!?\n]+[.!?]*\s*/g) || [text];
+      const voice = pickVoice();
+      speakingIndex = index;
+      duckMusic(true);   // music gets quieter while the DM talks
+
+      sentences.forEach(function (sentence, i) {
+        const utterance = new SpeechSynthesisUtterance(sentence.trim());
+        utterance.lang = navigator.language || "en-US";
+        if (voice) utterance.voice = voice;
+        if (i === sentences.length - 1) {
+          // After the last sentence, show the buttons as "Read aloud" again.
+          utterance.onend = utterance.onerror = function () {
+            if (speakingIndex === index) {
+              speakingIndex = null;
+              duckMusic(false);
+              updateSpeakButtons();
+            }
+          };
+        }
+        speechSynthesis.speak(utterance);
+      });
+      updateSpeakButtons();
+    }
+
+    function stopSpeaking() {
+      if (!canSpeak()) return;
+      speechSynthesis.cancel();
+      speakingIndex = null;
+      duckMusic(false);
+      updateSpeakButtons();
+    }
+
+    // Each button says "Read aloud", or "Stop" on the message being read.
+    function updateSpeakButtons() {
+      for (const button of document.querySelectorAll(".speak-btn")) {
+        button.textContent = Number(button.dataset.index) === speakingIndex ? "⏹ Stop" : "🔊 Read aloud";
+      }
+    }
+
+    // =====================================================================
+    // VOICE 2: SPEAKING YOUR REPLY (speech-to-text)
+    // =====================================================================
+    // Chrome and Safari can turn speech into text. (Chrome calls it webkitSpeechRecognition.)
+    let recognizer = null;   // the listener while it is listening, otherwise null
+
+    function speechRecognitionClass() {
+      return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+    }
+
+    function setVoiceStatus(text) {
+      el("voiceStatus").textContent = text;
+    }
+
+    function toggleListening() {
+      // Already listening? Then this press means "stop".
+      if (recognizer) {
+        recognizer.stop();
+        return;
+      }
+
+      const Recognition = speechRecognitionClass();
+      if (!Recognition) {
+        setVoiceStatus("Voice typing doesn't work in this browser. Try Chrome or Safari.");
+        return;
+      }
+
+      stopSpeaking();   // so the microphone doesn't hear the Dungeon Master talking
+
+      const box = el("chatInput");
+      const before = box.value.trim() ? box.value.trim() + " " : "";   // keep what's already typed
+      recognizer = new Recognition();
+      recognizer.lang = navigator.language || "en-US";
+      recognizer.interimResults = true;   // show words while you're still talking
+      recognizer.continuous = false;      // stop after you pause
+
+      recognizer.onresult = function (event) {
+        let heard = "";
+        for (const result of event.results) {
+          heard += result[0].transcript;
+        }
+        box.value = before + heard;
+      };
+
+      recognizer.onerror = function (event) {
+        const messages = {
+          "not-allowed": "The microphone is blocked. Allow it in your browser's address bar, then try again.",
+          "service-not-allowed": "The microphone is blocked. Allow it in your browser's address bar, then try again.",
+          "no-speech": "I didn't hear anything. Press the button and speak.",
+          "audio-capture": "No microphone was found.",
+          "network": "Voice typing needs an internet connection."
+        };
+        setVoiceStatus(messages[event.error] || "Voice typing stopped (" + event.error + ").");
+      };
+
+      recognizer.onend = function () {
+        recognizer = null;
+        el("micBtn").textContent = "🎤 Speak your reply";
+        if (el("voiceStatus").textContent === "Listening… speak now.") {
+          setVoiceStatus("Got it. Check the text, then press Send.");
+        }
+        box.focus();
+      };
+
+      try {
+        recognizer.start();
+        el("micBtn").textContent = "⏹ Stop listening";
+        setVoiceStatus("Listening… speak now.");
+      } catch (error) {
+        recognizer = null;
+        setVoiceStatus("Couldn't start voice typing. Try again.");
+      }
+    }
+
+    // =====================================================================
+    // THE READY-TO-ROLL BUTTON
+    // =====================================================================
+    // When the Dungeon Master's latest message asks for a roll ([ROLL: Perception]),
+    // the button is set up with the right roll and the bonus from the sheet.
+    let pendingRoll = null;
+
+    function updateReadyRoll() {
+      const last = adventure && adventure.messages[adventure.messages.length - 1];
+      pendingRoll = last && last.role === "assistant" ? findRollRequest(last.content, currentHero()) : null;
+
+      el("readyRoll").classList.toggle("hidden", !pendingRoll);
+      if (!pendingRoll) return;
+      el("readyRollBtn").textContent = describeRollRequest(pendingRoll);
+
+      // Also set the normal roll controls to match, for anyone who prefers them.
+      if (pendingRoll.type === "check") {
+        el("checkSelect").value = pendingRoll.index;
+        el("modeSelect").value = pendingRoll.mode;
+      }
+    }
+
+    // One click: roll, then send the result (plus anything already typed) to the DM.
+    function rollReady() {
+      if (!pendingRoll || busy) return;
+      const result = rollRequest(currentHero(), pendingRoll);   // from play.js
+      pendingRoll = null;
+      el("readyRoll").classList.add("hidden");
+
+      const typed = el("chatInput").value.trim();
+      el("chatInput").value = "";
+      askDm(typed ? result.text + "\n" + typed : result.text);
+    }
+
+    // =====================================================================
+    // SCENE MUSIC
+    // =====================================================================
+    let audioContext = null;   // created on the first click (browsers block sound until you click)
+    let music = null;
+    let musicOn = false;
+    let musicMood = "calm";    // the mood the story is in, even while the music is off
+    let ducked = false;
+
+    function musicVolume() {
+      const slider = Number(el("musicVolume").value) / 100;
+      return slider * slider * 0.8 * (ducked ? 0.35 : 1);   // sliders feel more natural squared
+    }
+
+    function startMusic() {
+      if (!audioContext) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) {
+          el("musicMood").textContent = "Music isn't supported in this browser.";
+          return;
+        }
+        audioContext = new AudioContextClass();
+        music = createMusicPlayer(audioContext);   // from music.js
+        // Keep composing about 1.5 seconds ahead, so the music never runs out.
+        setInterval(function () {
+          music.scheduleUntil(audioContext.currentTime + 1.5);
+        }, 200);
+      }
+      audioContext.resume();
+      musicOn = true;
+      music.setVolume(musicVolume());
+      music.setMood(musicMood);
+      showMusicState();
+    }
+
+    function stopMusic() {
+      musicOn = false;
+      if (music) music.stop();
+      showMusicState();
+    }
+
+    function showMusicState() {
+      el("musicBtn").textContent = musicOn ? "🎵 Music: on" : "🎵 Music: off";
+      el("musicMood").textContent = musicOn ? MUSIC_MOODS[musicMood].label : "";
+      try {
+        localStorage.setItem("aiMusic", musicOn ? "on" : "off");
+      } catch (error) {
+        // Can't remember the choice; it still works for now.
+      }
+    }
+
+    // The DM's reply may change the mood: [MUSIC: battle]
+    function applyMusicTag(text) {
+      const mood = findMusicTag(text);   // from play.js
+      if (!mood) return;
+      musicMood = mood;
+      if (musicOn) {
+        music.setMood(mood);
+        showMusicState();
+      }
+    }
+
+    // While the DM reads aloud, the music gets quieter.
+    function duckMusic(on) {
+      ducked = on;
+      if (music) music.setVolume(musicVolume());
+    }
+
+    // =====================================================================
+    // STARTING AND STOPPING
+    // =====================================================================
+    function openGame(hero) {
+      el("startError").classList.add("hidden");
+      adventure = loadAdventure(hero.id);
+      if (!adventure || adventure.messages.length === 0) {
+        adventure = { heroId: hero.id, messages: [], campaign: campaignFromPage(), guide: guide };
+      }
+      adventure.guide = guide || adventure.guide || "intermediate";   // the help level can change between sessions
+      el("setupArea").classList.add("hidden");
+      el("gamePanel").classList.remove("hidden");
+      el("gameTitle").textContent = (adventure.campaign && adventure.campaign.name) || hero.name + "'s adventure";
+      el("howToPlay").classList.toggle("hidden", adventure.guide !== "beginner");
+      el("howToPlay").open = adventure.messages.length === 0;   // open at the very start
+      fillCheckSelect(el("checkSelect"), hero);   // from play.js
+      renderChat();
+      updateReadyRoll();
+
+      // Continuing an adventure: pick up the mood from the latest music tag.
+      musicMood = "calm";
+      for (const message of adventure.messages) {
+        if (message.role === "assistant") musicMood = findMusicTag(message.content) || musicMood;
+      }
+      // The Begin/Continue click counts as permission to play sound, if music was on last time.
+      let wantsMusic = false;
+      try {
+        wantsMusic = localStorage.getItem("aiMusic") === "on";
+      } catch (error) {
+        // Storage blocked: leave the music off.
+      }
+      if (wantsMusic) startMusic();
+      else showMusicState();
+
+      // A brand-new adventure: ask the Dungeon Master to open the story.
+      if (adventure.messages.length === 0) {
+        askDm("Begin the adventure with an opening scene that fits the campaign.");
+      }
+    }
+
+    function newAdventure() {
+      if (!confirm("Start over? This erases the current story for " + currentHero().name + ".")) return;
+      try {
+        localStorage.removeItem(adventureKey(adventure.heroId));
+      } catch (error) {
+        // Nothing to remove.
+      }
+      adventure = null;
+      el("gamePanel").classList.add("hidden");
+      el("setupArea").classList.remove("hidden");
+      showHeroInfo();
+      updateSetup();
+    }
+
+    // =====================================================================
+    // START UP
+    // =====================================================================
+    // Back from making a new hero? (character.html sends us to ai-dm.html?hero=ID)
+    const returnedHero = Number(new URLSearchParams(location.search).get("hero")) || 0;
+    fillHeroSelect(returnedHero);
+    fillItemPicker();
+    setItemPickMode("list");
+    showItemStep();
+    let rememberedGuide = "";
+    try {
+      rememberedGuide = localStorage.getItem("playerGuide") || "";
+    } catch (error) {
+      // Storage blocked: ask again.
+    }
+    if (GUIDE_TIPS[rememberedGuide] || rememberedGuide === "advanced") setGuide(rememberedGuide);
+    for (const button of document.querySelectorAll("[data-guide]")) {
+      button.addEventListener("click", function () { setGuide(button.dataset.guide); });
+    }
+    for (const button of document.querySelectorAll("[data-item-mode]")) {
+      button.addEventListener("click", function () { setItemPickMode(button.dataset.itemMode); });
+    }
+    el("pickItem").addEventListener("change", showPickedItemInfo);
+    el("pickSave").addEventListener("click", saveItemFromPicker);
+    for (const id of ["campaignName", "campaignSetting", "campaignStory", "campaignLength", "tone"]) {
+      el(id).addEventListener("change", updateSetup);
+    }
+    el("heroSelect").addEventListener("change", function () {
+      showHeroInfo();
+      showItemStep();
+      updateSetup();
+    });
+    el("startBtn").addEventListener("click", function () {
+      const hero = selectedHero();
+      if (hero) openGame(hero);
+    });
+    el("sendBtn").addEventListener("click", sendMessage);
+    el("chatInput").addEventListener("keydown", function (event) {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+      }
+    });
+    el("rollBtn").addEventListener("click", rollSelectedCheck);
+    for (const button of document.querySelectorAll("[data-die]")) {
+      button.addEventListener("click", function () {
+        const sides = Number(button.dataset.die);
+        addToInput("🎲 d" + sides + ": " + rollOneDie(sides));
+      });
+    }
+    el("newBtn").addEventListener("click", newAdventure);
+
+    // Ready-to-roll and music controls
+    el("readyRollBtn").addEventListener("click", rollReady);
+    el("musicBtn").addEventListener("click", function () {
+      if (musicOn) stopMusic();
+      else startMusic();
+    });
+    el("musicVolume").addEventListener("input", function () {
+      if (music) music.setVolume(musicVolume());
+    });
+
+    // Voice controls
+    el("micBtn").addEventListener("click", toggleListening);
+    if (!speechRecognitionClass()) {
+      el("micBtn").classList.add("hidden");
+      setVoiceStatus("Voice typing isn't available in this browser (it works in Chrome and Safari).");
+    }
+    try {
+      el("autoRead").checked = localStorage.getItem("aiAutoRead") === "yes";   // remember the choice
+    } catch (error) {
+      // Storage blocked: the box just starts unticked.
+    }
+    el("autoRead").addEventListener("change", function () {
+      try {
+        localStorage.setItem("aiAutoRead", el("autoRead").checked ? "yes" : "no");
+      } catch (error) {
+        // Can't remember the choice; it still works for now.
+      }
+      if (!el("autoRead").checked) stopSpeaking();
+    });
+    if (!canSpeak()) el("autoRead").parentElement.classList.add("hidden");
+
+    checkServer();
+  </script>
+</body>
+</html>

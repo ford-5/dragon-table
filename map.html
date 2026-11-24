@@ -26,6 +26,7 @@
   </nav>
 
   <h1>🗺️ Battle Map</h1>
+  <p class="hint" id="shareHint">To show this map to your players, open the GM Screen, start a live game, and press "Show the map to players".</p>
   <p class="hint">Place heroes, monsters and terrain on a grid. Each square is 5 feet. Drag tokens to move them: the map counts the movement by the rules.</p>
 
   <!-- ===== What a click or drag does ===== -->
@@ -51,6 +52,7 @@
     </div>
     <h3 class="section-label">Conditions</h3>
     <div id="conditionChips" class="shop-tabs"></div>
+    <label class="hint"><input type="checkbox" id="hiddenBox"> 🙈 Hide this token from players (a secret monster or trap)</label><br>
     <button class="small-button" id="removeTokenBtn">🗑️ Remove from the map</button>
     <button class="small-button" id="closeTokenBtn">Done</button>
   </div>
@@ -173,6 +175,80 @@
       } catch (error) {
         // Storage blocked: the map works until the page closes.
       }
+      broadcastMap();
+    }
+
+    // =====================================================================
+    // SHARING WITH PLAYERS
+    // The live game's connections belong to the GM Screen page, so this page talks to it
+    // over a BroadcastChannel: a message channel between pages of the same website in the
+    // same browser. The GM Screen forwards what it hears to the players.
+    // =====================================================================
+    let channel = null;
+    try {
+      channel = new BroadcastChannel("dragon-table-map");
+    } catch (error) {
+      // Old browser: the map still works, it just can't be shared.
+    }
+
+    // How hurt a monster is, in words (players shouldn't see the exact numbers).
+    function healthStatus(token) {
+      if (token.hp <= 0) return "Down";
+      if (token.hp * 2 <= token.maxHp) return "Bloodied";
+      if (token.hp < token.maxHp) return "Hurt";
+      return "Unhurt";
+    }
+
+    // What the players get to see: no hidden tokens, no monster HP or AC, no GM notes.
+    function playerView() {
+      return {
+        cols: map.cols, rows: map.rows, ground: map.ground, terrain: map.terrain,
+        tokens: map.tokens.filter(function (t) { return !t.hidden; }).map(function (t) {
+          const view = { id: t.id, side: t.side, name: t.name, label: t.label, size: t.size, x: t.x, y: t.y,
+                         status: healthStatus(t), conditions: t.conditions };
+          if (t.side === "hero") {
+            view.hp = t.hp;
+            view.maxHp = t.maxHp;
+          }
+          return view;
+        })
+      };
+    }
+
+    function broadcastMap() {
+      if (channel) channel.postMessage({ type: "state", map: playerView() });
+    }
+
+    if (channel) {
+      channel.onmessage = function (event) {
+        const data = event.data;
+        if (!data || typeof data !== "object") return;
+        if (data.type === "hello") broadcastMap();                 // the GM Screen asks for the latest map
+        if (data.type === "playerMove") applyPlayerMove(data);     // a player moved their own hero
+      };
+    }
+
+    // A player dragged their own hero. The GM Screen has already checked WHO they are
+    // and sends their hero's name; this checks the move itself.
+    function applyPlayerMove(data) {
+      const x = Number(data.x), y = Number(data.y);
+      if (!Number.isInteger(x) || !Number.isInteger(y) || typeof data.name !== "string") return;
+      const token = map.tokens.find(function (t) { return t.side === "hero" && t.name === data.name; });
+      if (!token || !inBounds(x, y) || !canStand(token, x, y)) {
+        broadcastMap();   // refuse: everyone's screen goes back to the real positions
+        return;
+      }
+      const cost = movementCost(token, x, y);
+      if (!cost) {
+        broadcastMap();
+        return;
+      }
+      token.x = x;
+      token.y = y;
+      saveMap();
+      render();
+      showStatus("🚶 " + token.name + " (player) moved " + cost.cost * FEET_PER_SQUARE + " ft" +
+        (token.speed && cost.cost * FEET_PER_SQUARE > token.speed ? " ⚠️ more than their Speed of " + token.speed + " ft" : "") + ".");
     }
 
     function findToken(id) {
@@ -391,6 +467,7 @@
         if (token.id === selectedId) piece.classList.add("selected");
         if (rangeFrom === token.id) piece.classList.add("range-from");
         if (token.hp <= 0) piece.classList.add("down");
+        if (token.hidden) piece.classList.add("secret");
         piece.style.left = token.x * cell + "px";
         piece.style.top = token.y * cell + "px";
         piece.style.width = piece.style.height = token.size * cell + "px";
@@ -594,6 +671,7 @@
       el("tokenPanel").classList.toggle("hidden", !token);
       if (!token) return;
       el("tokenName").textContent = token.name;
+      el("hiddenBox").checked = token.hidden === true;
       el("tokenStats").textContent = "HP " + token.hp + " / " + token.maxHp + " · AC " + token.ac +
         (token.speed ? " · Speed " + token.speed + " ft (" + token.speed / FEET_PER_SQUARE + " squares)" : "") +
         (token.size > 1 ? " · Takes " + token.size + "×" + token.size + " squares" : "") +
@@ -695,7 +773,10 @@
     connectBoard();
     fillMonsterPick();
     setMode("move");
-    importFromSimulator();   // after setMode, so its message isn't cleared
+    importFromSimulator();
+    broadcastMap();   // tell the GM Screen what's on the map right now
+    // Shown inside the GM Screen (map.html?embed=1): hide the page furniture.
+    if (new URLSearchParams(location.search).get("embed") === "1") document.body.classList.add("embedded");   // after setMode, so its message isn't cleared
 
     el("monsterSearch").addEventListener("input", fillMonsterPick);
     el("addMonsterBtn").addEventListener("click", function () {
@@ -707,6 +788,13 @@
       if (!name) return;
       addToken({ side: "other", name: name, size: 1, hp: 1, maxHp: 1, ac: 10, speed: 0 }, Math.floor(map.cols / 2), Math.floor(map.rows / 2));
       el("customName").value = "";
+      saveMap();
+      render();
+    });
+    el("hiddenBox").addEventListener("change", function () {
+      const token = findToken(selectedId);
+      if (!token) return;
+      token.hidden = el("hiddenBox").checked;
       saveMap();
       render();
     });

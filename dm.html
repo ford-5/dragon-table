@@ -54,6 +54,16 @@
       <h3 class="section-label">Join requests</h3>
       <ul id="requests" class="request-list"></ul>
 
+      <h3 class="section-label">🗺️ Battle map</h3>
+      <div id="mapControls">
+        <button id="mapShareBtn" onclick="toggleMapShare()">🗺️ Show the map to players</button>
+        <label class="hint"><input type="checkbox" id="mapMoveBox" onchange="setMapMoves()"> Let players move their own hero</label>
+        <p id="mapStatus" class="hint">Players can't see the map yet. Set it up below (or in its own tab), then press the button.</p>
+        <button class="small-button" id="mapShowBtn" onclick="toggleMapFrame()">👁️ Show the map here</button>
+        <a class="plain-button" href="map.html" target="_blank" rel="noopener">↗️ Open the map in its own tab</a>
+        <div id="mapFrameBox" class="map-frame-box hidden"></div>
+      </div>
+
       <h3 class="section-label">🎙️ Voice chat</h3>
       <div id="voiceControls">
         <button id="voiceStartBtn" onclick="startVoice()">🎙️ Start voice chat</button>
@@ -792,6 +802,9 @@
 
     function closeGame() {
       stopVoice();
+      mapShare.on = false;
+      mapShare.moves = false;
+      renderMapControls();
       for (const connection of liveConns.values()) {
         if (connection.open) connection.send({ type: "closed" });
       }
@@ -906,6 +919,8 @@
         if (voice.on) callPlayer(key, conn);      // they chose to join voice: ring them
       } else if (data.type === "voice-leave") {
         dropVoicePlayer(key);
+      } else if (data.type === "mapmove") {
+        handleMapMove(key, member, data);
       }
     }
 
@@ -979,6 +994,7 @@
 
       conn.send({ type: "accepted", game: openGameName, hp: member.hp, maxHp: member.maxHp });
       if (voice.on) conn.send({ type: "voice", on: true });   // voice chat is already running
+      if (mapShare.on) sendMapTo(character.key, conn);          // the map is already being shown
       talk("✅ " + member.name + " joined the game.");
       saveParty();
       renderParty();
@@ -1030,6 +1046,116 @@
         );
         list.append(item);
       }
+    }
+
+
+    // ---------- Sharing the battle map with players ----------
+    // map.html (in a tab, or shown here in a frame) sends a player-safe copy of the map over
+    // a BroadcastChannel every time it changes. This page keeps the latest copy and, while
+    // sharing is on, forwards it to every accepted player over their live connection.
+    const mapShare = { on: false, moves: false, latest: null, lastMove: new Map() };
+    let mapChannel = null;
+    try {
+      mapChannel = new BroadcastChannel("dragon-table-map");
+    } catch (error) {
+      // Old browser: the map can't be shared.
+    }
+
+    if (mapChannel) {
+      mapChannel.onmessage = function (event) {
+        const data = event.data;
+        if (!data || data.type !== "state" || !data.map) return;
+        mapShare.latest = data.map;
+        if (mapShare.on) sendMapToAll();
+        renderMapControls();
+      };
+    }
+
+    // One message to one player. "you" is their hero's name, so they can see which token is theirs.
+    function sendMapTo(key, conn) {
+      if (!conn.open || !mapShare.latest) return;
+      const member = party.find(function (m) { return m.remoteKey === key; });
+      conn.send({ type: "map", map: mapShare.latest, canMove: mapShare.moves, you: member ? member.name : "" });
+    }
+
+    function sendMapToAll() {
+      for (const [key, connection] of liveConns) sendMapTo(key, connection);
+    }
+
+    function toggleMapShare() {
+      if (!mapShare.on && !mapShare.latest) {
+        // Ask the map page for the latest copy. If no map page is open, there's nothing yet.
+        if (mapChannel) mapChannel.postMessage({ type: "hello" });
+        setTimeout(function () {
+          if (!mapShare.latest) {
+            document.getElementById("mapStatus").textContent = "⚠️ No map found yet. Press \"Show the map here\" (or open the map in its own tab), put some tokens on it, then try again.";
+          } else {
+            toggleMapShare();
+          }
+        }, 400);
+        return;
+      }
+      mapShare.on = !mapShare.on;
+      if (mapShare.on) {
+        sendMapToAll();
+        talk("🗺️ You're showing the battle map to the players.");
+      } else {
+        for (const connection of liveConns.values()) {
+          if (connection.open) connection.send({ type: "map", map: null });   // hide it again
+        }
+        talk("🗺️ You stopped showing the battle map.");
+      }
+      renderMapControls();
+    }
+
+    function setMapMoves() {
+      mapShare.moves = document.getElementById("mapMoveBox").checked;
+      if (mapShare.on) sendMapToAll();   // players learn they can (or can't) move now
+      renderMapControls();
+    }
+
+    // A player dragged their own hero. WHO they are comes from their connection (the GM's
+    // own party list), never from the message. Only whole-number squares are passed on.
+    function handleMapMove(key, member, data) {
+      if (!mapShare.on || !mapShare.moves || !mapChannel) return;
+      const now = Date.now();
+      if (now - (mapShare.lastMove.get(key) || 0) < 250) return;   // at most 4 moves a second
+      mapShare.lastMove.set(key, now);
+      const x = data.x, y = data.y;
+      if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x > 40 || y > 40) return;   // real whole numbers only
+      mapChannel.postMessage({ type: "playerMove", name: member.name, x: x, y: y });
+      talk("🚶 " + member.name + " moved on the map.");
+    }
+
+    function renderMapControls() {
+      const button = document.getElementById("mapShareBtn");
+      if (!button) return;
+      button.textContent = mapShare.on ? "🙈 Hide the map from players" : "🗺️ Show the map to players";
+      document.getElementById("mapMoveBox").checked = mapShare.moves;
+      let status = "Players can't see the map yet. Set it up below (or in its own tab), then press the button.";
+      if (mapShare.on) {
+        const tokens = mapShare.latest ? mapShare.latest.tokens.length : 0;
+        status = "🟢 Players can see the map (" + tokens + " token" + (tokens === 1 ? "" : "s") + " visible to them)." +
+          (mapShare.moves ? " They can move their own hero." : " They can look but not move.") +
+          " Tokens marked 🙈 stay hidden, and monsters show only how hurt they are.";
+      }
+      document.getElementById("mapStatus").textContent = status;
+    }
+
+    // The map shown right here on the GM Screen (a frame of map.html).
+    function toggleMapFrame() {
+      const box = document.getElementById("mapFrameBox");
+      const open = box.classList.contains("hidden");
+      box.innerHTML = "";
+      if (open) {
+        const frame = document.createElement("iframe");
+        frame.src = "map.html?embed=1";
+        frame.title = "Battle map";
+        frame.className = "map-frame";
+        box.append(frame);
+      }
+      box.classList.toggle("hidden", !open);
+      document.getElementById("mapShowBtn").textContent = open ? "🙈 Hide the map here" : "👁️ Show the map here";
     }
 
     // ---------- Voice chat ----------

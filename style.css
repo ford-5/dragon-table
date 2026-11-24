@@ -1340,3 +1340,57 @@ button.big-choice {
   color: #c9a227;
   white-space: nowrap;
 }
+
+/* A token the players can't see (shown dashed to the GM) */
+.map-token.secret {
+  border-style: dashed;
+  opacity: 0.75;
+}
+
+/* The map shown inside the GM Screen: no page furniture */
+body.embedded .top-nav,
+body.embedded h1,
+body.embedded .site-footer,
+body.embedded .back-link,
+body.embedded #shareHint {
+  display: none;
+}
+
+body.embedded {
+  padding-top: 8px;
+}
+
+/* The battle map shown inside the GM Screen */
+.map-frame-box {
+  margin-top: 10px;
+}
+
+.map-frame {
+  width: 100%;
+  height: 640px;
+  border: 2px solid #9b7fd1;
+  border-radius: 10px;
+  background-color: #1a1424;
+}
+
+/* The shared map, on a player's screen */
+.map-token.mine {
+  outline: 3px solid #ffffff;
+  z-index: 2;
+}
+
+.map-token.bloodied {
+  box-shadow: 0 0 0 3px #c0392b;
+}
+
+.map-legend {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+  font-size: 14px;
+  text-align: left;
+}
+
+.map-legend li {
+  padding: 2px 0;
+}

@@ -429,3 +429,52 @@ function cleanSharedCharacter(raw) {
     item: item && item.name ? item : null
   };
 }
+
+// ---------------------------------------------------------------------
+// THE SHARED BATTLE MAP (what the GM shows players)
+// ---------------------------------------------------------------------
+const MAP_TERRAIN_KEYS = ["wall", "tree", "rubble", "water"];
+const MAP_GROUNDS = ["stone", "grass", "sand", "wood"];
+const MAP_STATUSES = ["Unhurt", "Hurt", "Bloodied", "Down"];
+
+// Check the map the GM sent: the right shape, sensible sizes, only known kinds of terrain.
+// Returns a clean copy, or null if it isn't a map.
+function cleanMapSnapshot(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const cols = cleanNumber(raw.cols, 8, 40, 0);
+  const rows = cleanNumber(raw.rows, 8, 40, 0);
+  if (!cols || !rows) return null;
+
+  const terrain = {};
+  if (raw.terrain && typeof raw.terrain === "object") {
+    let seen = 0;
+    for (const key in raw.terrain) {
+      if (++seen > 1700) break;   // a 40 × 40 map has 1600 squares
+      const match = /^(\d{1,2}),(\d{1,2})$/.exec(key);
+      if (!match || Number(match[1]) >= cols || Number(match[2]) >= rows) continue;
+      if (MAP_TERRAIN_KEYS.includes(raw.terrain[key])) terrain[key] = raw.terrain[key];
+    }
+  }
+
+  const tokens = [];
+  for (const t of (Array.isArray(raw.tokens) ? raw.tokens : []).slice(0, 120)) {
+    if (!t || typeof t !== "object" || !["hero", "monster", "other"].includes(t.side)) continue;
+    const token = {
+      id: cleanNumber(t.id, 0, 100000, 0),
+      side: t.side,
+      name: cleanText(t.name, 40),
+      label: cleanText(t.label, 4),
+      size: cleanNumber(t.size, 1, 4, 1),
+      x: cleanNumber(t.x, 0, cols - 1, 0),
+      y: cleanNumber(t.y, 0, rows - 1, 0),
+      status: MAP_STATUSES.includes(t.status) ? t.status : "Unhurt",
+      conditions: (Array.isArray(t.conditions) ? t.conditions : []).slice(0, 14).map(function (c) { return cleanText(c, 20); })
+    };
+    if (t.side === "hero") {
+      token.maxHp = cleanNumber(t.maxHp, 1, 999, 1);
+      token.hp = cleanNumber(t.hp, 0, token.maxHp, token.maxHp);
+    }
+    tokens.push(token);
+  }
+  return { cols: cols, rows: rows, ground: MAP_GROUNDS.includes(raw.ground) ? raw.ground : "stone", terrain: terrain, tokens: tokens };
+}

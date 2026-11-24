@@ -72,6 +72,23 @@
 
     <div id="feed" class="chat-log short-log" aria-live="polite"></div>
 
+    <!-- The battle map: appears when the GM shows it -->
+    <div id="mapBox" class="hidden">
+      <h3 class="section-label">🗺️ Battle map</h3>
+      <div class="roll-row">
+        <label class="hint">Zoom
+          <select id="mapZoom">
+            <option value="24">Small</option>
+            <option value="34" selected>Normal</option>
+            <option value="46">Big</option>
+          </select>
+        </label>
+      </div>
+      <div class="map-scroll"><div class="map-board" id="playerBoard"></div></div>
+      <p id="mapNote" class="hint"></p>
+      <ul id="mapLegend" class="map-legend"></ul>
+    </div>
+
     <div class="roll-row">
       <select id="checkSelect" aria-label="Choose a roll"></select>
       <select id="modeSelect" aria-label="Roll type">
@@ -319,6 +336,8 @@
       } else if (data.type === "hp" && joined) {
         showHp(data.hp, data.maxHp);
         saveHpToSheet(data.hp);   // keep the character sheet in step with what the GM tracks
+      } else if (data.type === "map" && joined) {
+        handleMap(data);
       } else if (data.type === "voice" && joined) {
         dmVoiceOn = data.on === true;
         if (!dmVoiceOn) leaveVoice(true);
@@ -366,6 +385,8 @@
       const wasJoined = joined;
       joined = false;
       dmVoiceOn = false;
+      sharedMap = null;
+      el("mapBox").classList.add("hidden");
       leaveVoice(true);
       renderVoice();
       if (wasJoined) {
@@ -373,6 +394,154 @@
       } else {
         stopWaiting("The connection to the GM closed.");
       }
+    }
+
+
+    // =====================================================================
+    // THE BATTLE MAP (shown by the GM)
+    // =====================================================================
+    const TERRAIN_ICONS = { wall: "🧱", tree: "🌳", rubble: "🪨", water: "🌊" };
+    const TERRAIN_BLOCKS = ["wall", "tree"];
+    let sharedMap = null;     // { map (cleaned), canMove, you }
+
+    function handleMap(data) {
+      if (data.map === null) {
+        sharedMap = null;
+        el("mapBox").classList.add("hidden");
+        addToFeed("🗺️ The GM put the map away.");
+        return;
+      }
+      const clean = cleanMapSnapshot(data.map);   // from play.js
+      if (!clean) return;
+      const first = sharedMap === null;
+      sharedMap = { map: clean, canMove: data.canMove === true, you: cleanText(data.you, 40) };
+      if (first) addToFeed("🗺️ The GM is showing the battle map.");
+      renderPlayerMap();
+    }
+
+    function terrainBlocks(map, x, y) {
+      return x < 0 || y < 0 || x >= map.cols || y >= map.rows || TERRAIN_BLOCKS.includes(map.terrain[x + "," + y]);
+    }
+
+    // Can this token stand with its top-left corner at (x, y)? (The GM double-checks.)
+    function playerCanStand(token, x, y) {
+      const map = sharedMap.map;
+      for (let dx = 0; dx < token.size; dx++) {
+        for (let dy = 0; dy < token.size; dy++) {
+          if (terrainBlocks(map, x + dx, y + dy)) return false;
+          for (const other of map.tokens) {
+            if (other === token) continue;
+            if (x + dx >= other.x && x + dx < other.x + other.size && y + dy >= other.y && y + dy < other.y + other.size) return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    function renderPlayerMap() {
+      el("mapBox").classList.toggle("hidden", sharedMap === null);
+      if (!sharedMap) return;
+      const map = sharedMap.map;
+      const cell = Number(el("mapZoom").value) || 34;
+      const board = el("playerBoard");
+      board.innerHTML = "";
+      board.style.width = map.cols * cell + "px";
+      board.style.height = map.rows * cell + "px";
+      board.style.setProperty("--cell", cell + "px");
+      board.dataset.ground = map.ground;
+
+      for (const key in map.terrain) {
+        const [x, y] = key.split(",").map(Number);
+        const square = document.createElement("div");
+        square.className = "map-terrain terrain-" + map.terrain[key];
+        square.style.left = x * cell + "px";
+        square.style.top = y * cell + "px";
+        square.textContent = TERRAIN_ICONS[map.terrain[key]];
+        board.append(square);
+      }
+
+      let mine = null;
+      for (const token of map.tokens) {
+        const piece = document.createElement("div");
+        piece.className = "map-token side-" + token.side;
+        const isMine = token.side === "hero" && sharedMap.you && token.name === sharedMap.you;
+        if (isMine) {
+          piece.classList.add("mine");
+          mine = token;
+        }
+        if (token.status === "Down") piece.classList.add("down");
+        if (token.status === "Bloodied") piece.classList.add("bloodied");
+        piece.style.left = token.x * cell + "px";
+        piece.style.top = token.y * cell + "px";
+        piece.style.width = piece.style.height = token.size * cell + "px";
+        piece.style.fontSize = Math.round(cell * 0.36 * Math.min(token.size, 2)) + "px";
+        piece.textContent = token.label;   // textContent: never treated as HTML
+        piece.title = token.name;
+        if (token.side === "hero") {
+          const bar = document.createElement("span");
+          bar.className = "map-hp";
+          bar.style.width = Math.max(0, Math.min(1, token.hp / token.maxHp)) * 100 + "%";
+          piece.append(bar);
+        }
+        if (token.conditions.length) {
+          const mark = document.createElement("span");
+          mark.className = "map-cond";
+          mark.textContent = "!";
+          piece.append(mark);
+        }
+        if (isMine && sharedMap.canMove) makeDraggable(piece, token, cell);
+        board.append(piece);
+      }
+
+      el("mapNote").textContent = sharedMap.canMove && mine
+        ? "👆 Drag your own token to move. Your GM can see and fix your position."
+        : "Your token has a white ring. Only your GM can move tokens right now.";
+
+      // A list of who is where, in words (also easier to read on a small screen).
+      const legend = el("mapLegend");
+      legend.innerHTML = "";
+      for (const token of map.tokens) {
+        const li = document.createElement("li");
+        const you = token.side === "hero" && token.name === sharedMap.you ? " (you)" : "";
+        const hp = token.side === "hero" ? " · HP " + token.hp + "/" + token.maxHp : " · " + token.status;
+        li.textContent = token.label + " = " + token.name + you + hp + (token.conditions.length ? " · " + token.conditions.join(", ") : "");
+        legend.append(li);
+      }
+    }
+
+    // Drag your own token (a mouse, a finger or a pen). On release, ask the GM to move it.
+    function makeDraggable(piece, token, cell) {
+      piece.addEventListener("pointerdown", function (event) {
+        event.preventDefault();
+        piece.setPointerCapture(event.pointerId);
+        const board = el("playerBoard").getBoundingClientRect();
+        const square = function (e) {
+          return [Math.floor((e.clientX - board.left) / cell), Math.floor((e.clientY - board.top) / cell)];
+        };
+        const [startX, startY] = square(event);
+        const grab = [startX - token.x, startY - token.y];
+        let target = [token.x, token.y];
+
+        const onMove = function (e) {
+          const [px, py] = square(e);
+          target = [px - grab[0], py - grab[1]];
+          piece.style.left = target[0] * cell + "px";
+          piece.style.top = target[1] * cell + "px";
+          piece.classList.toggle("cannot", !playerCanStand(token, target[0], target[1]));
+        };
+        const onUp = function () {
+          piece.removeEventListener("pointermove", onMove);
+          piece.removeEventListener("pointerup", onUp);
+          piece.removeEventListener("pointercancel", onUp);
+          if ((target[0] !== token.x || target[1] !== token.y) && playerCanStand(token, target[0], target[1])) {
+            send({ type: "mapmove", x: target[0], y: target[1] });
+          }
+          renderPlayerMap();   // snaps back; the GM's update moves it for real
+        };
+        piece.addEventListener("pointermove", onMove);
+        piece.addEventListener("pointerup", onUp);
+        piece.addEventListener("pointercancel", onUp);
+      });
     }
 
     // =====================================================================
@@ -569,6 +738,7 @@
     });
     el("rollBtn").addEventListener("click", rollSelectedCheck);
     connectTarget();
+    el("mapZoom").addEventListener("change", renderPlayerMap);
     el("sayBtn").addEventListener("click", say);
     el("sayText").addEventListener("keydown", function (event) {
       if (event.key === "Enter") say();

@@ -64,6 +64,15 @@
         <div id="mapFrameBox" class="map-frame-box hidden"></div>
       </div>
 
+      <h3 class="section-label">🎵 Music for the table</h3>
+      <div id="musicControls">
+        <button id="tableMusicBtn" onclick="toggleTableMusic()">🎵 Start music for the table</button>
+        <div id="moodButtons" class="shop-tabs"></div>
+        <label class="hint"><input type="checkbox" id="gmMusicBox" onchange="toggleGmMusic()"> Also play it on this device</label>
+        <label class="hint">Volume here <input type="range" id="gmMusicVol" min="0" max="100" value="40"></label>
+        <p id="tableMusicStatus" class="hint">The music is made right on each device, so it uses no data. Players choose whether to join in.</p>
+      </div>
+
       <h3 class="section-label">🎙️ Voice chat</h3>
       <div id="voiceControls">
         <button id="voiceStartBtn" onclick="startVoice()">🎙️ Start voice chat</button>
@@ -205,6 +214,7 @@
   <script src="dice.js"></script>
   <script src="rules.js"></script>
   <script src="play.js"></script>
+  <script src="music.js"></script>
 
   <!-- PeerJS (MIT license, version pinned) connects the GM's browser straight to the players' browsers. -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -424,6 +434,12 @@
     }
 
     let party = loadParty();
+    window.addEventListener("load", function () {
+      renderTableMusic();
+      document.getElementById("gmMusicVol").addEventListener("input", function () {
+        gmMusic.setVolume(Number(this.value) / 100);
+      });
+    });
 
     // Players connected right now (only while a live game is open). Declared here, before
     // renderParty() first runs, because the party list shows who is online.
@@ -805,6 +821,9 @@
       mapShare.on = false;
       mapShare.moves = false;
       renderMapControls();
+      tableMusic.on = false;
+      gmMusic.stop();
+      renderTableMusic();
       for (const connection of liveConns.values()) {
         if (connection.open) connection.send({ type: "closed" });
       }
@@ -995,6 +1014,7 @@
       conn.send({ type: "accepted", game: openGameName, hp: member.hp, maxHp: member.maxHp });
       if (voice.on) conn.send({ type: "voice", on: true });   // voice chat is already running
       if (mapShare.on) sendMapTo(character.key, conn);          // the map is already being shown
+      if (tableMusic.on) conn.send({ type: "music", on: true, mood: tableMusic.mood });   // so is the music
       talk("✅ " + member.name + " joined the game.");
       saveParty();
       renderParty();
@@ -1156,6 +1176,63 @@
       }
       box.classList.toggle("hidden", !open);
       document.getElementById("mapShowBtn").textContent = open ? "🙈 Hide the map here" : "👁️ Show the map here";
+    }
+
+
+    // ---------- Music for the table ----------
+    // The GM picks a mood; every player's own device makes the music (nothing is streamed).
+    // Only a tiny message goes out: { type: "music", on, mood }.
+    const tableMusic = { on: false, mood: "calm" };
+    const gmMusic = createMusicController();   // from music.js: plays on THIS device, if the GM wants
+
+    function sendMusicToAll() {
+      for (const connection of liveConns.values()) {
+        if (connection.open) connection.send({ type: "music", on: tableMusic.on, mood: tableMusic.mood });
+      }
+    }
+
+    function toggleTableMusic() {
+      tableMusic.on = !tableMusic.on;
+      if (!tableMusic.on) gmMusic.stop();
+      else if (document.getElementById("gmMusicBox").checked) gmMusic.start();
+      sendMusicToAll();
+      talk(tableMusic.on ? "🎵 You started music for the table (" + MUSIC_MOODS[tableMusic.mood].label + ")." : "🎵 You stopped the music.");
+      renderTableMusic();
+    }
+
+    function setTableMood(name) {
+      if (!MUSIC_MOODS[name]) return;
+      tableMusic.mood = name;
+      gmMusic.setMood(name);
+      if (tableMusic.on) sendMusicToAll();
+      renderTableMusic();
+    }
+
+    // The "also play on this device" tick box (a click, so the browser allows sound).
+    function toggleGmMusic() {
+      if (document.getElementById("gmMusicBox").checked && tableMusic.on) {
+        if (!gmMusic.start()) document.getElementById("tableMusicStatus").textContent = "This browser can't make music.";
+      } else {
+        gmMusic.stop();
+      }
+    }
+
+    function renderTableMusic() {
+      const button = document.getElementById("tableMusicBtn");
+      if (!button) return;
+      button.textContent = tableMusic.on ? "⏹ Stop the music" : "🎵 Start music for the table";
+      const moods = document.getElementById("moodButtons");
+      moods.innerHTML = "";
+      for (const name of Object.keys(MUSIC_MOODS)) {
+        const mood = document.createElement("button");
+        mood.className = "small-button" + (name === tableMusic.mood ? " picked" : "");
+        mood.textContent = MUSIC_MOODS[name].label;
+        mood.addEventListener("click", function () { setTableMood(name); });
+        moods.append(mood);
+      }
+      document.getElementById("tableMusicStatus").textContent = tableMusic.on
+        ? "🟢 Playing " + MUSIC_MOODS[tableMusic.mood].label + " for everyone who joined the music. Pick another mood any time."
+        : "The music is made right on each device, so it uses no data. Players choose whether to join in.";
     }
 
     // ---------- Voice chat ----------

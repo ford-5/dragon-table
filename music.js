@@ -234,3 +234,75 @@ function createMusicPlayer(ctx) {
     }
   };
 }
+
+// ---------------------------------------------------------------------
+// A READY-MADE MUSIC CONTROLLER (used by the live-game pages)
+// Wraps everything a page needs: it makes the sound system on the first start (browsers only
+// allow sound after a tap or click), keeps composing a little ahead, and has simple controls.
+//   const music = createMusicController();
+//   music.start();  music.setMood("battle");  music.setVolume(0.5);  music.stop();
+// (The AI Game Master page has its own, older copy of this logic.)
+// ---------------------------------------------------------------------
+function createMusicController() {
+  let ctx = null;
+  let player = null;
+  let on = false;
+  let mood = "calm";
+  let level = 0.4;   // the volume slider, 0 to 1
+
+  // Sliders feel more natural when squared; the player adds its own gentle limiter.
+  const volume = function () {
+    return level * level * 0.8;
+  };
+
+  return {
+    // Can this browser make music at all?
+    supported: function () {
+      return Boolean(window.AudioContext || window.webkitAudioContext);
+    },
+
+    // Call this from a click or tap.
+    start: function () {
+      if (!ctx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return false;
+        ctx = new AudioContextClass();
+        player = createMusicPlayer(ctx);
+        // Keep composing about 1.5 seconds ahead, so the music never runs out.
+        setInterval(function () {
+          if (on) player.scheduleUntil(ctx.currentTime + 1.5);
+        }, 200);
+      }
+      ctx.resume();
+      on = true;
+      player.setVolume(volume());
+      player.setMood(mood);
+      return true;
+    },
+
+    stop: function () {
+      on = false;
+      if (player) player.stop();
+    },
+
+    // Change the mood. If the music isn't playing, it's remembered for the next start.
+    setMood: function (name) {
+      if (!MUSIC_MOODS[name]) return;
+      mood = name;
+      if (on && player) player.setMood(name);
+    },
+
+    setVolume: function (zeroToOne) {
+      level = Math.max(0, Math.min(Number(zeroToOne) || 0, 1));
+      if (player) player.setVolume(volume());
+    },
+
+    isOn: function () {
+      return on;
+    },
+
+    mood: function () {
+      return mood;
+    }
+  };
+}

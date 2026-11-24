@@ -61,6 +61,15 @@
     <h2 id="tableTitle">At the table</h2>
     <p>❤️ Your HP (kept by your GM): <strong id="hpDisplay">–</strong></p>
 
+    <!-- Music: appears when the GM starts it -->
+    <div id="musicBox" class="voice-box hidden">
+      <p id="musicText">🎵 Your GM is playing music for the table.</p>
+      <button id="musicJoinBtn">🎵 Join the music</button>
+      <button class="small-button hidden" id="musicOffBtn">🔇 Turn my music off</button>
+      <label class="hint">Volume <input type="range" id="musicVol" min="0" max="100" value="60"></label>
+      <p class="hint">Your device makes the music itself, so it uses no data and you can't hear it on anyone else's phone.</p>
+    </div>
+
     <!-- Voice chat: appears when the GM turns it on -->
     <div id="voiceBox" class="voice-box hidden">
       <p id="voiceText">🎙️ Your GM started voice chat.</p>
@@ -130,6 +139,7 @@
   <script src="rules.js"></script>
   <script src="spells.js"></script>
   <script src="play.js"></script>
+  <script src="music.js"></script>
 
   <!-- PeerJS (MIT license, version pinned) connects your browser straight to your GM's browser. -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -336,6 +346,8 @@
       } else if (data.type === "hp" && joined) {
         showHp(data.hp, data.maxHp);
         saveHpToSheet(data.hp);   // keep the character sheet in step with what the GM tracks
+      } else if (data.type === "music" && joined) {
+        handleMusic(data);
       } else if (data.type === "map" && joined) {
         handleMap(data);
       } else if (data.type === "voice" && joined) {
@@ -387,6 +399,9 @@
       dmVoiceOn = false;
       sharedMap = null;
       el("mapBox").classList.add("hidden");
+      gmMusicOn = false;
+      tableMusic.stop();
+      renderMusic();
       leaveVoice(true);
       renderVoice();
       if (wasJoined) {
@@ -396,6 +411,50 @@
       }
     }
 
+
+
+    // =====================================================================
+    // MUSIC FROM THE GM (made on your own device; you choose to join)
+    // =====================================================================
+    const tableMusic = createMusicController();   // from music.js
+    let gmMusicOn = false;       // is the GM playing music?
+    let gmMood = "calm";
+
+    function handleMusic(data) {
+      // Anything from the internet is untrusted: only a real mood name and a true/false.
+      if (typeof data.mood === "string" && MUSIC_MOODS.hasOwnProperty(data.mood)) gmMood = data.mood;
+      const wasOn = gmMusicOn;
+      gmMusicOn = data.on === true;
+      tableMusic.setMood(gmMood);
+      if (!gmMusicOn) {
+        tableMusic.stop();
+        if (wasOn) addToFeed("🎵 The GM stopped the music.");   // only say it when something changed
+      }
+      renderMusic();
+    }
+
+    function renderMusic() {
+      el("musicBox").classList.toggle("hidden", !(joined && gmMusicOn));
+      const listening = tableMusic.isOn();
+      el("musicJoinBtn").classList.toggle("hidden", listening);
+      el("musicOffBtn").classList.toggle("hidden", !listening);
+      el("musicText").textContent = listening
+        ? "🎵 Now playing: " + MUSIC_MOODS[gmMood].label
+        : "🎵 Your GM is playing music for the table.";
+      if (!tableMusic.supported()) el("musicJoinBtn").classList.add("hidden");
+    }
+
+    function joinMusic() {
+      tableMusic.setVolume(Number(el("musicVol").value) / 100);
+      tableMusic.setMood(gmMood);
+      tableMusic.start();   // a tap, so the browser allows sound
+      renderMusic();
+    }
+
+    function leaveMusic() {
+      tableMusic.stop();
+      renderMusic();
+    }
 
     // =====================================================================
     // THE BATTLE MAP (shown by the GM)
@@ -739,6 +798,11 @@
     el("rollBtn").addEventListener("click", rollSelectedCheck);
     connectTarget();
     el("mapZoom").addEventListener("change", renderPlayerMap);
+    el("musicJoinBtn").addEventListener("click", joinMusic);
+    el("musicOffBtn").addEventListener("click", leaveMusic);
+    el("musicVol").addEventListener("input", function () {
+      tableMusic.setVolume(Number(el("musicVol").value) / 100);
+    });
     el("sayBtn").addEventListener("click", say);
     el("sayText").addEventListener("keydown", function (event) {
       if (event.key === "Enter") say();

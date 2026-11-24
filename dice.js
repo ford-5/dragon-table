@@ -49,3 +49,30 @@ function formatModifier(modifier) {
   if (modifier === 0) return "";
   return formatBonus(modifier);
 }
+
+// Roll dice written like "1d8+3", "2d6", "1d10-1" or "2d8+10+2d8".
+// crit = true doubles the dice (a critical hit), never the flat bonus.
+// Returns { total, text } where text shows each die, like "[6] [2] +3".
+function rollDiceText(expression, crit) {
+  const parts = String(expression).replace(/\s+/g, "").match(/[+-]?[^+-]+/g) || [];
+  let total = 0;
+  const shown = [];
+  for (const part of parts) {
+    const sign = part.startsWith("-") ? -1 : 1;
+    const body = part.replace(/^[+-]/, "");
+    if (body.includes("d")) {
+      const [countText, sidesText] = body.split("d");
+      const count = (Number(countText) || 1) * (crit ? 2 : 1);
+      const sides = Number(sidesText);
+      for (let i = 0; i < count; i++) {
+        const roll = rollOneDie(sides);
+        total += sign * roll;
+        shown.push("[" + roll + "]");
+      }
+    } else if (body !== "") {
+      total += sign * Number(body);
+      shown.push((sign < 0 ? "-" : "+") + body);
+    }
+  }
+  return { total: Math.max(total, 0), text: shown.join(" ") };
+}

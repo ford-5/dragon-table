@@ -423,7 +423,8 @@ button:hover {
 /* A GRID lays things out in rows and columns. "1fr 1fr" = two equal columns. */
 .sheet-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0, 1fr): columns may shrink below their widest content (long dropdown names) */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
   text-align: left;
 }
@@ -436,8 +437,10 @@ button:hover {
   font-size: 14px;
 }
 
-.sheet-field input {
+.sheet-field input,
+.sheet-field select {
   width: 100%;
+  max-width: 100%;
   box-sizing: border-box;
   text-align: left;
 }
@@ -537,7 +540,7 @@ button:hover {
 
 /* A MEDIA QUERY: these rules only apply on narrow screens, like phones */
 @media (max-width: 420px) {
-  .sheet-grid   { grid-template-columns: 1fr; }
+  .sheet-grid   { grid-template-columns: minmax(0, 1fr); }
   .ability-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .panel        { padding: 16px; }   /* less padding so there's more room inside */
 }
@@ -1144,4 +1147,35 @@ button.big-choice {
 /* ---------- "Install the app" box on the home page ---------- */
 .install-box p {
   margin: 6px 0;
+}
+
+/* ---------- Weapons & Armor on the character sheet ---------- */
+.attack-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+  text-align: left;
+}
+
+.attack-row {
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(243, 230, 200, 0.2);
+}
+
+.attack-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.shield-field {
+  flex-direction: row;      /* checkbox beside its words, not above them */
+  align-items: center;
+  align-self: end;
+  gap: 8px;
+}
+
+.shield-field input {
+  width: auto;
 }

@@ -163,7 +163,8 @@
           Armor Class
           <div id="sheetAcTotal" class="stat-display"></div>
           <!-- The number you enter is your AC from armor; item bonuses are added on top -->
-          <label class="base-ac">base <input id="sheetAc" type="number"></label>
+          <label class="base-ac" id="baseAcRow">base <input id="sheetAc" type="number"></label>
+          <div class="hint" id="acSource"></div>
         </div>
         <div class="stat-tile">Current HP <input id="sheetHp" type="number"></div>
         <div class="stat-tile">Max HP <div id="sheetMaxHp" class="stat-display"></div></div>
@@ -173,7 +174,26 @@
         <div class="stat-tile">Passive Perception <div id="sheetPassive" class="stat-display"></div></div>
         <div class="stat-tile">Hit Dice <div id="sheetHitDice" class="stat-display"></div></div>
       </div>
-      <p class="hint">The big Armor Class number is your total. The "base" box is your AC from armor: it starts as your unarmored AC, so change it when you put on armor or pick up a shield. Bonuses from your special item are added on top.</p>
+      <p class="hint" id="acHint"></p>
+    </div>
+
+    <!-- Weapons and armor: AC and attacks worked out by the rules -->
+    <div class="panel">
+      <h2>⚔️ Weapons & Armor</h2>
+      <div class="sheet-grid">
+        <label class="sheet-field">Armor <select id="armorSelect"></select></label>
+        <label class="sheet-field shield-field"><input type="checkbox" id="shieldBox"> 🛡️ Carrying a Shield (+2 AC)</label>
+      </div>
+      <ul id="armorWarnings" class="problem-list"></ul>
+
+      <h3 class="section-label">Attacks</h3>
+      <label class="hint"><input type="checkbox" id="critBox"> 💥 Critical hit (roll the damage dice twice)</label>
+      <ul id="attackList" class="attack-list"></ul>
+      <div class="settings add-form">
+        <select id="weaponPick" aria-label="Choose a weapon"></select>
+        <button class="small-button" id="addWeaponBtn">➕ Add weapon</button>
+      </div>
+      <p class="hint">Attack = d20 + the bonus shown. Melee weapons use Strength, ranged use Dexterity, and Finesse weapons use whichever is better. You add your proficiency bonus only for weapons your class is trained with.</p>
     </div>
 
     <div class="panel">
@@ -744,6 +764,9 @@
         character.secondClass = chosenSecondClass().name;
         character.secondClassLevel = chosenSecondLevels();
       }
+      character.armor = "none";      // AC is worked out from armor (see Weapons & Armor on the sheet)
+      character.shield = false;
+      character.weapons = [];
       character.ac = getUnarmoredAc(character);
       character.hp = getMaxHp(character);
       return character;
@@ -1025,7 +1048,7 @@
         modButton.className = "mod-button";
         modButton.id = "mod-" + ability.key;
         modButton.addEventListener("click", function () {
-          rollCheck(ability.name + " check", getModifier(getAbilityScore(c, ability.key)));
+          rollCheck(ability.name + " check", getModifier(getAbilityScore(c, ability.key)), null, ability.key);
         });
 
         // Shows e.g. "✨ 19 from item" when a magic item is raising this score.
@@ -1055,7 +1078,7 @@
         bonusButton.className = "small-button";
         bonusButton.id = "save-" + ability.key;
         bonusButton.addEventListener("click", function () {
-          rollCheck(ability.name + " save", getSaveBonus(c, ability.key));
+          rollCheck(ability.name + " save", getSaveBonus(c, ability.key), null, ability.key);
         });
 
         row.append(dot, name, bonusButton);
@@ -1092,7 +1115,7 @@
         bonusButton.className = "small-button";
         bonusButton.id = "skill-" + index;
         bonusButton.addEventListener("click", function () {
-          rollCheck(skill.name, getSkillBonus(c, skill), skill.name);   // 3rd value: lets items give Advantage
+          rollCheck(skill.name, getSkillBonus(c, skill), skill.name, skill.ability);   // lets items and armor change the roll
         });
 
         row.append(checkbox, name, bonusButton);
@@ -1143,6 +1166,7 @@
       document.getElementById("sheetMaxHp").textContent = maxHp;
       document.getElementById("sheetInit").textContent = formatBonus(getModifier(getAbilityScore(c, "dex")));
       document.getElementById("sheetAcTotal").textContent = getAc(c);
+      renderWeaponsAndArmor();
 
       // Speed, plus a climb speed if an item gives one (Slippers of Spider Climbing).
       const speed = getSpeed(c);
@@ -1168,7 +1192,8 @@
         document.getElementById("skill-" + index).textContent = formatBonus(getSkillBonus(c, skill));
         document.getElementById("skill-name-" + index).textContent =
           skill.name + " (" + skill.ability.toUpperCase() + ")" +
-          (itemGivesAdvantage(c, skill.name) ? " ✨ advantage" : "");
+          (itemGivesAdvantage(c, skill.name) ? " ✨ advantage" : "") +
+          (skill.name === "Stealth" && wornArmor(c) && wornArmor(c).stealth ? " ⚠️ disadvantage (armor)" : "");
       });
     }
 
@@ -1472,7 +1497,146 @@
         persist();
       });
       document.getElementById("sheetInit").addEventListener("click", function () {
-        rollCheck("Initiative", getModifier(getAbilityScore(currentCharacter, "dex")));
+        rollCheck("Initiative", getModifier(getAbilityScore(currentCharacter, "dex")), null, "dex");
+      });
+    }
+
+
+    // =====================================================================
+    // WEAPONS & ARMOR
+    // =====================================================================
+    function fillArmorPickers() {
+      const armorSelect = document.getElementById("armorSelect");
+      armorSelect.innerHTML = "";
+      armorSelect.append(new Option("No armor", "none"));
+      for (const category of ["Light", "Medium", "Heavy"]) {
+        const group = document.createElement("optgroup");
+        group.label = category + " armor";
+        for (const armor of ARMOR.filter(function (a) { return a.category === category; })) {
+          const dex = armor.dexMax === null ? " + Dex" : armor.dexMax ? " + Dex (max 2)" : "";
+          group.append(new Option(armor.name + " (AC " + armor.base + dex + ")", armor.name));
+        }
+        armorSelect.append(group);
+      }
+
+      const weaponPick = document.getElementById("weaponPick");
+      weaponPick.innerHTML = "";
+      weaponPick.append(new Option("— Choose a weapon —", ""));
+      for (const category of ["Simple", "Martial"]) {
+        for (const kind of ["Melee", "Ranged"]) {
+          const group = document.createElement("optgroup");
+          group.label = category + " " + kind.toLowerCase() + " weapons";
+          for (const w of WEAPONS.filter(function (x) { return x.category === category && x.kind === kind; })) {
+            group.append(new Option(w.name + " (" + w.damage + " " + w.type.toLowerCase() + ")", w.name));
+          }
+          weaponPick.append(group);
+        }
+      }
+    }
+
+    function renderWeaponsAndArmor() {
+      const c = currentCharacter;
+      const auto = usesArmorRules(c);
+
+      // AC: worked out from armor, or typed in by hand (characters from before armor existed).
+      document.getElementById("baseAcRow").classList.toggle("hidden", auto);
+      const armor = wornArmor(c);
+      document.getElementById("acSource").textContent = auto
+        ? (armor ? armor.name : "No armor") + (c.shield ? " + Shield" : "")
+        : "";
+      document.getElementById("acHint").textContent = auto
+        ? "Armor Class is worked out from your armor and shield (below), plus any bonus from your special item."
+        : "This character's AC is typed in the \"base\" box. Choose their armor below and it will be worked out for you instead.";
+      document.getElementById("armorSelect").value = auto ? c.armor : "";
+      if (!auto) document.getElementById("armorSelect").selectedIndex = -1;   // nothing chosen yet
+      document.getElementById("shieldBox").checked = c.shield === true;
+
+      const warningList = document.getElementById("armorWarnings");
+      warningList.innerHTML = "";
+      for (const warning of auto ? getArmorWarnings(c) : []) {
+        const li = document.createElement("li");
+        li.textContent = "• " + warning;
+        warningList.append(li);
+      }
+
+      // Attacks
+      const list = document.getElementById("attackList");
+      list.innerHTML = "";
+      const effects = getActiveItemEffects(c);
+      for (const attack of getAttacks(c)) {
+        const li = document.createElement("li");
+        li.className = "attack-row";
+        const title = document.createElement("strong");
+        title.textContent = attack.name;
+        const info = document.createElement("span");
+        info.className = "hint";
+        info.textContent = attack.type + (attack.notes.length ? " · " + attack.notes.join(" · ") : "");
+
+        const buttons = document.createElement("span");
+        buttons.className = "attack-buttons";
+        buttons.append(makeSheetButton("🎲 " + formatBonus(attack.toHit) + " to hit", function () {
+          rollCheck(attack.name + " attack", attack.toHit, null, attack.ability);
+        }));
+        buttons.append(makeSheetButton("💥 " + attack.damage, function () { rollWeaponDamage(attack, attack.damage, ""); }));
+        if (attack.twoHanded) {
+          buttons.append(makeSheetButton("💥 " + attack.twoHanded + " (two hands)", function () {
+            rollWeaponDamage(attack, attack.twoHanded, " with two hands");
+          }));
+        }
+        if (attack.weapon) {
+          // With a "Weapon, +1" special item, the player marks which weapon is the magic one.
+          if (effects.weaponBonus) {
+            const magicButton = makeSheetButton(c.magicWeapon === attack.name ? "✨ magic" : "✨?", function () {
+              c.magicWeapon = c.magicWeapon === attack.name ? "" : attack.name;
+              persist();
+              updateSheet();
+            });
+            magicButton.title = "Mark this as your +1 magic weapon";
+            buttons.append(magicButton);
+          }
+          const remove = makeSheetButton("✕", function () {
+            const index = (c.weapons || []).indexOf(attack.name);
+            if (index >= 0) c.weapons.splice(index, 1);
+            if (c.magicWeapon === attack.name && !c.weapons.includes(attack.name)) c.magicWeapon = "";
+            persist();
+            updateSheet();
+          });
+          remove.title = "Remove " + attack.name;
+          buttons.append(remove);
+        }
+        li.append(title, " ", info, buttons);
+        list.append(li);
+      }
+    }
+
+    function rollWeaponDamage(attack, dice, extra) {
+      const crit = document.getElementById("critBox").checked;
+      const result = rollDiceText(dice, crit);   // from dice.js
+      showToast("💥 " + attack.name + " damage" + extra + (crit ? " (critical hit!)" : "") + ": " +
+                result.text + " = " + result.total + " " + attack.type.toLowerCase());
+    }
+
+    function connectWeaponsAndArmor() {
+      document.getElementById("armorSelect").addEventListener("change", function (event) {
+        currentCharacter.armor = event.target.value;   // from now on, AC is worked out by the rules
+        if (typeof currentCharacter.shield !== "boolean") currentCharacter.shield = false;
+        persist();
+        updateSheet();
+      });
+      document.getElementById("shieldBox").addEventListener("change", function (event) {
+        if (!usesArmorRules(currentCharacter)) currentCharacter.armor = "none";
+        currentCharacter.shield = event.target.checked;
+        persist();
+        updateSheet();
+      });
+      document.getElementById("addWeaponBtn").addEventListener("click", function () {
+        const name = document.getElementById("weaponPick").value;
+        if (!name) return;
+        if (!Array.isArray(currentCharacter.weapons)) currentCharacter.weapons = [];
+        currentCharacter.weapons.push(name);
+        document.getElementById("weaponPick").value = "";
+        persist();
+        updateSheet();
       });
     }
 
@@ -1480,21 +1644,13 @@
     // ROLLING (uses the Normal / Advantage / Disadvantage setting)
     // =====================================================================
     // skillName is optional. When it's given, the character's item can grant Advantage on it.
-    function rollCheck(label, bonus, skillName) {
-      let mode = document.getElementById("rollMode").value;
-      let itemNote = "";
-
-      if (skillName && itemGivesAdvantage(currentCharacter, skillName)) {
-        const itemName = currentCharacter.specialItem.name;
-        if (mode === "disadvantage") {
-          // SRD rule: Advantage and Disadvantage cancel each other out.
-          mode = "normal";
-          itemNote = " (Advantage from " + itemName + " cancels your Disadvantage)";
-        } else {
-          mode = "advantage";
-          itemNote = " from " + itemName;
-        }
-      }
+    // skillName and ability are optional. They let a magic item give Advantage, and armor
+    // give Disadvantage (Stealth in heavy armor, or armor you aren't trained with).
+    function rollCheck(label, bonus, skillName, ability) {
+      const resolved = resolveRollMode(currentCharacter, document.getElementById("rollMode").value,
+                                       { skill: skillName, ability: ability });   // from rules.js
+      const mode = resolved.mode;
+      const itemNote = resolved.note;
 
       let roll;
       let shown;
@@ -1637,6 +1793,8 @@
     migrateOldCharacter();
     connectCreator();
     connectSheet();
+    fillArmorPickers();
+    connectWeaponsAndArmor();
     fillItemSelects();
     document.getElementById("itemSelect").addEventListener("change", showSelectedItemInfo);
     startGuide();

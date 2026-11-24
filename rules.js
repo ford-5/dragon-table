@@ -178,10 +178,12 @@ const BACKGROUNDS = [
 //     advantageSkills: ["Stealth"]      Advantage on these skill checks
 //     climbSpeed: true                  gain a Climb Speed equal to your Speed
 //     minSpeed: 30                      Speed is at least this
+//     weaponBonus: 1                    +N to attack and damage with the weapon marked as magic
+//     archery: 2                        proficiency with Longbow and Shortbow, +N damage with them
 //   Items with no "effects" are described in words only (spells, charges, and
 //   so on are for the player and GM to run at the table).
 const MAGIC_ITEMS = [
-  { name: "Weapon, +1", type: "Weapon", rarity: "Uncommon", attunement: "",
+  { name: "Weapon, +1", type: "Weapon", rarity: "Uncommon", attunement: "", effects: { weaponBonus: 1 },
     powers: "A magic weapon of any simple or martial kind. You get +1 to attack rolls and +1 to damage rolls made with it." },
   { name: "Shield, +1", type: "Armor (Shield)", rarity: "Uncommon", attunement: "", effects: { ac: 1 },
     powers: "While you hold it, you get +1 Armor Class on top of the shield's normal bonus." },
@@ -193,7 +195,7 @@ const MAGIC_ITEMS = [
     powers: "Your Strength is 19 while you wear them. They do nothing if your Strength is already 19 or higher." },
   { name: "Headband of Intellect", type: "Wondrous Item", rarity: "Uncommon", attunement: "Requires attunement", effects: { setAbility: { int: 19 } },
     powers: "Your Intelligence is 19 while you wear it. It does nothing if your Intelligence is already 19 or higher." },
-  { name: "Bracers of Archery", type: "Wondrous Item", rarity: "Uncommon", attunement: "Requires attunement",
+  { name: "Bracers of Archery", type: "Wondrous Item", rarity: "Uncommon", attunement: "Requires attunement", effects: { archery: 2 },
     powers: "While you wear them, you are proficient with the longbow and shortbow, and you get +2 to damage rolls with those weapons." },
   { name: "Brooch of Shielding", type: "Wondrous Item", rarity: "Uncommon", attunement: "Requires attunement",
     powers: "While you wear it, you have Resistance to Force damage and you are immune to damage from the Magic Missile spell." },
@@ -244,6 +246,94 @@ function makeCustomItem(itemName, type, powers, appearance) {
 
 // The kinds of item a player can pick for a custom item.
 const ITEM_TYPES = ["Weapon", "Armor or shield", "Ring", "Staff", "Wand", "Rod", "Wondrous item", "Potion or scroll", "Other"];
+
+// ---------- Weapons (SRD 5.2.1 "Weapons" table) ----------
+//   damage: the die rolled     type: damage type     props: weapon properties
+//   range: for thrown and ammunition weapons (normal/long, in feet)
+//   versatile: the bigger die when used with two hands     mastery: its Weapon Mastery property
+const WEAPONS = [
+  // Simple melee
+  { name: "Club",          category: "Simple",  kind: "Melee",  damage: "1d4",  type: "Bludgeoning", props: ["Light"], mastery: "Slow" },
+  { name: "Dagger",        category: "Simple",  kind: "Melee",  damage: "1d4",  type: "Piercing",    props: ["Finesse", "Light", "Thrown"], range: "20/60", mastery: "Nick" },
+  { name: "Greatclub",     category: "Simple",  kind: "Melee",  damage: "1d8",  type: "Bludgeoning", props: ["Two-Handed"], mastery: "Push" },
+  { name: "Handaxe",       category: "Simple",  kind: "Melee",  damage: "1d6",  type: "Slashing",    props: ["Light", "Thrown"], range: "20/60", mastery: "Vex" },
+  { name: "Javelin",       category: "Simple",  kind: "Melee",  damage: "1d6",  type: "Piercing",    props: ["Thrown"], range: "30/120", mastery: "Slow" },
+  { name: "Light Hammer",  category: "Simple",  kind: "Melee",  damage: "1d4",  type: "Bludgeoning", props: ["Light", "Thrown"], range: "20/60", mastery: "Nick" },
+  { name: "Mace",          category: "Simple",  kind: "Melee",  damage: "1d6",  type: "Bludgeoning", props: [], mastery: "Sap" },
+  { name: "Quarterstaff",  category: "Simple",  kind: "Melee",  damage: "1d6",  type: "Bludgeoning", props: ["Versatile"], versatile: "1d8", mastery: "Topple" },
+  { name: "Sickle",        category: "Simple",  kind: "Melee",  damage: "1d4",  type: "Slashing",    props: ["Light"], mastery: "Nick" },
+  { name: "Spear",         category: "Simple",  kind: "Melee",  damage: "1d6",  type: "Piercing",    props: ["Thrown", "Versatile"], range: "20/60", versatile: "1d8", mastery: "Sap" },
+  // Simple ranged
+  { name: "Dart",          category: "Simple",  kind: "Ranged", damage: "1d4",  type: "Piercing",    props: ["Finesse", "Thrown"], range: "20/60", mastery: "Vex" },
+  { name: "Light Crossbow", category: "Simple", kind: "Ranged", damage: "1d8",  type: "Piercing",    props: ["Ammunition", "Loading", "Two-Handed"], range: "80/320", mastery: "Slow" },
+  { name: "Shortbow",      category: "Simple",  kind: "Ranged", damage: "1d6",  type: "Piercing",    props: ["Ammunition", "Two-Handed"], range: "80/320", mastery: "Vex" },
+  { name: "Sling",         category: "Simple",  kind: "Ranged", damage: "1d4",  type: "Bludgeoning", props: ["Ammunition"], range: "30/120", mastery: "Slow" },
+  // Martial melee
+  { name: "Battleaxe",     category: "Martial", kind: "Melee",  damage: "1d8",  type: "Slashing",    props: ["Versatile"], versatile: "1d10", mastery: "Topple" },
+  { name: "Flail",         category: "Martial", kind: "Melee",  damage: "1d8",  type: "Bludgeoning", props: [], mastery: "Sap" },
+  { name: "Glaive",        category: "Martial", kind: "Melee",  damage: "1d10", type: "Slashing",    props: ["Heavy", "Reach", "Two-Handed"], mastery: "Graze" },
+  { name: "Greataxe",      category: "Martial", kind: "Melee",  damage: "1d12", type: "Slashing",    props: ["Heavy", "Two-Handed"], mastery: "Cleave" },
+  { name: "Greatsword",    category: "Martial", kind: "Melee",  damage: "2d6",  type: "Slashing",    props: ["Heavy", "Two-Handed"], mastery: "Graze" },
+  { name: "Halberd",       category: "Martial", kind: "Melee",  damage: "1d10", type: "Slashing",    props: ["Heavy", "Reach", "Two-Handed"], mastery: "Cleave" },
+  { name: "Lance",         category: "Martial", kind: "Melee",  damage: "1d10", type: "Piercing",    props: ["Heavy", "Reach", "Two-Handed (unless mounted)"], mastery: "Topple" },
+  { name: "Longsword",     category: "Martial", kind: "Melee",  damage: "1d8",  type: "Slashing",    props: ["Versatile"], versatile: "1d10", mastery: "Sap" },
+  { name: "Maul",          category: "Martial", kind: "Melee",  damage: "2d6",  type: "Bludgeoning", props: ["Heavy", "Two-Handed"], mastery: "Topple" },
+  { name: "Morningstar",   category: "Martial", kind: "Melee",  damage: "1d8",  type: "Piercing",    props: [], mastery: "Sap" },
+  { name: "Pike",          category: "Martial", kind: "Melee",  damage: "1d10", type: "Piercing",    props: ["Heavy", "Reach", "Two-Handed"], mastery: "Push" },
+  { name: "Rapier",        category: "Martial", kind: "Melee",  damage: "1d8",  type: "Piercing",    props: ["Finesse"], mastery: "Vex" },
+  { name: "Scimitar",      category: "Martial", kind: "Melee",  damage: "1d6",  type: "Slashing",    props: ["Finesse", "Light"], mastery: "Nick" },
+  { name: "Shortsword",    category: "Martial", kind: "Melee",  damage: "1d6",  type: "Piercing",    props: ["Finesse", "Light"], mastery: "Vex" },
+  { name: "Trident",       category: "Martial", kind: "Melee",  damage: "1d8",  type: "Piercing",    props: ["Thrown", "Versatile"], range: "20/60", versatile: "1d10", mastery: "Topple" },
+  { name: "Warhammer",     category: "Martial", kind: "Melee",  damage: "1d8",  type: "Bludgeoning", props: ["Versatile"], versatile: "1d10", mastery: "Push" },
+  { name: "War Pick",      category: "Martial", kind: "Melee",  damage: "1d8",  type: "Piercing",    props: ["Versatile"], versatile: "1d10", mastery: "Sap" },
+  { name: "Whip",          category: "Martial", kind: "Melee",  damage: "1d4",  type: "Slashing",    props: ["Finesse", "Reach"], mastery: "Slow" },
+  // Martial ranged
+  { name: "Blowgun",       category: "Martial", kind: "Ranged", damage: "1",    type: "Piercing",    props: ["Ammunition", "Loading"], range: "25/100", mastery: "Vex" },
+  { name: "Hand Crossbow", category: "Martial", kind: "Ranged", damage: "1d6",  type: "Piercing",    props: ["Ammunition", "Light", "Loading"], range: "30/120", mastery: "Vex" },
+  { name: "Heavy Crossbow", category: "Martial", kind: "Ranged", damage: "1d10", type: "Piercing",   props: ["Ammunition", "Heavy", "Loading", "Two-Handed"], range: "100/400", mastery: "Push" },
+  { name: "Longbow",       category: "Martial", kind: "Ranged", damage: "1d8",  type: "Piercing",    props: ["Ammunition", "Heavy", "Two-Handed"], range: "150/600", mastery: "Slow" },
+  { name: "Musket",        category: "Martial", kind: "Ranged", damage: "1d12", type: "Piercing",    props: ["Ammunition", "Loading", "Two-Handed"], range: "40/120", mastery: "Slow" },
+  { name: "Pistol",        category: "Martial", kind: "Ranged", damage: "1d10", type: "Piercing",    props: ["Ammunition", "Loading"], range: "30/90", mastery: "Vex" }
+];
+
+// ---------- Armor (SRD 5.2.1 "Armor" table) ----------
+//   base: the AC number     dexMax: how much Dex can add (null = all of it, 0 = none)
+//   strength: the Strength score needed, or your Speed drops by 10 ft
+//   stealth: true = Disadvantage on Dexterity (Stealth) checks
+const ARMOR = [
+  { name: "Padded Armor",          category: "Light",  base: 11, dexMax: null, stealth: true },
+  { name: "Leather Armor",         category: "Light",  base: 11, dexMax: null },
+  { name: "Studded Leather Armor", category: "Light",  base: 12, dexMax: null },
+  { name: "Hide Armor",            category: "Medium", base: 12, dexMax: 2 },
+  { name: "Chain Shirt",           category: "Medium", base: 13, dexMax: 2 },
+  { name: "Scale Mail",            category: "Medium", base: 14, dexMax: 2, stealth: true },
+  { name: "Breastplate",           category: "Medium", base: 14, dexMax: 2 },
+  { name: "Half Plate Armor",      category: "Medium", base: 15, dexMax: 2, stealth: true },
+  { name: "Ring Mail",             category: "Heavy",  base: 14, dexMax: 0, stealth: true },
+  { name: "Chain Mail",            category: "Heavy",  base: 16, dexMax: 0, strength: 13, stealth: true },
+  { name: "Splint Armor",          category: "Heavy",  base: 17, dexMax: 0, strength: 15, stealth: true },
+  { name: "Plate Armor",           category: "Heavy",  base: 18, dexMax: 0, strength: 15, stealth: true }
+];
+const SHIELD_BONUS = 2;
+
+// ---------- Weapon and armor training, by class (SRD "Core ... Traits") ----------
+//   weapons: "simple", "martial", "martialLight" (Monk), "martialFinesseOrLight" (Rogue)
+//   armor: "light", "medium", "heavy", "shield"
+// A SECOND class (multiclassing) only gives part of this: see "multiclass".
+const CLASS_TRAINING = {
+  Barbarian: { weapons: ["simple", "martial"], armor: ["light", "medium", "shield"], multiclass: { weapons: ["martial"], armor: ["shield"] } },
+  Bard:      { weapons: ["simple"], armor: ["light"], multiclass: { weapons: [], armor: ["light"] } },
+  Cleric:    { weapons: ["simple"], armor: ["light", "medium", "shield"], multiclass: { weapons: [], armor: ["light", "medium", "shield"] } },
+  Druid:     { weapons: ["simple"], armor: ["light", "shield"], multiclass: { weapons: [], armor: ["light", "shield"] } },
+  Fighter:   { weapons: ["simple", "martial"], armor: ["light", "medium", "heavy", "shield"], multiclass: { weapons: ["martial"], armor: ["light", "medium", "shield"] } },
+  Monk:      { weapons: ["simple", "martialLight"], armor: [], multiclass: { weapons: [], armor: [] } },
+  Paladin:   { weapons: ["simple", "martial"], armor: ["light", "medium", "heavy", "shield"], multiclass: { weapons: ["martial"], armor: ["light", "medium", "shield"] } },
+  Ranger:    { weapons: ["simple", "martial"], armor: ["light", "medium", "shield"], multiclass: { weapons: ["martial"], armor: ["light", "medium", "shield"] } },
+  Rogue:     { weapons: ["simple", "martialFinesseOrLight"], armor: ["light"], multiclass: { weapons: [], armor: ["light"] } },
+  Sorcerer:  { weapons: ["simple"], armor: [], multiclass: { weapons: [], armor: [] } },
+  Warlock:   { weapons: ["simple"], armor: ["light"], multiclass: { weapons: [], armor: ["light"] } },
+  Wizard:    { weapons: ["simple"], armor: [], multiclass: { weapons: [], armor: [] } }
+};
 
 // The six scores everyone can use instead of rolling.
 const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8];
@@ -321,15 +411,21 @@ function getAbilityScore(character, abilityKey) {
   return score;
 }
 
-// Armor Class: the number the player entered (armor and so on) + bonuses from the item.
+// Armor Class: from the armor the character wears (worked out by the rules), or, for
+// characters from before armor could be chosen, the number the player typed in.
+// Then bonuses from the special item are added on top.
 function getAc(character) {
-  return character.ac + (getActiveItemEffects(character).ac || 0);
+  const base = usesArmorRules(character) ? getArmorAc(character) : character.ac;
+  return base + (getActiveItemEffects(character).ac || 0);
 }
 
 // Speed in feet: the species' speed, raised by an item that sets a minimum.
 function getSpeed(character) {
   const species = findByName(SPECIES, character.species);
   let speed = species ? species.speed : 30;
+  // Heavy armor without enough Strength: Speed drops by 10 ft (SRD "Armor").
+  const armor = wornArmor(character);
+  if (armor && armor.strength && character.abilities.str < armor.strength) speed = speed - 10;
   const minSpeed = getActiveItemEffects(character).minSpeed;
   if (minSpeed) speed = Math.max(speed, minSpeed);
   return speed;
@@ -354,6 +450,8 @@ function describeItemEffects(effects) {
   if (effects.advantageSkills) lines.push("Advantage on " + effects.advantageSkills.join(" and ") + " checks (rolled for you)");
   if (effects.climbSpeed)      lines.push("Climb Speed equal to your Speed");
   if (effects.minSpeed)        lines.push("Speed is at least " + effects.minSpeed + " ft");
+  if (effects.weaponBonus)     lines.push("+" + effects.weaponBonus + " to attack and damage with the weapon you mark ✨ in Weapons & Armor");
+  if (effects.archery)         lines.push("Proficient with Longbow and Shortbow, +" + effects.archery + " damage with them");
   return lines;
 }
 
@@ -461,6 +559,230 @@ function getUnarmoredAc(character) {
     ac = ac + getModifier(getAbilityScore(character, withDefense.data.unarmoredDefense));
   }
   return ac;
+}
+
+// =====================================================================
+// WEAPONS AND ARMOR: the rules
+// =====================================================================
+
+// Characters made before armor could be chosen have no "armor" property: they keep
+// the AC number typed on their sheet until the player picks their armor.
+function usesArmorRules(character) {
+  return typeof character.armor === "string";
+}
+
+// The armor the character is wearing (the ARMOR entry), or null for none.
+function wornArmor(character) {
+  return usesArmorRules(character) ? findByName(ARMOR, character.armor) || null : null;
+}
+
+// Which weapon and armor training a character has, from all their classes.
+function getTraining(character) {
+  const weapons = new Set(), armor = new Set();
+  getClassLevels(character).forEach(function (entry, index) {
+    const training = CLASS_TRAINING[entry.name];
+    if (!training) return;
+    const part = index === 0 ? training : training.multiclass;   // a second class gives less
+    for (const w of part.weapons) weapons.add(w);
+    for (const a of part.armor) armor.add(a);
+  });
+  return { weapons: weapons, armor: armor };
+}
+
+function isWeaponProficient(character, weapon) {
+  const w = getTraining(character).weapons;
+  if (weapon.category === "Simple" && w.has("simple")) return true;
+  if (weapon.category === "Martial") {
+    if (w.has("martial")) return true;
+    if (w.has("martialLight") && weapon.props.includes("Light")) return true;
+    if (w.has("martialFinesseOrLight") && (weapon.props.includes("Light") || weapon.props.includes("Finesse"))) return true;
+  }
+  // Bracers of Archery: proficiency with the Longbow and Shortbow.
+  if (getActiveItemEffects(character).archery && (weapon.name === "Longbow" || weapon.name === "Shortbow")) return true;
+  return false;
+}
+
+function isArmorTrained(character, armor) {
+  return getTraining(character).armor.has(armor.category.toLowerCase());
+}
+
+function isShieldTrained(character) {
+  return getTraining(character).armor.has("shield");
+}
+
+// Is the character a Monk (for Martial Arts)? A Monk weapon is a Simple Melee weapon,
+// or a Martial Melee weapon with the Light property.
+function monkLevel(character) {
+  const entry = getClassLevels(character).find(function (e) { return e.name === "Monk"; });
+  return entry ? entry.levels : 0;
+}
+function isMonkWeapon(weapon) {
+  return weapon.kind === "Melee" && (weapon.category === "Simple" || weapon.props.includes("Light"));
+}
+// Martial Arts die by Monk level: d6, d8 at 5, d10 at 11, d12 at 17.
+function martialArtsDie(level) {
+  return level >= 17 ? 12 : level >= 11 ? 10 : level >= 5 ? 8 : 6;
+}
+
+// Armor Class from what the character is wearing (SRD "Armor"):
+//   no armor: 10 + Dex (or Unarmored Defense)     light: base + Dex
+//   medium: base + Dex, at most +2               heavy: base only
+//   a Shield adds +2, but only with Shield training. A Monk's Unarmored Defense needs no Shield.
+function getArmorAc(character) {
+  const dex = getModifier(getAbilityScore(character, "dex"));
+  const armor = wornArmor(character);
+  const shield = character.shield === true;
+  let ac;
+  if (!armor) {
+    const withDefense = getClassLevels(character).find(function (entry) {
+      return entry.data && entry.data.unarmoredDefense && !(entry.name === "Monk" && shield);
+    });
+    ac = 10 + dex + (withDefense ? getModifier(getAbilityScore(character, withDefense.data.unarmoredDefense)) : 0);
+  } else {
+    const dexPart = armor.dexMax === null ? dex : Math.min(dex, armor.dexMax);
+    ac = armor.base + dexPart;
+  }
+  if (shield && isShieldTrained(character)) ac = ac + SHIELD_BONUS;
+  return ac;
+}
+
+// Problems with the character's armor, in plain words (empty list = all fine).
+function getArmorWarnings(character) {
+  const warnings = [];
+  const armor = wornArmor(character);
+  if (armor && !isArmorTrained(character, armor)) {
+    warnings.push("Not trained with " + armor.category.toLowerCase() + " armor: Disadvantage on every d20 roll using Strength or Dexterity, and no spellcasting.");
+  }
+  if (character.shield && !isShieldTrained(character)) {
+    warnings.push("Not trained with Shields: the Shield gives no AC.");
+  }
+  if (armor && armor.strength && character.abilities.str < armor.strength) {
+    warnings.push(armor.name + " needs Strength " + armor.strength + ": Speed is 10 ft slower.");
+  }
+  if (armor && armor.stealth) warnings.push(armor.name + ": Disadvantage on Stealth checks (rolled for you).");
+  return warnings;
+}
+
+// Everything about one weapon attack, worked out by the rules:
+//   { name, toHit, damage: "1d8+3", twoHanded: "1d10+3" (Versatile), type, proficient, notes }
+// Melee weapons use Strength, ranged use Dexterity, Finesse uses the better of the two.
+// A Monk can use Dexterity with Monk weapons and roll the Martial Arts die instead.
+function getWeaponAttack(character, weaponName) {
+  const weapon = findByName(WEAPONS, weaponName);
+  if (!weapon) return null;
+  const str = getModifier(getAbilityScore(character, "str"));
+  const dex = getModifier(getAbilityScore(character, "dex"));
+  const monk = monkLevel(character) > 0 && isMonkWeapon(weapon);
+
+  let mod = weapon.kind === "Ranged" ? dex : str;
+  if (weapon.props.includes("Finesse") || monk) mod = Math.max(str, dex);
+
+  const proficient = isWeaponProficient(character, weapon);
+  const effects = getActiveItemEffects(character);
+  const magic = effects.weaponBonus && character.magicWeapon === weapon.name ? effects.weaponBonus : 0;
+  const archery = effects.archery && (weapon.name === "Longbow" || weapon.name === "Shortbow") ? effects.archery : 0;
+
+  let die = weapon.damage;
+  const notes = [];
+  if (monk) {
+    const maDie = martialArtsDie(monkLevel(character));
+    const sides = Number((die.split("d")[1]) || 0);
+    if (maDie > sides && !die.startsWith("2")) {
+      die = "1d" + maDie;
+      notes.push("Martial Arts die");
+    }
+  }
+  const bonus = mod + magic + archery;
+  const withBonus = function (dice) {
+    return dice + (bonus ? formatBonus(bonus) : "");   // "1d8" + "+3" = "1d8+3"
+  };
+
+  if (!proficient) notes.push("not proficient: no proficiency bonus");
+  if (magic) notes.push("✨ +" + magic + " magic weapon");
+  if (archery) notes.push("+" + archery + " damage from Bracers of Archery");
+  if (weapon.range) notes.push((weapon.props.includes("Thrown") ? "thrown " : "range ") + weapon.range + " ft");
+  if (weapon.props.includes("Reach")) notes.push("reach 10 ft");
+
+  return {
+    name: weapon.name,
+    weapon: weapon,
+    toHit: mod + (proficient ? getProficiencyBonus(character.level) : 0) + magic,
+    damage: withBonus(die),
+    twoHanded: weapon.versatile ? withBonus(weapon.versatile) : null,
+    type: weapon.type,
+    proficient: proficient,
+    ability: mod === str && !(weapon.kind === "Ranged") ? "str" : "dex",
+    notes: notes
+  };
+}
+
+// An Unarmed Strike: 1 + Strength modifier (a Monk uses the Martial Arts die and can use Dex).
+function getUnarmedAttack(character) {
+  const str = getModifier(getAbilityScore(character, "str"));
+  const dex = getModifier(getAbilityScore(character, "dex"));
+  const level = monkLevel(character);
+  const mod = level ? Math.max(str, dex) : str;
+  const damage = level ? "1d" + martialArtsDie(level) + (mod ? formatBonus(mod) : "") : String(Math.max(1 + str, 1));
+  return {
+    name: "Unarmed Strike", toHit: mod + getProficiencyBonus(character.level), damage: damage, twoHanded: null,
+    type: "Bludgeoning", proficient: true, ability: mod === str ? "str" : "dex", notes: level ? ["Martial Arts"] : []
+  };
+}
+
+// Every attack the character can make: their weapons, then an Unarmed Strike.
+function getAttacks(character) {
+  const list = [];
+  for (const name of character.weapons || []) {
+    const attack = getWeaponAttack(character, name);
+    if (attack) list.push(attack);
+  }
+  list.push(getUnarmedAttack(character));
+  return list;
+}
+
+// Average damage of dice like "1d8+3" (for picking someone's best attack).
+function averageDamage(text) {
+  let total = 0;
+  for (const part of String(text).replace(/\s+/g, "").match(/[+-]?[^+-]+/g) || []) {
+    const sign = part.startsWith("-") ? -1 : 1;
+    const body = part.replace(/^[+-]/, "");
+    if (body.includes("d")) {
+      const [count, sides] = body.split("d").map(Number);
+      total += sign * count * (sides + 1) / 2;
+    } else {
+      total += sign * Number(body);
+    }
+  }
+  return total;
+}
+
+// =====================================================================
+// WORKING OUT NORMAL / ADVANTAGE / DISADVANTAGE FOR A d20 ROLL
+// =====================================================================
+// Combines what the player picked with automatic effects:
+//   - a magic item can give Advantage (Cloak of Elvenkind on Stealth)
+//   - armor can give Disadvantage on Stealth
+//   - armor without training gives Disadvantage on Strength or Dexterity rolls
+// SRD rule: if a roll has both Advantage and Disadvantage, they cancel out.
+// test: { skill: "Stealth" (optional), ability: "dex" (optional) }. Returns { mode, note }.
+function resolveRollMode(character, chosen, test) {
+  const ups = [], downs = [];
+  if (chosen === "advantage") ups.push("your choice");
+  if (chosen === "disadvantage") downs.push("your choice");
+  if (test.skill && itemGivesAdvantage(character, test.skill)) ups.push(character.specialItem.name);
+  const armor = wornArmor(character);
+  if (armor && armor.stealth && test.skill === "Stealth") downs.push(armor.name);
+  if (armor && !isArmorTrained(character, armor) && (test.ability === "str" || test.ability === "dex")) {
+    downs.push("armor without training");
+  }
+
+  const automatic = ups.concat(downs).filter(function (x) { return x !== "your choice"; });
+  if (ups.length && downs.length) {
+    return { mode: "normal", note: automatic.length ? " (Advantage and Disadvantage cancel: " + automatic.join(", ") + ")" : "" };
+  }
+  if (ups.length) return { mode: "advantage", note: automatic.length ? " from " + automatic.join(", ") : "" };
+  if (downs.length) return { mode: "disadvantage", note: automatic.length ? " from " + automatic.join(", ") : "" };
+  return { mode: "normal", note: "" };
 }
 
 function getSkillBonus(character, skill) {

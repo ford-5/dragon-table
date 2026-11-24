@@ -31,7 +31,7 @@
   <!-- ===== 1. THE HEROES ===== -->
   <div class="panel">
     <h2>1. The heroes</h2>
-    <p class="hint">Tick who fights. Heroes come from your saved characters. Change the attack numbers if you like: weapons aren't on the character sheet, so they start as a simple melee attack.</p>
+    <p class="hint">Tick who fights. Heroes come from your saved characters and use their best weapon from the sheet's Weapons & Armor (or a simple melee attack if they have none). You can change the numbers here.</p>
     <div id="heroList"></div>
     <p id="noHeroes" class="hint hidden">No saved characters yet. <a href="character.html">Create some</a>, or add a quick hero below.</p>
     <button class="small-button" id="addQuickHero">➕ Add a quick hero</button>
@@ -148,10 +148,21 @@
       const dex = getModifier(getAbilityScore(c, "dex"));
       const best = Math.max(str, dex);
       const martial = EXTRA_ATTACK_CLASSES.includes(c.className) || (c.secondClass && EXTRA_ATTACK_CLASSES.includes(c.secondClass));
+      // Use the hero's best real weapon if they have any (Weapons & Armor on the sheet).
+      // Two-handed (Versatile) damage only if their other hand isn't holding a Shield.
+      const handsFree = !(usesArmorRules(c) && c.shield);
+      const bestDice = function (a) { return (handsFree && a.twoHanded) || a.damage; };
+      const weapons = getAttacks(c).filter(function (a) {
+        return a.weapon && !(a.weapon.props.includes("Two-Handed") && !handsFree);
+      });
+      const bestWeapon = weapons.sort(function (a, b) {
+        return averageDamage(bestDice(b)) - averageDamage(bestDice(a));
+      })[0];
       return {
         id: nextHeroId++, name: c.name, ac: getAc(c), hp: c.hp, maxHp: getMaxHp(c), level: c.level,
-        attack: getProficiencyBonus(c.level) + best,
-        dice: "1d8" + (best >= 0 ? "+" : "") + best,
+        weaponName: bestWeapon ? bestWeapon.name : "",
+        attack: bestWeapon ? bestWeapon.toHit : getProficiencyBonus(c.level) + best,
+        dice: bestWeapon ? bestDice(bestWeapon) : "1d8" + (best >= 0 ? "+" : "") + best,
         attacks: martial && c.level >= 5 ? 2 : 1,
         init: getModifier(getAbilityScore(c, "dex")),
         on: true
@@ -204,7 +215,7 @@
         });
 
         const name = document.createElement("strong");
-        name.textContent = hero.name + " (level " + hero.level + ")";
+        name.textContent = hero.name + " (level " + hero.level + (hero.weaponName ? ", " + hero.weaponName : "") + ")";
 
         const diceInput = document.createElement("input");
         diceInput.type = "text";

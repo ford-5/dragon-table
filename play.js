@@ -15,19 +15,23 @@ function characterLine(c) {
 // ROLLING CHECKS FROM A CHARACTER SHEET
 // ---------------------------------------------------------------------
 
-// Every roll a character can make: initiative, ability checks, saving throws, skills.
-// Each entry: { label, bonus, skill (only for skills, so items can give Advantage) }.
+// Every roll a character can make: initiative, ability checks, saving throws, skills,
+// and weapon attacks. Each entry: { label, bonus, ability, skill (skills only) }.
+// "ability" and "skill" let items and armor give Advantage or Disadvantage.
 function getCheckList(character) {
   const list = [];
-  list.push({ label: "Initiative", bonus: getModifier(getAbilityScore(character, "dex")) });
+  list.push({ label: "Initiative", bonus: getModifier(getAbilityScore(character, "dex")), ability: "dex" });
   for (const ability of ABILITIES) {
-    list.push({ label: ability.name + " check", bonus: getModifier(getAbilityScore(character, ability.key)) });
+    list.push({ label: ability.name + " check", bonus: getModifier(getAbilityScore(character, ability.key)), ability: ability.key });
   }
   for (const ability of ABILITIES) {
-    list.push({ label: ability.name + " save", bonus: getSaveBonus(character, ability.key) });
+    list.push({ label: ability.name + " save", bonus: getSaveBonus(character, ability.key), ability: ability.key });
   }
   for (const skill of SKILLS) {
-    list.push({ label: skill.name, bonus: getSkillBonus(character, skill), skill: skill.name });
+    list.push({ label: skill.name, bonus: getSkillBonus(character, skill), skill: skill.name, ability: skill.ability });
+  }
+  for (const attack of getAttacks(character)) {
+    list.push({ label: attack.name + " attack", bonus: attack.toHit, ability: attack.ability });
   }
   return list;
 }
@@ -35,18 +39,10 @@ function getCheckList(character) {
 // Roll one check. mode is "normal", "advantage" or "disadvantage".
 // Returns { text, total } where text is ready to show, like "🎲 Stealth: 14 +3 = 17".
 function rollCharacterCheck(character, entry, mode) {
-  let note = "";
-
-  // A magic item can give Advantage on a skill. Advantage and Disadvantage cancel out (SRD).
-  if (entry.skill && itemGivesAdvantage(character, entry.skill)) {
-    if (mode === "disadvantage") {
-      mode = "normal";
-      note = " (Advantage from " + character.specialItem.name + " cancels Disadvantage)";
-    } else {
-      mode = "advantage";
-      note = " from " + character.specialItem.name;
-    }
-  }
+  // Magic items and armor can change Normal / Advantage / Disadvantage (rules.js).
+  const resolved = resolveRollMode(character, mode, { skill: entry.skill, ability: entry.ability });
+  mode = resolved.mode;
+  const note = resolved.note;
 
   let roll;
   let shown;
@@ -232,6 +228,14 @@ function makeSheetText(c) {
   for (const entry of getClassLevels(c)) {
     if (entry.data) lines.push(entry.name + " features: " + entry.data.features.join(", "));
   }
+
+  // Weapons and armor, so the Game Master uses the real numbers.
+  const armor = wornArmor(c);
+  if (usesArmorRules(c)) lines.push("Armor: " + (armor ? armor.name : "none") + (c.shield ? " and a Shield" : ""));
+  lines.push("Attacks: " + getAttacks(c).map(function (a) {
+    return a.name + " " + formatBonus(a.toHit) + " to hit, " + a.damage + " " + a.type.toLowerCase() +
+      (a.twoHanded ? " (" + a.twoHanded + " two-handed)" : "");
+  }).join("; "));
   if (species)    lines.push("Species traits: " + species.traits.join(", "));
 
   if (c.specialItem) {

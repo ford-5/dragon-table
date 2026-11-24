@@ -17,6 +17,7 @@ with plain HTML, CSS and JavaScript.
   rulebook links and conditions reference, a **Battle Simulator** with the SRD's monsters, party HP,
   initiative tracker, secret rolls, notes, and **Request players** with accept/decline and live voice chat.
 - **Battle Map:** a grid for heroes, monsters, walls and water that counts movement by the rules.
+- **Print or share a character:** a clean printable sheet (save it as a PDF) and read-only share links.
 - **Library:** read the free SRD rules in the app: 339 spells, 288 monsters, weapons, armor, items and classes.
 - **Automatic pass/fail:** rolls add themselves up and say whether they worked.
 - **Mini Maker:** turn any hero into a 3D-printable miniature (.stl file), or order it printed.

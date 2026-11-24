@@ -301,6 +301,12 @@
     </div>
 
     <div class="panel">
+      <h2>📄 Print or share</h2>
+      <p class="hint">A clean sheet you can print or save as a PDF, and a link to share this hero.</p>
+      <a id="printLink" class="plain-button" href="sheet.html">📄 Print / PDF / share</a>
+    </div>
+
+    <div class="panel">
       <h2>🖨️ Miniature</h2>
       <p class="hint">Make a 3D-print file of this hero, or order one printed.</p>
       <a id="miniLink" class="plain-button" href="mini.html">🖨️ Open the Mini Maker</a>
@@ -1059,6 +1065,7 @@
       document.getElementById("sheetHp").value = c.hp;
       document.getElementById("sheetInventory").value = c.inventory || "";
       document.getElementById("miniLink").href = "mini.html?hero=" + c.id;
+      document.getElementById("printLink").href = "sheet.html?hero=" + c.id;
 
       // ----- Ability scores -----
       const abilityGrid = document.getElementById("sheetAbilities");

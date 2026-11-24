@@ -478,3 +478,121 @@ function cleanMapSnapshot(raw) {
   }
   return { cols: cols, rows: rows, ground: MAP_GROUNDS.includes(raw.ground) ? raw.ground : "stone", terrain: terrain, tokens: tokens };
 }
+
+// ---------------------------------------------------------------------
+// SHARING A CHARACTER BY LINK (the printable sheet page opens it read-only)
+// ---------------------------------------------------------------------
+// The hero is packed into the part of the web address after "#". That part is never sent
+// to any server: it stays in the browser. It leaves out the player's real name and inventory notes.
+// Anything that arrives in a link is untrusted, so it is checked against the rules before use.
+
+// The small, safe summary of a hero that goes into the link.
+function makeShareableSheet(c) {
+  const item = c.specialItem;
+  const share = {
+    v: 1,
+    n: c.name, cl: c.className, c2: c.secondClass || "", l2: c.secondClassLevel || 0,
+    sp: c.species, bg: c.background || "", lv: c.level,
+    ab: ABILITIES.map(function (a) { return c.abilities[a.key]; }),
+    sk: c.proficientSkills || [],
+    ar: typeof c.armor === "string" ? c.armor : null,   // null = an older hero whose AC was typed in
+    sh: c.shield === true, ac: c.ac,
+    w: c.weapons || [], mw: c.magicWeapon || "",
+    sb: c.spellbook || {}, hp: c.hp
+  };
+  if (item) {
+    share.it = { s: item.source, n: item.name, t: item.type, r: item.rarity, a: item.attuned !== false,
+                 p: item.powers || "", l: item.appearance || "" };
+  }
+  return share;
+}
+
+// Pack and unpack as web-safe text (base64url).
+function encodeShare(object) {
+  const bytes = new TextEncoder().encode(JSON.stringify(object));
+  let binary = "";
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function decodeShare(text) {
+  try {
+    if (typeof text !== "string" || text.length > 30000) return null;   // far bigger than any hero
+    const binary = atob(text.replace(/-/g, "+").replace(/_/g, "/"));
+    const bytes = Uint8Array.from(binary, function (ch) { return ch.charCodeAt(0); });
+    return JSON.parse(new TextDecoder().decode(bytes));
+  } catch (error) {
+    return null;
+  }
+}
+
+// Turn what the link says into a real character object, keeping only what the rules allow.
+// Returns null when it isn't a usable hero.
+function cleanSharedSheet(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const charClass = findByName(CLASSES, raw.cl);
+  const species = findByName(SPECIES, raw.sp);
+  if (!charClass || !species || !Array.isArray(raw.ab) || raw.ab.length !== 6) return null;
+
+  const abilities = {};
+  ABILITIES.forEach(function (a, i) {
+    abilities[a.key] = cleanNumber(raw.ab[i], 1, 30, 10);
+  });
+  const level = cleanNumber(raw.lv, 1, 20, 1);
+  const names = function (list, allowed, max) {
+    const seen = [];
+    for (const item of Array.isArray(list) ? list.slice(0, 80) : []) {
+      if (typeof item === "string" && allowed.includes(item) && !seen.includes(item) && seen.length < max) seen.push(item);
+    }
+    return seen;
+  };
+
+  const c = {
+    id: 0, name: cleanText(raw.n, 40) || "Unnamed hero", playerName: "",
+    className: charClass.name, species: species.name,
+    background: findByName(BACKGROUNDS, raw.bg) ? raw.bg : "",
+    level: level, abilities: abilities,
+    proficientSkills: names(raw.sk, ALL_SKILL_NAMES, 18),
+    shield: raw.sh === true, weapons: names(raw.w, WEAPONS.map(function (w) { return w.name; }), 12),
+    inventory: ""
+  };
+  c.magicWeapon = c.weapons.includes(raw.mw) ? raw.mw : "";
+  if (typeof raw.ar === "string" && (raw.ar === "none" || findByName(ARMOR, raw.ar))) c.armor = raw.ar;
+  c.ac = cleanNumber(raw.ac, 1, 40, 10);
+
+  const second = findByName(CLASSES, raw.c2);
+  if (second && second.name !== charClass.name && level >= 2) {
+    c.secondClass = second.name;
+    c.secondClassLevel = cleanNumber(raw.l2, 1, level - 1, 1);
+  }
+
+  // Spells: only real spell names, only for classes the hero has
+  if (raw.sb && typeof raw.sb === "object") {
+    const book = {};
+    for (const entry of getSpellcastingClasses(c)) {
+      const mine = raw.sb[entry.name];
+      if (!mine || typeof mine !== "object") continue;
+      const real = typeof SPELLS === "undefined" ? function () { return true; } : function (n) { return Boolean(findSpell(n)); };
+      const clean = function (list, max) {
+        return (Array.isArray(list) ? list.slice(0, 80) : []).filter(function (n, i, all) {
+          return typeof n === "string" && n.length < 50 && real(n) && all.indexOf(n) === i;   // real, and only once
+        }).slice(0, max);
+      };
+      book[entry.name] = { cantrips: clean(mine.cantrips, 10), prepared: clean(mine.prepared, 40) };
+    }
+    c.spellbook = book;
+  }
+
+  if (raw.it && typeof raw.it === "object" && typeof raw.it.n === "string") {
+    const known = findByName(MAGIC_ITEMS, raw.it.n);
+    c.specialItem = {
+      source: raw.it.s === "srd" && known ? "srd" : "custom",
+      name: cleanText(raw.it.n, 60), type: cleanText(raw.it.t, 40),
+      rarity: cleanText(raw.it.r, 20), attunement: known ? known.attunement : "",
+      attuned: raw.it.a !== false,
+      powers: cleanText(raw.it.p, 600), appearance: cleanText(raw.it.l, 400)
+    };
+  }
+  c.hp = cleanNumber(raw.hp, 0, getMaxHp(c), getMaxHp(c));
+  return c;
+}

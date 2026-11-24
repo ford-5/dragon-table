@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Printable character sheet</title>
+  <meta name="description" content="A clean, printable fifth-edition character sheet. Print it or save it as a PDF.">
+  <link rel="stylesheet" href="style.css">
+  <!-- App icon, colors, and the file that makes Dragon Table installable -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#2b1d14">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <meta name="apple-mobile-web-app-title" content="Dragon Table">
+</head>
+
+<body class="paper-body">
+  <nav class="top-nav no-print">
+    <a href="index.html">🏠 Home</a>
+    <a href="library.html">📚 Library</a>
+    <a href="character.html" class="active">🧙 Characters</a>
+    <a href="dm.html">🛡️ GM Screen</a>
+    <a href="equipment.html">🛒 Equipment</a>
+  </nav>
+
+  <!-- Buttons and options (not printed) -->
+  <div class="panel no-print" id="tools">
+    <h2>🖨️ Print your character sheet</h2>
+    <div id="chooser" class="hidden"></div>
+    <div id="toolButtons" class="hidden">
+      <button id="printBtn">🖨️ Print or save as PDF</button>
+      <button class="small-button" id="shareBtn">🔗 Copy a share link</button>
+      <label class="hint"><input type="checkbox" id="descBox"> Include the full text of each spell (more pages)</label>
+      <p id="toolStatus" class="hint"></p>
+      <p class="hint">
+        In the print window, choose <strong>Save as PDF</strong> as the printer to get a file. A share link opens a read-only copy of this hero for anyone; it leaves out your real name and inventory notes.
+      </p>
+    </div>
+    <p id="errorNote" class="chat-error hidden"></p>
+  </div>
+
+  <!-- The sheet itself: this is what gets printed -->
+  <div id="paper" class="paper-sheet hidden"></div>
+
+  <p class="no-print"><a href="character.html" class="back-link">← Back to the characters</a></p>
+
+  <script src="dice.js"></script>
+  <script src="rules.js"></script>
+  <script src="spells.js"></script>
+  <script src="play.js"></script>
+  <script>
+    const el = function (id) {
+      return document.getElementById(id);
+    };
+
+    function make(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;   // textContent: never treated as HTML
+      return node;
+    }
+
+    let hero = null;
+    let fromLink = false;
+
+    // =====================================================================
+    // WHICH HERO? A saved one (?hero=ID) or a shared link (#c=...)
+    // =====================================================================
+    function loadHero() {
+      if (location.hash.startsWith("#c=")) {
+        fromLink = true;
+        const clean = cleanSharedSheet(decodeShare(location.hash.slice(3)));   // from play.js
+        if (!clean) {
+          el("errorNote").textContent = "⚠️ This share link doesn't look right. Ask for a new one.";
+          el("errorNote").classList.remove("hidden");
+        }
+        return clean;
+      }
+      const id = Number(new URLSearchParams(location.search).get("hero"));
+      return loadCharacters().find(function (h) { return h.id === id; }) || null;
+    }
+
+    function showChooser() {
+      const heroes = loadCharacters();
+      el("chooser").classList.remove("hidden");
+      el("chooser").append(make("p", "hint", heroes.length ? "Choose a hero to print:" : "You don't have any heroes yet."));
+      for (const h of heroes) {
+        const link = make("a", "plain-button", h.name + " (" + characterLine(h) + ")");
+        link.href = "sheet.html?hero=" + h.id;
+        el("chooser").append(link);
+      }
+      if (!heroes.length) {
+        const create = make("a", "plain-button", "✨ Create a hero");
+        create.href = "character.html";
+        el("chooser").append(create);
+      }
+    }
+
+    // =====================================================================
+    // BUILDING THE SHEET
+    // =====================================================================
+    function box(label, value, className) {
+      const b = make("div", "ps-box" + (className ? " " + className : ""));
+      b.append(make("div", "ps-box-value", value), make("div", "ps-box-label", label));
+      return b;
+    }
+
+    function section(title) {
+      const s = make("section", "ps-section");
+      s.append(make("h2", "", title));
+      return s;
+    }
+
+    function table(headers, rows) {
+      const t = make("table", "ps-table");
+      const head = make("tr");
+      for (const h of headers) head.append(make("th", "", h));
+      t.append(head);
+      for (const row of rows) {
+        const tr = make("tr");
+        for (const cell of row) tr.append(make("td", "", cell));
+        t.append(tr);
+      }
+      return t;
+    }
+
+    // A row of empty boxes to tick on paper: ☐ ☐ ☐
+    function checkBoxes(count) {
+      return "☐ ".repeat(count).trim();
+    }
+
+    function buildSheet() {
+      const c = hero;
+      const paper = el("paper");
+      paper.innerHTML = "";
+      const prof = getProficiencyBonus(c.level);
+
+      // ----- Header -----
+      const header = make("header", "ps-header");
+      header.append(make("h1", "", c.name));
+      if (c.playerName) header.append(make("div", "ps-note", "Player: " + c.playerName));   // (shared links never carry it)
+      header.append(make("div", "ps-sub", "Level " + c.level + " " + c.species + " " + classSummary(c) + (c.background ? " · " + c.background + " background" : "")));
+      paper.append(header);
+
+      // ----- Vital numbers -----
+      const vitals = make("div", "ps-vitals");
+      const armor = wornArmor(c);
+      vitals.append(
+        box("Armor Class", String(getAc(c)) + (usesArmorRules(c) ? "" : "")),
+        box("Initiative", formatBonus(getModifier(getAbilityScore(c, "dex")))),
+        box("Speed", getSpeed(c) + " ft"),
+        box("Proficiency", formatBonus(prof)),
+        box("Passive Perception", String(getPassivePerception(c))),
+        box("Max HP", String(getMaxHp(c))),
+        box("Current HP", "", "ps-blank"),
+        box("Hit Dice", getHitDiceText(c))
+      );
+      paper.append(vitals);
+
+      // ----- Ability scores and saving throws -----
+      const abilityBlock = section("Ability scores & saving throws");
+      const abilityGrid = make("div", "ps-abilities");
+      for (const ability of ABILITIES) {
+        const score = getAbilityScore(c, ability.key);
+        const b = make("div", "ps-ability");
+        b.append(make("div", "ps-box-label", ability.name));
+        b.append(make("div", "ps-ability-mod", formatBonus(getModifier(score))));
+        b.append(make("div", "ps-ability-score", String(score)));
+        b.append(make("div", "ps-ability-save", (isSaveProficient(c, ability.key) ? "● " : "○ ") + "Save " + formatBonus(getSaveBonus(c, ability.key))));
+        abilityGrid.append(b);
+      }
+      abilityBlock.append(abilityGrid);
+      paper.append(abilityBlock);
+
+      // ----- Skills -----
+      const skills = section("Skills");
+      const list = make("ul", "ps-skills");
+      for (const skill of SKILLS) {
+        const trained = c.proficientSkills.includes(skill.name);
+        const li = make("li", "", (trained ? "● " : "○ ") + formatBonus(getSkillBonus(c, skill)) + "  " + skill.name + " (" + skill.ability.toUpperCase() + ")" +
+          (itemGivesAdvantage(c, skill.name) ? " ✨ advantage" : "") + (skill.name === "Stealth" && armor && armor.stealth ? " ⚠ disadvantage (armor)" : ""));
+        list.append(li);
+      }
+      skills.append(list);
+      skills.append(make("p", "ps-note", "● = trained (adds your proficiency bonus)"));
+      paper.append(skills);
+
+      // ----- Attacks -----
+      const attacks = section("Attacks");
+      attacks.append(table(["Attack", "To hit", "Damage", "Notes"], getAttacks(c).map(function (a) {
+        return [a.name, formatBonus(a.toHit), a.damage + " " + a.type.toLowerCase() + (a.twoHanded ? " (" + a.twoHanded + " two-handed)" : ""), a.notes.join("; ")];
+      })));
+      paper.append(attacks);
+
+      // ----- Armor and equipment -----
+      const gear = section("Armor & equipment");
+      gear.append(make("p", "", "Armor: " + (usesArmorRules(c) ? (armor ? armor.name : "none") + (c.shield ? " + Shield" : "") : "worn as noted (Armor Class set by hand)")));
+      if (usesArmorRules(c)) for (const warning of getArmorWarnings(c)) gear.append(make("p", "ps-note", "⚠ " + warning));
+      if (c.inventory) gear.append(make("p", "", "Notes: " + c.inventory));
+      paper.append(gear);
+
+      // ----- Spellcasting -----
+      if (isSpellcaster(c)) paper.append(buildSpells());
+
+      // ----- Features -----
+      const features = section("Features & traits");
+      for (const entry of getClassLevels(c)) {
+        if (entry.data) features.append(make("p", "", entry.name + " (level 1 features): " + entry.data.features.join(", ")));
+      }
+      const species = findByName(SPECIES, c.species);
+      if (species) features.append(make("p", "", c.species + ": " + species.traits.join(", ")));
+      const background = findByName(BACKGROUNDS, c.background);
+      if (background) features.append(make("p", "", c.background + ": Feat: " + background.feat + ". Tool: " + background.tool + "."));
+      paper.append(features);
+
+      // ----- Special item -----
+      if (c.specialItem) {
+        const item = c.specialItem;
+        const sec = section("✨ Special item");
+        sec.append(make("p", "", item.name + (item.type ? " (" + [item.type, item.rarity].filter(Boolean).join(", ") + ")" : "")));
+        if (item.attunement) sec.append(make("p", "ps-note", item.attunement + (item.attuned === false ? " (not attuned)" : " (attuned)")));
+        if (item.powers) sec.append(make("p", "", "Powers: " + item.powers));
+        if (item.appearance) sec.append(make("p", "", "Looks like: " + item.appearance));
+        paper.append(sec);
+      }
+
+      // ----- Footer -----
+      const footer = make("footer", "ps-footer");
+      footer.append(make("p", "", "Made with Dragon Table · ford-5.github.io/dragon-table"));
+      footer.append(make("p", "", "This work includes material from the System Reference Document 5.2.1 (\"SRD 5.2.1\") by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode. Compatible with fifth edition."));
+      paper.append(footer);
+
+      paper.classList.remove("hidden");
+      document.title = c.name + ": character sheet";
+    }
+
+    function buildSpells() {
+      const c = hero;
+      const sec = section("✨ Spellcasting");
+      const withText = el("descBox").checked;
+
+      // Slots, as boxes to tick on paper
+      const totals = getSpellSlotTotals(c);
+      const slotLines = [];
+      totals.forEach(function (total, i) {
+        if (total) slotLines.push("Level " + (i + 1) + ":  " + checkBoxes(total));
+      });
+      const pact = getPactSlots(c);
+      if (pact) slotLines.push("Pact Magic (level " + pact.level + "):  " + checkBoxes(pact.count));
+      if (slotLines.length) {
+        const slots = make("div", "ps-slots");
+        slots.append(make("strong", "", "Spell slots (tick one when you use it)"));
+        for (const line of slotLines) slots.append(make("div", "", line));
+        sec.append(slots);
+      }
+
+      for (const entry of getSpellcastingClasses(c)) {
+        const book = getSpellbook(c, entry.name);
+        sec.append(make("h3", "", entry.name + ": " + abilityName(SPELLCASTING[entry.name].ability) + " · Spell save DC " + getSpellSaveDc(c, entry.name) +
+          " · Spell attack " + formatBonus(getSpellAttackBonus(c, entry.name))));
+        const chosen = book.cantrips.concat(book.prepared).map(findSpell).filter(Boolean)
+          .sort(function (a, b) { return a.level - b.level || a.n.localeCompare(b.n); });
+        if (!chosen.length) {
+          sec.append(make("p", "ps-note", "No spells chosen yet."));
+          continue;
+        }
+        sec.append(table(["Spell", "Lvl", "Time", "Range", "Duration", "Notes"], chosen.map(function (s) {
+          const notes = [];
+          if (s.atk) notes.push(s.atk.toLowerCase() + " attack");
+          if (s.save) notes.push("DC " + getSpellSaveDc(c, entry.name) + " " + s.save.slice(0, 3));
+          const damage = getSpellDamage(s, c, s.level);
+          if (damage) notes.push(damage.dice + (damage.beams > 1 ? " ×" + damage.beams : "") + (s.dtype ? " " + s.dtype.toLowerCase() : ""));
+          const heal = getSpellHealing(s, c, entry.name, s.level);
+          if (heal) notes.push("heals " + heal);
+          if (s.conc) notes.push("conc.");
+          if (s.ritual) notes.push("ritual");
+          return [s.n, s.level === 0 ? "C" : String(s.level), s.time, s.range, s.dur.replace("Concentration, up to ", "Conc. "), notes.join(", ")];
+        })));
+        if (withText) {
+          for (const s of chosen) {
+            const detail = make("div", "ps-spell-text");
+            detail.append(make("strong", "", s.n + ": "), s.text.join(" "));
+            if (s.higher) detail.append(" Higher level: " + s.higher);
+            sec.append(detail);
+          }
+        }
+      }
+      return sec;
+    }
+
+    // =====================================================================
+    // BUTTONS
+    // =====================================================================
+    function shareLink() {
+      return location.origin + location.pathname + "#c=" + encodeShare(makeShareableSheet(hero));
+    }
+
+    function start() {
+      hero = loadHero();
+      if (!hero) {
+        if (!fromLink) showChooser();
+        return;
+      }
+      el("toolButtons").classList.remove("hidden");
+      buildSheet();
+      el("printBtn").addEventListener("click", function () {
+        window.print();
+      });
+      el("descBox").addEventListener("change", buildSheet);
+      el("shareBtn").addEventListener("click", function () {
+        const link = fromLink ? location.href : shareLink();
+        const done = function (text) { el("toolStatus").textContent = text; };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(link).then(function () {
+            done("🔗 Link copied. Anyone with it can read this hero's sheet.");
+          }, function () {
+            done("Couldn't copy. Select and copy this address: " + link);
+          });
+        } else {
+          done("Copy this address: " + link);
+        }
+      });
+      if (fromLink) el("tools").querySelector("h2").textContent = "🖨️ A shared character sheet (read-only)";
+    }
+
+    start();
+  </script>
+
+  <!-- The "Send feedback" link at the bottom of the page -->
+  <script src="pwa.js"></script>
+  <script src="feedback.js"></script>
+</body>
+</html>

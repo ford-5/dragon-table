@@ -1015,3 +1015,13 @@ button.big-choice {
 .policy li {
   font-size: 16px;
 }
+
+/* ---------- "Send feedback" link at the bottom of every page ---------- */
+.feedback-link {
+  margin-top: 32px;
+  font-size: 14px;
+}
+
+.feedback-link a {
+  color: #c9a227;
+}

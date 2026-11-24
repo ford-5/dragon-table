@@ -15,6 +15,7 @@
     <a href="dm.html">🛡️ GM Screen</a>
     <a href="equipment.html">🛒 Equipment</a>
     <a href="battle.html" class="active">⚔️ Battle</a>
+    <a href="map.html">🗺️ Map</a>
   </nav>
 
   <h1>⚔️ Battle Simulator</h1>
@@ -56,6 +57,7 @@
     <h2>4. Fight!</h2>
     <button id="fightOnce">⚔️ Play out one battle</button>
     <button id="fightMany">📊 Run 200 battles (the odds)</button>
+    <button class="small-button" id="toMapBtn">🗺️ Put this fight on the Battle Map</button>
     <div id="summary" class="info-box hidden"></div>
     <div id="battleLog" class="chat-log hidden"></div>
     <p class="hint">
@@ -525,6 +527,24 @@
     el("addQuickHero").addEventListener("click", addQuickHero);
     el("fightOnce").addEventListener("click", fightOnce);
     el("fightMany").addEventListener("click", fightMany);
+    // Send the ticked heroes and the monsters to the Battle Map page.
+    el("toMapBtn").addEventListener("click", function () {
+      if (activeHeroes().length === 0 && encounter.length === 0) {
+        showSummary("Tick some heroes or add some monsters first.");
+        return;
+      }
+      const send = {
+        heroes: activeHeroes().map(function (h) { return h.name; }),
+        monsters: encounter.map(function (e) { return { n: e.monster.n, count: e.count }; })
+      };
+      try {
+        localStorage.setItem("battleMapImport", JSON.stringify(send));
+      } catch (error) {
+        showSummary("This browser won't let the page pass the fight to the map.");
+        return;
+      }
+      location.href = "map.html";
+    });
   </script>
   <!-- The "Send feedback" link at the bottom of the page -->
   <script src="feedback.js"></script>

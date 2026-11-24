@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Battle Map</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="dm">
+  <nav class="top-nav">
+    <a href="index.html">🏠 Home</a>
+    <a href="dice.html">🎲 Dice</a>
+    <a href="character.html">🧙 Characters</a>
+    <a href="dm.html">🛡️ GM Screen</a>
+    <a href="equipment.html">🛒 Equipment</a>
+    <a href="battle.html">⚔️ Battle</a>
+    <a href="map.html" class="active">🗺️ Map</a>
+  </nav>
+
+  <h1>🗺️ Battle Map</h1>
+  <p class="hint">Place heroes, monsters and terrain on a grid. Each square is 5 feet. Drag tokens to move them: the map counts the movement by the rules.</p>
+
+  <!-- ===== What a click or drag does ===== -->
+  <div class="panel map-tools">
+    <div class="shop-tabs" id="modeButtons"></div>
+    <p id="modeHint" class="hint"></p>
+  </div>
+
+  <!-- ===== The map ===== -->
+  <div class="map-scroll" id="mapScroll">
+    <div class="map-board" id="board"></div>
+  </div>
+  <p id="moveInfo" class="map-status" aria-live="polite"></p>
+
+  <!-- ===== The chosen token ===== -->
+  <div class="panel hidden" id="tokenPanel">
+    <h2 id="tokenName"></h2>
+    <p id="tokenStats" class="hint"></p>
+    <div class="roll-row">
+      <input id="hpAmount" type="number" min="1" max="999" value="5" class="mini-number" aria-label="Amount">
+      <button class="small-button" id="damageBtn">💥 Damage</button>
+      <button class="small-button" id="healBtn">💚 Heal</button>
+    </div>
+    <h3 class="section-label">Conditions</h3>
+    <div id="conditionChips" class="shop-tabs"></div>
+    <button class="small-button" id="removeTokenBtn">🗑️ Remove from the map</button>
+    <button class="small-button" id="closeTokenBtn">Done</button>
+  </div>
+
+  <!-- ===== Adding things ===== -->
+  <div class="panel">
+    <h2>➕ Add to the map</h2>
+
+    <h3 class="section-label">Heroes</h3>
+    <div id="heroButtons" class="shop-tabs"></div>
+    <p id="noHeroes" class="hint hidden">No heroes yet: make some on the <a href="character.html">Characters</a> page, or import players into the party on the GM Screen.</p>
+
+    <h3 class="section-label">Monsters (from the SRD)</h3>
+    <div class="settings add-form">
+      <input id="monsterSearch" type="text" class="wide-input" placeholder="Search: goblin, wolf, dragon…" autocomplete="off">
+      <select id="monsterPick" aria-label="Choose a monster"></select>
+      <input id="monsterCount" type="number" min="1" max="20" value="1" class="mini-number" aria-label="How many">
+      <button class="small-button" id="addMonsterBtn">➕ Add</button>
+    </div>
+
+    <h3 class="section-label">Anything else</h3>
+    <div class="settings add-form">
+      <input id="customName" type="text" maxlength="30" placeholder="e.g. Village elder, Barrel, Portal">
+      <button class="small-button" id="addCustomBtn">➕ Add</button>
+    </div>
+  </div>
+
+  <!-- ===== The map itself ===== -->
+  <div class="panel">
+    <h2>⚙️ Map settings</h2>
+    <div class="settings add-form">
+      <label>Width <input id="colsBox" type="number" min="8" max="40" class="mini-number"> squares</label>
+      <label>Height <input id="rowsBox" type="number" min="8" max="40" class="mini-number"> squares</label>
+      <label>Zoom
+        <select id="zoomBox">
+          <option value="28">Small</option>
+          <option value="38">Normal</option>
+          <option value="50">Big</option>
+        </select>
+      </label>
+      <label>Ground
+        <select id="groundBox">
+          <option value="stone">Stone floor</option>
+          <option value="grass">Grass</option>
+          <option value="sand">Sand</option>
+          <option value="wood">Wooden floor</option>
+        </select>
+      </label>
+    </div>
+    <button class="small-button" id="clearTokensBtn">Remove all tokens</button>
+    <button class="small-button" id="clearTerrainBtn">Remove all terrain</button>
+    <p class="hint">The map saves itself in this browser.</p>
+  </div>
+
+  <p><a href="dm.html" class="back-link">← Back to the GM Screen</a></p>
+
+  <footer class="site-footer">
+    <p>Grid movement and creature sizes follow the System Reference Document 5.2.1 ("Playing on a Grid", "Creature Size and Space"); monster stats from the SRD 5.2.1 by Wizards of the Coast LLC, licensed under CC-BY-4.0.</p>
+  </footer>
+
+  <script src="dice.js"></script>
+  <script src="rules.js"></script>
+  <script src="monsters.js"></script>
+  <script>
+    // =====================================================================
+    // RULES FOR THE GRID (SRD "Playing on a Grid", "Creature Size and Space")
+    // =====================================================================
+    const FEET_PER_SQUARE = 5;
+    // How many squares wide a creature is. (Tiny creatures share a square; we show them as 1.)
+    const SIZE_SQUARES = { Tiny: 1, Small: 1, Medium: 1, Large: 2, Huge: 3, Gargantuan: 4 };
+
+    // Terrain you can paint. "blocks": nothing can enter it, and you can't cut its corner
+    // diagonally. "difficult": costs 2 squares to enter.
+    const TERRAIN = {
+      wall:   { name: "Wall",   icon: "🧱", blocks: true },
+      tree:   { name: "Big tree or boulder", icon: "🌳", blocks: true },
+      rubble: { name: "Rubble (difficult)", icon: "🪨", difficult: true },
+      water:  { name: "Water (difficult)",  icon: "🌊", difficult: true }
+    };
+
+    const CONDITION_NAMES = ["Blinded", "Charmed", "Deafened", "Frightened", "Grappled", "Incapacitated", "Invisible",
+      "Paralyzed", "Petrified", "Poisoned", "Prone", "Restrained", "Stunned", "Unconscious"];
+
+    // =====================================================================
+    // STATE: the whole map, saved in localStorage under "battleMap"
+    // =====================================================================
+    //   terrain: { "x,y": "wall" | "tree" | "rubble" | "water" }
+    //   tokens:  [{ id, side: "hero"|"monster"|"other", name, label, size, x, y, hp, maxHp, ac, speed, conditions }]
+    let map = null;
+    let mode = "move";           // "move", "range", or a terrain key, or "erase"
+    let selectedId = null;       // the token whose panel is open
+    let rangeFrom = null;        // first token picked when measuring range
+    let painting = false;        // holding the pointer down while painting terrain
+
+    const el = function (id) {
+      return document.getElementById(id);
+    };
+
+    function newMap() {
+      return { cols: 20, rows: 14, cell: 38, ground: "stone", terrain: {}, tokens: [], nextId: 1 };
+    }
+
+    function loadMap() {
+      try {
+        const saved = JSON.parse(localStorage.getItem("battleMap") || "null");
+        if (saved && Array.isArray(saved.tokens) && saved.terrain && typeof saved.terrain === "object") {
+          map = Object.assign(newMap(), saved);
+          return;
+        }
+      } catch (error) {
+        // Damaged or blocked: start fresh.
+      }
+      map = newMap();
+    }
+
+    function saveMap() {
+      try {
+        localStorage.setItem("battleMap", JSON.stringify(map));
+      } catch (error) {
+        // Storage blocked: the map works until the page closes.
+      }
+    }
+
+    function findToken(id) {
+      return map.tokens.find(function (t) { return t.id === id; });
+    }
+
+    // =====================================================================
+    // GRID HELPERS
+    // =====================================================================
+    function inBounds(x, y) {
+      return x >= 0 && y >= 0 && x < map.cols && y < map.rows;
+    }
+
+    function terrainAt(x, y) {
+      return TERRAIN[map.terrain[x + "," + y]] || null;
+    }
+
+    function isBlocked(x, y) {
+      const t = terrainAt(x, y);
+      return !inBounds(x, y) || Boolean(t && t.blocks);
+    }
+
+    // Every square a token covers (big creatures cover several).
+    function squaresOf(token, x, y) {
+      const list = [];
+      for (let dx = 0; dx < token.size; dx++) {
+        for (let dy = 0; dy < token.size; dy++) list.push([x + dx, y + dy]);
+      }
+      return list;
+    }
+
+    // Can this token stand with its top-left corner at (x, y)? Not on walls, not on another creature.
+    function canStand(token, x, y) {
+      for (const [sx, sy] of squaresOf(token, x, y)) {
+        if (isBlocked(sx, sy)) return false;
+        for (const other of map.tokens) {
+          if (other === token) continue;
+          if (sx >= other.x && sx < other.x + other.size && sy >= other.y && sy < other.y + other.size) return false;
+        }
+      }
+      return true;
+    }
+
+    // MOVEMENT COST by the rules, in squares, for a 1-square creature:
+    // each square costs 1 (diagonals too), difficult terrain costs 2, walls can't be
+    // entered, and a diagonal step can't cut the corner of a wall or big tree.
+    // This finds the cheapest route (Dijkstra's method: always grow the cheapest path first).
+    // Bigger creatures get a simple count of squares (no terrain).
+    function movementCost(token, toX, toY) {
+      if (token.size > 1) {
+        return { cost: Math.max(Math.abs(toX - token.x), Math.abs(toY - token.y)), simple: true };
+      }
+      const best = new Map();
+      const key = function (x, y) { return x + "," + y; };
+      let frontier = [{ x: token.x, y: token.y, cost: 0 }];
+      best.set(key(token.x, token.y), 0);
+      while (frontier.length) {
+        frontier.sort(function (a, b) { return a.cost - b.cost; });
+        const here = frontier.shift();
+        if (here.x === toX && here.y === toY) return { cost: here.cost, simple: false };
+        if (here.cost > best.get(key(here.x, here.y))) continue;
+        for (let dx = -1; dx <= 1; dx++) {
+          for (let dy = -1; dy <= 1; dy++) {
+            if (!dx && !dy) continue;
+            const nx = here.x + dx, ny = here.y + dy;
+            if (isBlocked(nx, ny)) continue;
+            if (dx && dy && (isBlocked(here.x + dx, here.y) || isBlocked(here.x, here.y + dy))) continue;   // no corner cutting
+            const t = terrainAt(nx, ny);
+            const cost = here.cost + (t && t.difficult ? 2 : 1);
+            if (cost < (best.has(key(nx, ny)) ? best.get(key(nx, ny)) : Infinity)) {
+              best.set(key(nx, ny), cost);
+              frontier.push({ x: nx, y: ny, cost: cost });
+            }
+          }
+        }
+      }
+      return null;   // no way through
+    }
+
+    // RANGE by the rules: count squares by the shortest route between the two spaces.
+    function rangeBetween(a, b) {
+      const gapX = Math.max(0, b.x - (a.x + a.size - 1), a.x - (b.x + b.size - 1));
+      const gapY = Math.max(0, b.y - (a.y + a.size - 1), a.y - (b.y + b.size - 1));
+      return Math.max(gapX, gapY) * FEET_PER_SQUARE;
+    }
+
+    // Find a free spot near (x, y) for a new token.
+    function freeSpot(token, startX, startY) {
+      for (let ring = 0; ring < Math.max(map.cols, map.rows); ring++) {
+        for (let y = startY - ring; y <= startY + ring; y++) {
+          for (let x = startX - ring; x <= startX + ring; x++) {
+            if (canStand(token, x, y)) return [x, y];
+          }
+        }
+      }
+      return null;
+    }
+
+    // =====================================================================
+    // ADDING TOKENS
+    // =====================================================================
+    function shortLabel(name) {
+      const words = name.split(/\s+/).filter(Boolean);
+      const number = /\d+$/.test(words[words.length - 1] || "") ? words.pop() : "";
+      const letters = words.length > 1 ? words[0][0] + words[1][0] : (words[0] || "?").slice(0, 2);
+      return (letters + number).slice(0, 3);
+    }
+
+    function addToken(data, nearX, nearY) {
+      const token = Object.assign({ id: map.nextId, conditions: [] }, data);
+      token.label = shortLabel(token.name);
+      const spot = freeSpot(token, nearX, nearY);
+      if (!spot) {
+        showStatus("⚠️ No room on the map for " + token.name + ". Make the map bigger or remove something.");
+        return null;
+      }
+      token.x = spot[0];
+      token.y = spot[1];
+      map.nextId++;
+      map.tokens.push(token);
+      return token;
+    }
+
+    function addHero(hero) {
+      addToken({ side: "hero", name: hero.name, size: 1, hp: hero.hp, maxHp: hero.maxHp, ac: hero.ac, speed: hero.speed }, 1, 1);
+      saveMap();
+      render();
+    }
+
+    function addMonster(monster, count) {
+      // Number them, carrying on from any already on the map: Goblin Warrior 1, 2, 3...
+      let n = map.tokens.filter(function (t) { return t.monster === monster.n; }).length;
+      for (let i = 0; i < count; i++) {
+        n++;
+        const speed = parseInt(monster.speed, 10) || 30;
+        const token = addToken({
+          side: "monster", monster: monster.n, name: monster.n + " " + n, size: SIZE_SQUARES[monster.size] || 1,
+          hp: monster.hp, maxHp: monster.hp, ac: monster.ac, speed: speed
+        }, map.cols - 3, 1);
+        if (!token) break;
+      }
+      saveMap();
+      render();
+    }
+
+    // Heroes from the Characters page and the GM Screen's party (live players).
+    function knownHeroes() {
+      const list = [];
+      for (const c of loadCharacters()) {
+        list.push({ name: c.name, hp: c.hp, maxHp: getMaxHp(c), ac: getAc(c), speed: getSpeed(c) });
+      }
+      try {
+        const party = JSON.parse(localStorage.getItem("party") || "[]");
+        for (const m of Array.isArray(party) ? party : []) {
+          if (!m || !m.name || list.some(function (h) { return h.name === m.name; })) continue;
+          list.push({ name: String(m.name).slice(0, 40), hp: Number(m.hp) || 1, maxHp: Number(m.maxHp) || 1, ac: Number(m.ac) || 10, speed: 30 });
+        }
+      } catch (error) {
+        // No party saved.
+      }
+      return list;
+    }
+
+    // The Battle Simulator can send its encounter here ("Put it on the battle map").
+    function importFromSimulator() {
+      let incoming = null;
+      try {
+        incoming = JSON.parse(localStorage.getItem("battleMapImport") || "null");
+        localStorage.removeItem("battleMapImport");
+      } catch (error) {
+        incoming = null;
+      }
+      if (!incoming) return;
+      const heroes = knownHeroes();
+      for (const name of Array.isArray(incoming.heroes) ? incoming.heroes : []) {
+        const hero = heroes.find(function (h) { return h.name === name; });
+        if (hero && !map.tokens.some(function (t) { return t.side === "hero" && t.name === hero.name; })) addHero(hero);
+      }
+      for (const entry of Array.isArray(incoming.monsters) ? incoming.monsters : []) {
+        const monster = MONSTERS.find(function (m) { return m.n === entry.n; });
+        if (monster) addMonster(monster, Math.min(Math.max(Number(entry.count) || 1, 1), 30));
+      }
+      showStatus("⚔️ The encounter from the Battle Simulator is on the map.");
+    }
+
+    // =====================================================================
+    // DRAWING THE MAP
+    // =====================================================================
+    function render() {
+      const board = el("board");
+      const cell = map.cell;
+      board.innerHTML = "";
+      board.style.width = map.cols * cell + "px";
+      board.style.height = map.rows * cell + "px";
+      board.style.setProperty("--cell", cell + "px");
+      board.dataset.ground = map.ground;
+      board.classList.toggle("painting", mode !== "move" && mode !== "range");
+
+      // Terrain squares
+      for (const k in map.terrain) {
+        const [x, y] = k.split(",").map(Number);
+        const t = TERRAIN[map.terrain[k]];
+        if (!t || !inBounds(x, y)) continue;
+        const square = document.createElement("div");
+        square.className = "map-terrain terrain-" + map.terrain[k];
+        square.style.left = x * cell + "px";
+        square.style.top = y * cell + "px";
+        square.textContent = t.icon;
+        board.append(square);
+      }
+
+      // Tokens
+      for (const token of map.tokens) {
+        const piece = document.createElement("div");
+        piece.className = "map-token side-" + token.side;
+        if (token.id === selectedId) piece.classList.add("selected");
+        if (rangeFrom === token.id) piece.classList.add("range-from");
+        if (token.hp <= 0) piece.classList.add("down");
+        piece.style.left = token.x * cell + "px";
+        piece.style.top = token.y * cell + "px";
+        piece.style.width = piece.style.height = token.size * cell + "px";
+        piece.style.fontSize = Math.round(cell * 0.36 * Math.min(token.size, 2)) + "px";
+        piece.textContent = token.label;
+        piece.title = token.name;
+        piece.setAttribute("role", "button");
+        piece.setAttribute("aria-label", token.name + ", HP " + token.hp + " of " + token.maxHp);
+
+        // A little HP bar along the bottom
+        const bar = document.createElement("span");
+        bar.className = "map-hp";
+        bar.style.width = Math.max(0, Math.min(1, token.hp / token.maxHp)) * 100 + "%";
+        piece.append(bar);
+        if (token.conditions.length) {
+          const mark = document.createElement("span");
+          mark.className = "map-cond";
+          mark.textContent = "!";
+          piece.append(mark);
+        }
+        connectToken(piece, token);
+        board.append(piece);
+      }
+      renderTokenPanel();
+      renderHeroButtons();
+    }
+
+    function showStatus(text) {
+      el("moveInfo").textContent = text;
+    }
+
+    // =====================================================================
+    // DRAGGING TOKENS (works with a mouse, a finger or a pen: "pointer" events)
+    // =====================================================================
+    function squareUnderPointer(event) {
+      const box = el("board").getBoundingClientRect();
+      return [Math.floor((event.clientX - box.left) / map.cell), Math.floor((event.clientY - box.top) / map.cell)];
+    }
+
+    function connectToken(piece, token) {
+      piece.addEventListener("pointerdown", function (event) {
+        if (mode === "range") {
+          event.preventDefault();
+          pickForRange(token);
+          return;
+        }
+        if (mode !== "move") return;   // painting: let the board handle it
+        event.preventDefault();
+        piece.setPointerCapture(event.pointerId);
+        const [startX, startY] = squareUnderPointer(event);
+        const grab = [startX - token.x, startY - token.y];   // where on a big token you grabbed it
+        let target = [token.x, token.y];
+        let moved = false;
+
+        const onMove = function (e) {
+          const [px, py] = squareUnderPointer(e);
+          const nx = px - grab[0], ny = py - grab[1];
+          if (nx === target[0] && ny === target[1]) return;
+          target = [nx, ny];
+          moved = true;
+          piece.style.left = nx * map.cell + "px";
+          piece.style.top = ny * map.cell + "px";
+          piece.classList.toggle("cannot", !canStand(token, nx, ny));
+          describeMove(token, nx, ny);
+        };
+        const onUp = function () {
+          piece.removeEventListener("pointermove", onMove);
+          piece.removeEventListener("pointerup", onUp);
+          piece.removeEventListener("pointercancel", onUp);
+          if (!moved) {   // a tap: open the token's panel
+            selectedId = token.id;
+            render();
+            el("tokenPanel").scrollIntoView({ behavior: "smooth", block: "nearest" });
+            return;
+          }
+          if (canStand(token, target[0], target[1])) {
+            describeMove(token, target[0], target[1], true);
+            token.x = target[0];
+            token.y = target[1];
+            saveMap();
+          } else {
+            showStatus("⛔ " + token.name + " can't end there: it's a wall, off the map, or another creature's space.");
+          }
+          render();
+        };
+        piece.addEventListener("pointermove", onMove);
+        piece.addEventListener("pointerup", onUp);
+        piece.addEventListener("pointercancel", onUp);
+      });
+    }
+
+    function describeMove(token, x, y, done) {
+      if (!inBounds(x, y)) {
+        showStatus("Off the map.");
+        return;
+      }
+      const result = movementCost(token, x, y);
+      if (!result) {
+        showStatus("⛔ No way to get there: walls are in the way.");
+        return;
+      }
+      const feet = result.cost * FEET_PER_SQUARE;
+      let text = (done ? "🚶 " + token.name + " moved " : "Moving: ") + feet + " ft (" + result.cost + " square" + (result.cost === 1 ? "" : "s") + ")";
+      if (token.speed) {
+        text += feet > token.speed ? " ⚠️ more than their Speed of " + token.speed + " ft (Dash doubles it)" : " of " + token.speed + " ft Speed";
+      }
+      if (result.simple) text += ". Big creature: counted without terrain.";
+      showStatus(text);
+    }
+
+    // =====================================================================
+    // MEASURING RANGE
+    // =====================================================================
+    function pickForRange(token) {
+      if (rangeFrom === null || rangeFrom === token.id) {
+        rangeFrom = rangeFrom === token.id ? null : token.id;
+        showStatus(rangeFrom === null ? "Tap a token to measure from." : "From " + token.name + ": now tap another token.");
+      } else {
+        const from = findToken(rangeFrom);
+        const feet = rangeBetween(from, token);
+        showStatus("📏 " + from.name + " to " + token.name + ": " + feet + " ft" + (feet === 0 ? " (touching)" : feet === 5 ? " (next to each other: in melee reach)" : "") + ". Tap another token to measure from " + from.name + " again.");
+      }
+      render();
+    }
+
+    // =====================================================================
+    // PAINTING TERRAIN (tap or drag across squares)
+    // =====================================================================
+    function paintAt(event) {
+      const [x, y] = squareUnderPointer(event);
+      if (!inBounds(x, y)) return;
+      const k = x + "," + y;
+      if (mode === "erase") {
+        if (!map.terrain[k]) return;
+        delete map.terrain[k];
+      } else {
+        if (TERRAIN[mode].blocks && map.tokens.some(function (t) {
+          return x >= t.x && x < t.x + t.size && y >= t.y && y < t.y + t.size;
+        })) return;   // don't build a wall on top of someone
+        if (map.terrain[k] === mode) return;
+        map.terrain[k] = mode;
+      }
+      render();
+    }
+
+    function connectBoard() {
+      const board = el("board");
+      board.addEventListener("pointerdown", function (event) {
+        if (mode === "move" || mode === "range") return;
+        event.preventDefault();
+        painting = true;
+        board.setPointerCapture(event.pointerId);
+        paintAt(event);
+      });
+      board.addEventListener("pointermove", function (event) {
+        if (painting) paintAt(event);
+      });
+      const stop = function () {
+        if (!painting) return;
+        painting = false;
+        saveMap();
+      };
+      board.addEventListener("pointerup", stop);
+      board.addEventListener("pointercancel", stop);
+    }
+
+    // =====================================================================
+    // TOOLS
+    // =====================================================================
+    const MODES = [
+      { key: "move", label: "✋ Move", hint: "Drag a token to move it. Tap a token to see its HP and conditions. Scroll the map by dragging an empty spot." },
+      { key: "range", label: "📏 Measure", hint: "Tap one token, then another, to see how far apart they are." },
+      { key: "wall", label: "🧱 Wall", hint: "Tap or drag across squares to build walls. Nothing can move through them or cut their corners." },
+      { key: "tree", label: "🌳 Tree / boulder", hint: "Paint big trees or boulders. They block movement like walls." },
+      { key: "rubble", label: "🪨 Rubble", hint: "Paint difficult terrain: each square costs 2 squares (10 ft) of movement to enter." },
+      { key: "water", label: "🌊 Water", hint: "Paint shallow water: difficult terrain, 10 ft per square." },
+      { key: "erase", label: "🧽 Erase", hint: "Tap or drag to remove terrain." }
+    ];
+
+    function setMode(key) {
+      mode = key;
+      rangeFrom = null;
+      el("modeButtons").innerHTML = "";
+      for (const m of MODES) {
+        const button = document.createElement("button");
+        button.className = "small-button" + (m.key === mode ? " picked" : "");
+        button.textContent = m.label;
+        button.addEventListener("click", function () { setMode(m.key); });
+        el("modeButtons").append(button);
+      }
+      el("modeHint").textContent = MODES.find(function (m) { return m.key === mode; }).hint;
+      showStatus("");
+      render();
+    }
+
+    // =====================================================================
+    // THE TOKEN PANEL (HP and conditions)
+    // =====================================================================
+    function renderTokenPanel() {
+      const token = findToken(selectedId);
+      el("tokenPanel").classList.toggle("hidden", !token);
+      if (!token) return;
+      el("tokenName").textContent = token.name;
+      el("tokenStats").textContent = "HP " + token.hp + " / " + token.maxHp + " · AC " + token.ac +
+        (token.speed ? " · Speed " + token.speed + " ft (" + token.speed / FEET_PER_SQUARE + " squares)" : "") +
+        (token.size > 1 ? " · Takes " + token.size + "×" + token.size + " squares" : "") +
+        (token.hp <= 0 ? (token.side === "hero" ? " · 💀 At 0 HP: unconscious, making death saving throws" : " · 💀 Defeated") : "");
+      const chips = el("conditionChips");
+      chips.innerHTML = "";
+      for (const name of CONDITION_NAMES) {
+        const on = token.conditions.includes(name);
+        const chip = document.createElement("button");
+        chip.className = "small-button" + (on ? " picked" : "");
+        chip.textContent = (on ? "✓ " : "") + name;
+        chip.addEventListener("click", function () {
+          token.conditions = on ? token.conditions.filter(function (c) { return c !== name; }) : token.conditions.concat([name]);
+          saveMap();
+          render();
+        });
+        chips.append(chip);
+      }
+    }
+
+    function changeHp(sign) {
+      const token = findToken(selectedId);
+      if (!token) return;
+      const amount = Math.min(Math.max(Math.round(Number(el("hpAmount").value)) || 0, 0), 999);
+      token.hp = Math.min(Math.max(token.hp + sign * amount, 0), token.maxHp);
+      saveMap();
+      render();
+    }
+
+    function renderHeroButtons() {
+      const box = el("heroButtons");
+      box.innerHTML = "";
+      const heroes = knownHeroes();
+      el("noHeroes").classList.toggle("hidden", heroes.length > 0);
+      for (const hero of heroes) {
+        const already = map.tokens.some(function (t) { return t.side === "hero" && t.name === hero.name; });
+        const button = document.createElement("button");
+        button.className = "small-button";
+        button.textContent = (already ? "✓ " : "➕ ") + hero.name;
+        button.disabled = already;
+        button.addEventListener("click", function () { addHero(hero); });
+        box.append(button);
+      }
+    }
+
+    // =====================================================================
+    // MONSTER PICKER
+    // =====================================================================
+    function crValue(cr) {
+      if (cr.includes("/")) return Number(cr.split("/")[0]) / Number(cr.split("/")[1]);
+      return Number(cr);
+    }
+    const sortedMonsters = MONSTERS.slice().sort(function (a, b) {
+      return crValue(a.cr) - crValue(b.cr) || a.n.localeCompare(b.n);
+    });
+    function fillMonsterPick() {
+      const filter = el("monsterSearch").value.trim().toLowerCase();
+      const select = el("monsterPick");
+      select.innerHTML = "";
+      for (const m of sortedMonsters) {
+        if (filter && !m.n.toLowerCase().includes(filter)) continue;
+        select.append(new Option(m.n + " (CR " + m.cr + ", " + m.size + ")", m.n));
+      }
+      if (!select.options.length) select.append(new Option("No monster matches", ""));
+    }
+
+    // =====================================================================
+    // START UP
+    // =====================================================================
+    function applySettingsBoxes() {
+      el("colsBox").value = map.cols;
+      el("rowsBox").value = map.rows;
+      el("zoomBox").value = String(map.cell);
+      el("groundBox").value = map.ground;
+    }
+
+    function resize() {
+      const cols = Math.min(Math.max(Math.round(Number(el("colsBox").value)) || 20, 8), 40);
+      const rows = Math.min(Math.max(Math.round(Number(el("rowsBox").value)) || 14, 8), 40);
+      const cut = map.tokens.filter(function (t) { return t.x + t.size > cols || t.y + t.size > rows; });
+      if (cut.length && !confirm(cut.length + " token(s) would be off the smaller map and get removed. OK?")) {
+        applySettingsBoxes();
+        return;
+      }
+      map.cols = cols;
+      map.rows = rows;
+      map.tokens = map.tokens.filter(function (t) { return !cut.includes(t); });
+      for (const k in map.terrain) {
+        const [x, y] = k.split(",").map(Number);
+        if (!inBounds(x, y)) delete map.terrain[k];
+      }
+      applySettingsBoxes();
+      saveMap();
+      render();
+    }
+
+    loadMap();
+    applySettingsBoxes();
+    connectBoard();
+    fillMonsterPick();
+    setMode("move");
+    importFromSimulator();   // after setMode, so its message isn't cleared
+
+    el("monsterSearch").addEventListener("input", fillMonsterPick);
+    el("addMonsterBtn").addEventListener("click", function () {
+      const monster = MONSTERS.find(function (m) { return m.n === el("monsterPick").value; });
+      if (monster) addMonster(monster, Math.min(Math.max(Math.round(Number(el("monsterCount").value)) || 1, 1), 20));
+    });
+    el("addCustomBtn").addEventListener("click", function () {
+      const name = el("customName").value.trim();
+      if (!name) return;
+      addToken({ side: "other", name: name, size: 1, hp: 1, maxHp: 1, ac: 10, speed: 0 }, Math.floor(map.cols / 2), Math.floor(map.rows / 2));
+      el("customName").value = "";
+      saveMap();
+      render();
+    });
+    el("damageBtn").addEventListener("click", function () { changeHp(-1); });
+    el("healBtn").addEventListener("click", function () { changeHp(1); });
+    el("removeTokenBtn").addEventListener("click", function () {
+      map.tokens = map.tokens.filter(function (t) { return t.id !== selectedId; });
+      selectedId = null;
+      saveMap();
+      render();
+    });
+    el("closeTokenBtn").addEventListener("click", function () {
+      selectedId = null;
+      render();
+    });
+    el("colsBox").addEventListener("change", resize);
+    el("rowsBox").addEventListener("change", resize);
+    el("zoomBox").addEventListener("change", function () {
+      map.cell = Number(el("zoomBox").value) || 38;
+      saveMap();
+      render();
+    });
+    el("groundBox").addEventListener("change", function () {
+      map.ground = el("groundBox").value;
+      saveMap();
+      render();
+    });
+    el("clearTokensBtn").addEventListener("click", function () {
+      if (!confirm("Remove every token from the map?")) return;
+      map.tokens = [];
+      selectedId = null;
+      saveMap();
+      render();
+    });
+    el("clearTerrainBtn").addEventListener("click", function () {
+      if (!confirm("Remove all walls, trees, rubble and water?")) return;
+      map.terrain = {};
+      saveMap();
+      render();
+    });
+  </script>
+
+  <!-- The "Send feedback" link at the bottom of the page -->
+  <script src="feedback.js"></script>
+</body>
+</html>

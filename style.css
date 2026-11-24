@@ -1036,3 +1036,107 @@ button.big-choice {
   border-radius: 12px;
   background: radial-gradient(circle at 50% 40%, #4a3526, #22170f);
 }
+
+/* ---------- Battle map ---------- */
+/* The map scrolls inside this box on small screens, so the page itself doesn't. */
+.map-scroll {
+  max-width: 100%;
+  overflow: auto;
+  margin: 0 auto 8px;
+  border: 2px solid #9b7fd1;
+  border-radius: 10px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.map-board {
+  position: relative;
+  margin: 0 auto;
+  /* Grid lines every square (--cell is set by the page) */
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.35) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.35) 1px, transparent 1px);
+  background-size: var(--cell) var(--cell);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.map-board[data-ground="stone"] { background-color: #6f6a64; }
+.map-board[data-ground="grass"] { background-color: #4f7a3a; }
+.map-board[data-ground="sand"]  { background-color: #b99a63; }
+.map-board[data-ground="wood"]  { background-color: #7a5434; }
+
+/* While painting terrain, a finger drag paints instead of scrolling. */
+.map-board.painting {
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.map-terrain {
+  position: absolute;
+  width: var(--cell);
+  height: var(--cell);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--cell) * 0.55);
+  pointer-events: none;
+}
+
+.terrain-wall   { background-color: #3b3530; box-shadow: inset 0 0 0 2px #24201c; }
+.terrain-tree   { background-color: rgba(30, 70, 30, 0.55); }
+.terrain-rubble { background-color: rgba(120, 100, 80, 0.55); }
+.terrain-water  { background-color: rgba(40, 110, 170, 0.6); }
+
+.map-token {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 50%;
+  border: 3px solid #1a1424;
+  font-weight: bold;
+  color: #1a1424;
+  cursor: grab;
+  touch-action: none;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.map-token.side-hero    { background-color: #e8c25a; }
+.map-token.side-monster { background-color: #c0504d; color: #fff3e0; }
+.map-token.side-other   { background-color: #b9b2a8; }
+.map-token.selected     { outline: 3px solid #ffffff; z-index: 2; }
+.map-token.range-from   { outline: 3px dashed #7fd1ff; z-index: 2; }
+.map-token.down         { opacity: 0.45; }
+.map-token.cannot       { outline: 3px solid #ff4040; opacity: 0.7; }
+
+/* HP bar along the bottom of a token */
+.map-hp {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 4px;
+  background-color: #3fbf5f;
+}
+
+/* "!" when the token has a condition */
+.map-cond {
+  position: absolute;
+  top: 0;
+  right: 4px;
+  font-size: 11px;
+  color: #ffffff;
+  text-shadow: 0 0 2px #000;
+}
+
+.map-status {
+  min-height: 1.4em;
+  max-width: 720px;
+  margin: 0 auto 16px;
+}
+
+.map-tools {
+  max-width: 720px;
+}

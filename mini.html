@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mini Maker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <nav class="top-nav">
+    <a href="index.html">🏠 Home</a>
+    <a href="dice.html">🎲 Dice</a>
+    <a href="character.html">🧙 Characters</a>
+    <a href="dm.html">🛡️ GM Screen</a>
+    <a href="equipment.html">🛒 Equipment</a>
+  </nav>
+
+  <h1>🖨️ Mini Maker</h1>
+  <p class="lead">Turn your hero into a 3D-printable miniature</p>
+
+  <!-- ===== 1. Whose mini? ===== -->
+  <div class="panel">
+    <h2>1. Whose mini?</h2>
+    <label class="sheet-field">One of your heroes <select id="heroPick"></select></label>
+    <div class="sheet-grid">
+      <label class="sheet-field">Species <select id="speciesPick"></select></label>
+      <label class="sheet-field">Class (sets the gear) <select id="classPick"></select></label>
+    </div>
+    <p class="hint">Picking a hero fills these in. You can also choose any species and class by hand, for example to print a mini from a shop order.</p>
+  </div>
+
+  <!-- ===== 2. Look at it ===== -->
+  <div class="panel">
+    <h2>2. Take a look</h2>
+    <canvas id="preview" class="mini-preview" width="480" height="480" aria-label="3D preview of the miniature"></canvas>
+    <div class="roll-row">
+      <button class="small-button" id="spinBtn">⏸ Stop spinning</button>
+      <input id="turn" type="range" min="0" max="360" value="20" aria-label="Turn the model">
+    </div>
+    <label class="hint"><input type="checkbox" id="bigBox"> Make it 1.5 times bigger (easier to print)</label>
+    <p id="sizeInfo" class="hint"></p>
+    <p class="hint">A simple, chunky figure built from basic shapes: species changes the build and features, class changes the gear. Two-class heroes use their first class's gear.</p>
+  </div>
+
+  <!-- ===== 3. Print it, or order it ===== -->
+  <div class="panel">
+    <h2>3. Print it</h2>
+    <button id="downloadBtn">⬇️ Download the 3D-print file (.stl)</button>
+    <details class="tutor-box">
+      <summary><strong>🖨️ How to print it</strong></summary>
+      <p>1. Open the .stl file in your printer's own software (the "slicer"): for example Bambu Studio, PrusaSlicer, Cura or Orca Slicer. These came with your printer or are free to download.</p>
+      <p>2. Turn on <strong>supports</strong> ("tree" or "organic" supports if you have them). The figure is designed to need very few, but heads and arms are small overhangs.</p>
+      <p>3. Use fine settings: 0.08 to 0.12 mm layer height. A resin printer gives the most detail. If small parts don't come out well, tick "1.5 times bigger".</p>
+      <p>4. The model is made of overlapping shapes; slicers join them automatically. If yours says the model has errors, let it "repair" or "fix" the model.</p>
+    </details>
+
+    <h3 class="section-label">No printer? Order it printed</h3>
+    <button class="small-button" id="orderBtn">🛒 Add a printed mini of this hero to my order</button>
+    <p id="orderNote" class="hint"></p>
+  </div>
+
+  <p><a href="character.html" class="back-link">← Characters</a> · <a href="equipment.html" class="back-link">🛒 Equipment</a></p>
+
+  <script src="dice.js"></script>
+  <script src="rules.js"></script>
+  <script src="mini3d.js"></script>
+  <script src="equipment.js"></script>
+  <script>
+    const el = function (id) {
+      return document.getElementById(id);
+    };
+
+    let model = [];        // the triangles of the current mini
+    let angle = 20 * Math.PI / 180;
+    let spinning = true;
+    const heroes = loadCharacters();   // from rules.js
+
+    // =====================================================================
+    // CHOOSING
+    // =====================================================================
+    function fillPickers() {
+      el("heroPick").append(new Option("— Choose by hand —", ""));
+      for (const hero of heroes) {
+        el("heroPick").append(new Option(hero.name + " (" + hero.species + " " + classSummary(hero) + ")", hero.id));
+      }
+      for (const species of SPECIES) el("speciesPick").append(new Option(species.name, species.name));
+      for (const charClass of CLASSES) el("classPick").append(new Option(charClass.name, charClass.name));
+
+      // Opened from a character sheet as mini.html?hero=ID
+      const wanted = Number(new URLSearchParams(location.search).get("hero")) || 0;
+      if (heroes.some(function (h) { return h.id === wanted; })) {
+        el("heroPick").value = String(wanted);
+        useHero();
+      } else {
+        el("speciesPick").value = "Human";
+        el("classPick").value = "Fighter";
+      }
+    }
+
+    function chosenHero() {
+      const id = Number(el("heroPick").value);
+      return heroes.find(function (h) { return h.id === id; });
+    }
+
+    function useHero() {
+      const hero = chosenHero();
+      if (!hero) return;
+      if (findByName(SPECIES, hero.species)) el("speciesPick").value = hero.species;
+      if (findByName(CLASSES, hero.className)) el("classPick").value = hero.className;
+    }
+
+    // =====================================================================
+    // BUILDING AND SHOWING THE MODEL
+    // =====================================================================
+    function rebuild() {
+      const result = buildHeroMini(el("speciesPick").value, el("classPick").value, el("bigBox").checked);
+      model = result.tris;
+      const box = measureMini(model);
+      const mm = function (n) { return n.toFixed(0); };
+      el("sizeInfo").textContent = "Size: " + mm(box.size[0]) + " × " + mm(box.size[1]) + " mm, " + mm(box.size[2]) +
+        " mm tall, on a " + mm(MINI_BASE_RADIUS * 2 * (el("bigBox").checked ? 1.5 : 1)) + " mm round base. " +
+        model.length.toLocaleString() + " triangles." + (result.notes.length ? " " + result.notes.join(" ") : "");
+      draw();
+    }
+
+    function draw() {
+      drawMini(el("preview"), model, angle);
+    }
+
+    // Turn slowly, about 20 times a second.
+    setInterval(function () {
+      if (!spinning) return;
+      angle += 0.05;
+      el("turn").value = String(Math.round((angle * 180 / Math.PI) % 360));
+      draw();
+    }, 50);
+
+    // =====================================================================
+    // SAVING THE FILE
+    // =====================================================================
+    function fileName() {
+      const hero = chosenHero();
+      const words = [hero ? hero.name : "", el("speciesPick").value, el("classPick").value, el("bigBox").checked ? "big" : ""];
+      const clean = words.filter(Boolean).join("-").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      return "dragon-table-mini-" + (clean || "hero") + ".stl";
+    }
+
+    function download() {
+      const title = "Dragon Table mini: " + el("speciesPick").value + " " + el("classPick").value;
+      const blob = makeStl(model, title);
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = fileName();
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(function () { URL.revokeObjectURL(link.href); }, 5000);
+    }
+
+    // =====================================================================
+    // ORDERING IT PRINTED (adds the shop's "Your Hero, Printed" to the basket)
+    // =====================================================================
+    const MINI_PRODUCT_ID = "custom-hero";
+
+    function orderPrinted() {
+      const product = PRODUCTS.find(function (p) { return p.id === MINI_PRODUCT_ID; });
+      if (!product) return;
+      const hero = chosenHero();
+      const note = "Mini Maker: " + el("speciesPick").value + " " + el("classPick").value +
+        (el("bigBox").checked ? ", 1.5× size" : "") + (hero ? " (" + hero.name + ")" : "");
+
+      let basket = [];
+      try {
+        basket = JSON.parse(localStorage.getItem("equipmentBasket") || "[]");
+        if (!Array.isArray(basket)) basket = [];
+      } catch (error) {
+        basket = [];
+      }
+      const same = basket.find(function (e) { return e && e.id === MINI_PRODUCT_ID && e.note === note; });
+      if (same) same.qty = Math.min((Number(same.qty) || 0) + 1, 99);
+      else basket.push({ id: MINI_PRODUCT_ID, qty: 1, note: note });
+      try {
+        localStorage.setItem("equipmentBasket", JSON.stringify(basket));
+      } catch (error) {
+        el("orderNote").textContent = "⚠️ This browser won't let the page save your basket.";
+        return;
+      }
+      el("orderNote").textContent = "";
+      el("orderNote").append("✅ Added \"" + product.name + "\" (" + note + ") to your order. ");
+      const link = document.createElement("a");
+      link.href = "equipment.html#basketPanel";
+      link.textContent = "Go to your order →";
+      el("orderNote").append(link);
+    }
+
+    // =====================================================================
+    // START UP
+    // =====================================================================
+    fillPickers();
+    rebuild();
+    if (!PRODUCTS.some(function (p) { return p.id === MINI_PRODUCT_ID; })) {
+      el("orderBtn").classList.add("hidden");   // the shop doesn't sell printed minis right now
+    }
+
+    el("heroPick").addEventListener("change", function () {
+      useHero();
+      rebuild();
+    });
+    el("speciesPick").addEventListener("change", rebuild);
+    el("classPick").addEventListener("change", rebuild);
+    el("bigBox").addEventListener("change", rebuild);
+    el("turn").addEventListener("input", function () {
+      spinning = false;
+      el("spinBtn").textContent = "▶ Spin";
+      angle = Number(el("turn").value) * Math.PI / 180;
+      draw();
+    });
+    el("spinBtn").addEventListener("click", function () {
+      spinning = !spinning;
+      el("spinBtn").textContent = spinning ? "⏸ Stop spinning" : "▶ Spin";
+    });
+    el("downloadBtn").addEventListener("click", download);
+    el("orderBtn").addEventListener("click", orderPrinted);
+  </script>
+
+  <!-- The "Send feedback" link at the bottom of the page -->
+  <script src="feedback.js"></script>
+</body>
+</html>

@@ -62,6 +62,7 @@ const PRODUCTS = [
   { id: "spike-trap", category: "terrain", name: "Spike Pit Trap", icon: "⚠️", price: 7, example: true,
     description: "A 2-by-2 square pit with a removable lid, so you can reveal the trap at the table." },
 
+  // Keep the id "custom-hero": the Mini Maker's "order it printed" button adds this product.
   { id: "custom-hero", category: "minis", name: "Your Hero, Printed", icon: "🧙", price: 15, example: true,
     description: "A 32 mm miniature of your character. Tell us their class, species and look in the order notes." },
   { id: "adventurer-party", category: "minis", name: "Adventuring Party (×4)", icon: "⚔️", price: 40, example: true,

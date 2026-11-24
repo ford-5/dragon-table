@@ -18,6 +18,7 @@
 
   <h1>🛒 Equipment</h1>
   <p class="lead">3D-printed gear for your table</p>
+  <p><a class="plain-button" href="mini.html">🖨️ Design a mini of your own hero</a></p>
   <p id="exampleNote" class="guide-banner hidden">🧪 These are example products. Real ones are coming soon.</p>
 
   <!-- One button per section of the shop, plus "Everything" -->
@@ -70,7 +71,10 @@
         basket = (Array.isArray(saved) ? saved : []).filter(function (entry) {
           return entry && findProduct(entry.id) && entry.qty >= 1;
         }).map(function (entry) {
-          return { id: entry.id, qty: Math.min(Math.round(entry.qty), 99) };
+          // A note says which version, e.g. "Mini Maker: Elf Wizard" for a printed hero.
+          const clean = { id: entry.id, qty: Math.min(Math.round(entry.qty), 99) };
+          if (entry.note) clean.note = String(entry.note).slice(0, 120);
+          return clean;
         });
       } catch (error) {
         basket = [];
@@ -98,7 +102,7 @@
 
     function addToBasket(id, qty) {
       const entry = basket.find(function (e) {
-        return e.id === id;
+        return e.id === id && !e.note;
       });
       if (entry) {
         entry.qty = Math.min(entry.qty + qty, 99);
@@ -109,11 +113,8 @@
       renderBasket();
     }
 
-    function changeQty(id, amount) {
-      const entry = basket.find(function (e) {
-        return e.id === id;
-      });
-      if (!entry) return;
+    function changeQty(entry, amount) {
+      if (!basket.includes(entry)) return;
       entry.qty = Math.min(entry.qty + amount, 99);
       if (entry.qty <= 0) {
         basket = basket.filter(function (e) {
@@ -229,12 +230,13 @@
         const product = findProduct(entry.id);
         const item = document.createElement("li");
         const text = document.createElement("span");
-        text.textContent = entry.qty + " × " + product.name + " — " + money(product.price * entry.qty);
+        text.textContent = entry.qty + " × " + product.name + (entry.note ? " (" + entry.note + ")" : "") +
+          " — " + money(product.price * entry.qty);
         item.append(
           text,
-          makeButton("−", "small-button", function () { changeQty(entry.id, -1); }),
-          makeButton("+", "small-button", function () { changeQty(entry.id, 1); }),
-          makeButton("✕", "small-button", function () { changeQty(entry.id, -entry.qty); })
+          makeButton("−", "small-button", function () { changeQty(entry, -1); }),
+          makeButton("+", "small-button", function () { changeQty(entry, 1); }),
+          makeButton("✕", "small-button", function () { changeQty(entry, -entry.qty); })
         );
         list.append(item);
       }
@@ -272,7 +274,8 @@
       const lines = ["Order " + code];
       for (const entry of basket) {
         const product = findProduct(entry.id);
-        lines.push(entry.qty + " x " + product.name + " (" + money(product.price) + " each) = " + money(product.price * entry.qty));
+        lines.push(entry.qty + " x " + product.name + (entry.note ? " [" + entry.note + "]" : "") +
+          " (" + money(product.price) + " each) = " + money(product.price * entry.qty));
       }
       const total = money(basketTotal());
       lines.push("Total: " + total);

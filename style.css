@@ -1025,3 +1025,14 @@ button.big-choice {
 .feedback-link a {
   color: #c9a227;
 }
+
+/* ---------- Mini Maker ---------- */
+.mini-preview {
+  display: block;
+  width: 100%;
+  max-width: 480px;
+  height: auto;
+  margin: 0 auto 12px;
+  border-radius: 12px;
+  background: radial-gradient(circle at 50% 40%, #4a3526, #22170f);
+}

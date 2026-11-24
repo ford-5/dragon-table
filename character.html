@@ -239,6 +239,12 @@
     </div>
 
     <div class="panel">
+      <h2>🖨️ Miniature</h2>
+      <p class="hint">Make a 3D-print file of this hero, or order one printed.</p>
+      <a id="miniLink" class="plain-button" href="mini.html">🖨️ Open the Mini Maker</a>
+    </div>
+
+    <div class="panel">
       <h2>Inventory & Notes</h2>
       <textarea id="sheetInventory" class="notes-box" placeholder="Longsword, 50 ft of rope, 12 gold pieces..."></textarea>
     </div>
@@ -984,6 +990,7 @@
       document.getElementById("sheetAc").value = c.ac;
       document.getElementById("sheetHp").value = c.hp;
       document.getElementById("sheetInventory").value = c.inventory || "";
+      document.getElementById("miniLink").href = "mini.html?hero=" + c.id;
 
       // ----- Ability scores -----
       const abilityGrid = document.getElementById("sheetAbilities");

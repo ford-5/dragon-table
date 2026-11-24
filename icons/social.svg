@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <!-- Dragon Table share-preview card (drawn for this app). -->
+  <rect width="1200" height="630" fill="#2b1d14"/>
+  <rect x="24" y="24" width="1152" height="582" rx="28" fill="none" stroke="#c9a227" stroke-width="6"/>
+  <g transform="translate(110 125) scale(0.75)" fill="none" stroke="#c9a227" stroke-width="14" stroke-linejoin="round" stroke-linecap="round">
+    <polygon points="256,106 386,181 386,331 256,406 126,331 126,181"/>
+    <polygon points="256,166 343,316 169,316"/>
+    <path d="M256,106 L256,166 M126,181 L256,166 M126,181 L169,316 M386,181 L256,166 M386,181 L343,316 M126,331 L169,316 M386,331 L343,316 M256,406 L169,316 M256,406 L343,316"/>
+    <text x="256" y="286" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="72" fill="#f3e6c8" stroke="none">20</text>
+  </g>
+  <text x="500" y="270" font-family="Georgia, 'Times New Roman', serif" font-weight="bold" font-size="84" fill="#f3e6c8">Dragon Table</text>
+  <text x="500" y="345" font-family="Georgia, 'Times New Roman', serif" font-size="38" fill="#c9a227">Characters, free rules, battle</text>
+  <text x="500" y="395" font-family="Georgia, 'Times New Roman', serif" font-size="38" fill="#c9a227">maps and 3D-printed minis</text>
+  <text x="500" y="480" font-family="Georgia, 'Times New Roman', serif" font-size="30" fill="#f3e6c8" opacity="0.8">Free to play · Beginner friendly</text>
+</svg>

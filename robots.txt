@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ford-5.github.io/dragon-table/sitemap.xml

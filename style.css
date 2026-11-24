@@ -1253,3 +1253,90 @@ button.big-choice {
   padding: 6px 0;
   font-size: 15px;
 }
+
+/* ---------- The "number to beat" row ---------- */
+.target-row {
+  align-items: center;
+}
+
+.target-row select {
+  max-width: 100%;
+}
+
+/* ---------- Library ---------- */
+.big-choice.library-choice {
+  background-color: #1f3550;
+  border-color: #6fa8dc;
+}
+
+.big-choice.library-choice:hover {
+  background-color: #2a4770;
+}
+
+.home-links {
+  margin: 0 auto 8px;
+}
+
+.home-links a {
+  color: #c9a227;
+}
+
+.lib-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 720px;
+}
+
+.lib-results,
+#content > .panel {
+  max-width: 720px;
+}
+
+.lib-results {
+  margin: 0 auto 24px;
+  text-align: left;
+}
+
+.lib-item {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(243, 230, 200, 0.3);
+  border-radius: 8px;
+  background-color: rgba(0, 0, 0, 0.18);
+  text-align: left;
+}
+
+.lib-item summary {
+  cursor: pointer;
+}
+
+.lib-text {
+  font-size: 15px;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.lib-table-wrap {
+  overflow-x: auto;
+  margin: 8px 0;
+}
+
+.lib-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  text-align: left;
+}
+
+.lib-table th,
+.lib-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(243, 230, 200, 0.2);
+  vertical-align: top;
+}
+
+.lib-table th {
+  color: #c9a227;
+  white-space: nowrap;
+}

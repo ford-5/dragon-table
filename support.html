@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Support Dragon Table</title>
+  <meta name="description" content="Dragon Table is free to use. Here's how to help it grow: share it, send a tip, or pick up some 3D-printed gaming gear.">
+  <link rel="stylesheet" href="style.css">
+  <!-- App icon, colors, and the file that makes Dragon Table installable -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#2b1d14">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <meta name="apple-mobile-web-app-title" content="Dragon Table">
+</head>
+
+<body>
+  <nav class="top-nav">
+    <a href="index.html">🏠 Home</a>
+    <a href="library.html">📚 Library</a>
+    <a href="character.html">🧙 Characters</a>
+    <a href="dm.html">🛡️ GM Screen</a>
+    <a href="equipment.html">🛒 Equipment</a>
+  </nav>
+
+  <h1>💛 Support Dragon Table</h1>
+  <p class="lead">It's free to play. If it helped your game, here's how to help it grow.</p>
+
+  <div class="panel">
+    <h2>📣 Tell a friend</h2>
+    <p class="hint">The best help of all: new players and Game Masters.</p>
+    <button id="shareBtn">📤 Share Dragon Table</button>
+    <p id="shareStatus" class="hint"></p>
+  </div>
+
+  <div class="panel" id="tipPanel">
+    <h2>☕ Send a tip</h2>
+    <p class="hint">Tips help pay for the time spent building new features.</p>
+    <div id="tipLinks" class="choice-stack"></div>
+    <p id="tipNone" class="hint hidden">Tips aren't switched on yet. Thank you for thinking of it!</p>
+  </div>
+
+  <div class="panel">
+    <h2>🛒 Get gaming gear</h2>
+    <p class="hint">3D-printed terrain, miniatures, tokens and dice for your table, including a miniature of your own hero.</p>
+    <a class="plain-button" href="equipment.html">🛒 Visit the shop</a>
+  </div>
+
+  <div class="panel hidden" id="waitPanel">
+    <h2>🤖 The online AI Game Master</h2>
+    <p class="hint">Today the AI Game Master only runs on a computer with the app downloaded. Want it to work for everyone, online? Join the waiting list and we'll email you when it's ready.</p>
+    <a class="plain-button" id="waitLink" href="#" target="_blank" rel="noopener">✉️ Join the waiting list</a>
+  </div>
+
+  <div class="panel">
+    <h2>💬 Help make it better</h2>
+    <p class="hint">Found something confusing, or have an idea? Every page has a "Send feedback" link at the bottom.</p>
+  </div>
+
+  <p><a href="index.html" class="back-link">← Back</a> · <a href="policies.html" class="back-link">Privacy & Shop Policies</a></p>
+
+  <script src="monetize.js"></script>
+  <script>
+    const links = supportLinks();
+    const box = document.getElementById("tipLinks");
+    for (const link of links) {
+      const a = document.createElement("a");
+      a.className = "big-choice shop-choice";
+      a.href = link.url;
+      a.target = "_blank";
+      a.rel = "noopener";
+      const strong = document.createElement("strong");
+      strong.textContent = link.label;
+      a.append(strong);
+      box.append(a);
+    }
+    document.getElementById("tipNone").classList.toggle("hidden", links.length > 0);
+    document.getElementById("tipLinks").classList.toggle("hidden", links.length === 0);
+
+    if (waitlistUrl()) {
+      document.getElementById("waitPanel").classList.remove("hidden");
+      document.getElementById("waitLink").href = waitlistUrl();
+    }
+    document.getElementById("shareBtn").addEventListener("click", function () {
+      shareApp(document.getElementById("shareStatus"));
+    });
+  </script>
+
+  <!-- The "Send feedback" link at the bottom of the page -->
+  <script src="pwa.js"></script>
+  <script src="feedback.js"></script>
+</body>
+</html>

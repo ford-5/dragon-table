@@ -431,6 +431,25 @@ function getPointCost(scores) {
   return total;
 }
 
+// ---------- Conditions (paraphrased from the SRD 5.2.1 "Rules Glossary") ----------
+const CONDITIONS = [
+  { name: "Blinded",       text: "Can't see, and automatically fails any check that needs sight. Attacks against it have advantage; its attacks have disadvantage." },
+  { name: "Charmed",       text: "Can't attack the charmer or target them with harmful abilities or magic. The charmer has advantage on social checks against it." },
+  { name: "Deafened",      text: "Can't hear, and automatically fails any check that needs hearing." },
+  { name: "Exhaustion",    text: "Stacks in levels 1–6. Each level gives −2 to every d20 test and −5 ft of speed. Level 6 means death. A long rest removes one level." },
+  { name: "Frightened",    text: "Disadvantage on ability checks and attacks while the source of fear is in sight. Can't willingly move closer to it." },
+  { name: "Grappled",      text: "Speed is 0. Disadvantage on attacks against anyone except the grappler. The grappler can drag it along (at extra movement cost)." },
+  { name: "Incapacitated", text: "Can't take actions, bonus actions or reactions. Concentration ends, and it can't speak." },
+  { name: "Invisible",     text: "Can't be seen without special senses. Attacks against it have disadvantage; its attacks have advantage. Advantage on initiative." },
+  { name: "Paralyzed",     text: "Incapacitated, speed 0. Automatically fails Strength and Dexterity saves. Attacks against it have advantage, and hits from within 5 ft are critical hits." },
+  { name: "Petrified",     text: "Turned to stone: incapacitated, speed 0. Automatically fails Strength and Dexterity saves; attacks against it have advantage. Resistant to all damage and immune to poison." },
+  { name: "Poisoned",      text: "Disadvantage on attack rolls and ability checks." },
+  { name: "Prone",         text: "Can only crawl, or spend half its speed to stand up. Its attacks have disadvantage. Attacks against it have advantage within 5 ft, disadvantage from farther away." },
+  { name: "Restrained",    text: "Speed 0. Attacks against it have advantage; its attacks have disadvantage. Disadvantage on Dexterity saves." },
+  { name: "Stunned",       text: "Incapacitated. Automatically fails Strength and Dexterity saves. Attacks against it have advantage." },
+  { name: "Unconscious",   text: "Incapacitated and prone, drops what it's holding, unaware of its surroundings. Speed 0, fails Strength and Dexterity saves. Attacks against it have advantage, and hits from within 5 ft are critical hits." }
+];
+
 // =====================================================================
 // LOOKUP HELPERS
 // =====================================================================

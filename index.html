@@ -3,7 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dragon Table</title>
+  <title>Dragon Table: characters, free rules, battle maps and more</title>
+  <meta name="description" content="A free, beginner-friendly fifth-edition tabletop app: build characters, read the rules, play with an AI or live Game Master, run battles on a map, and 3D-print your hero.">
+  <link rel="canonical" href="https://ford-5.github.io/dragon-table/">
+  <!-- How the page looks when shared in messages and on social media -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Dragon Table">
+  <meta property="og:description" content="A free, beginner-friendly fifth-edition tabletop app: characters, free rules, battle maps and more.">
+  <meta property="og:url" content="https://ford-5.github.io/dragon-table/">
+  <meta property="og:image" content="https://ford-5.github.io/dragon-table/icons/social.png">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="style.css">
   <!-- App icon, colors, and the file that makes Dragon Table installable -->
   <link rel="manifest" href="manifest.webmanifest">
@@ -16,7 +25,7 @@
 <body>
   <nav class="top-nav">
     <a href="index.html" class="active">🏠 Home</a>
-    <a href="dice.html">🎲 Dice</a>
+    <a href="library.html">📚 Library</a>
     <a href="character.html">🧙 Characters</a>
     <a href="dm.html">🛡️ GM Screen</a>
     <a href="equipment.html">🛒 Equipment</a>
@@ -39,12 +48,24 @@
       <span class="hint">Learn the job, or run a game with the rulebooks, battles and live voice chat</span>
     </a>
 
+    <a class="big-choice library-choice" href="library.html">
+      <span class="big-choice-icon">📚</span>
+      <strong>Library</strong>
+      <span class="hint">Read the rules, 339 spells and 288 monsters, free</span>
+    </a>
+
     <a class="big-choice shop-choice" href="equipment.html">
       <span class="big-choice-icon">🛒</span>
       <strong>Equipment</strong>
       <span class="hint">3D-printed terrain, obstacles, miniatures, tokens and dice for your table</span>
     </a>
   </div>
+
+  <p class="home-links">
+    <a href="support.html">💛 Support Dragon Table</a> ·
+    <a href="#" id="shareLink">📤 Share it with a friend</a>
+  </p>
+  <p id="shareStatus" class="hint"></p>
 
   <!-- "Install the app" button or instructions, filled in by pwa.js when it applies -->
   <div id="installBox" class="panel install-box hidden"></div>
@@ -61,6 +82,13 @@
     <p><a href="policies.html">Privacy & Shop Policies</a></p>
   </footer>
   <!-- The "Send feedback" link at the bottom of the page -->
+  <script src="monetize.js"></script>
+  <script>
+    document.getElementById("shareLink").addEventListener("click", function (event) {
+      event.preventDefault();
+      shareApp(document.getElementById("shareStatus"));
+    });
+  </script>
   <script src="pwa.js"></script>
   <script src="feedback.js"></script>
 </body>

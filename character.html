@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Characters</title>
+  <meta name="description" content="Create and manage fifth-edition characters with automatic modifiers, armor, weapons and spells.">
   <link rel="stylesheet" href="style.css">
   <!-- App icon, colors, and the file that makes Dragon Table installable -->
   <link rel="manifest" href="manifest.webmanifest">
@@ -16,7 +17,7 @@
 <body>
   <nav class="top-nav">
     <a href="index.html">🏠 Home</a>
-    <a href="dice.html">🎲 Dice</a>
+    <a href="library.html">📚 Library</a>
     <a href="character.html" class="active">🧙 Characters</a>
     <a href="dm.html">🛡️ GM Screen</a>
     <a href="equipment.html">🛒 Equipment</a>
@@ -154,6 +155,21 @@
           <option value="disadvantage">Disadvantage</option>
         </select>
       </label>
+      <!-- The number to beat. Rolls compare themselves with it and say whether they worked. -->
+      <div class="roll-row target-row">
+        <label class="hint">🎯 Number to beat
+          <select id="targetPreset" aria-label="How hard is it?">
+            <option value="">No number (just add it up)</option>
+            <option value="5">Very easy (5)</option>
+            <option value="10">Easy (10)</option>
+            <option value="15">Medium (15)</option>
+            <option value="20">Hard (20)</option>
+            <option value="25">Very hard (25)</option>
+            <option value="30">Nearly impossible (30)</option>
+          </select>
+        </label>
+        <label class="hint">or type it <input id="targetBox" type="number" min="1" max="40" class="mini-number" placeholder="DC / AC"></label>
+      </div>
     </div>
 
     <div class="panel">
@@ -305,6 +321,7 @@
   <script src="dice.js"></script>
   <script src="rules.js"></script>
   <script src="spells.js"></script>
+  <script src="play.js"></script>
 
   <script>
     // =====================================================================
@@ -1664,6 +1681,20 @@
     }
 
 
+
+    // The "number to beat": a preset (Easy, Hard...) fills the box, or type any DC or Armor Class.
+    function connectTarget() {
+      const preset = document.getElementById("targetPreset"), box = document.getElementById("targetBox");
+      if (!preset || !box) return;
+      preset.addEventListener("change", function () { box.value = preset.value; });
+      box.addEventListener("input", function () { preset.value = ""; });
+    }
+    function currentTarget() {
+      const box = document.getElementById("targetBox");
+      const n = box ? Math.round(Number(box.value)) : 0;
+      return n >= 1 ? Math.min(n, 40) : 0;
+    }
+
     // =====================================================================
     // SPELLCASTING
     // =====================================================================
@@ -2106,6 +2137,8 @@
       let message = "🎲 " + label + ": " + shown + " " + formatBonus(bonus) + " = " + (roll + bonus);
       if (roll === 20) message += "  🎉 Natural 20!";
       if (roll === 1)  message += "  💀 Natural 1...";
+      const outcome = resolveOutcome(label, roll + bonus, roll, currentTarget());   // from play.js
+      if (outcome) message += "  " + outcome.text;
       showToast(message);
     }
 
@@ -2236,6 +2269,7 @@
     fillArmorPickers();
     connectWeaponsAndArmor();
     connectSpellcasting();
+    connectTarget();
     fillItemSelects();
     document.getElementById("itemSelect").addEventListener("change", showSelectedItemInfo);
     startGuide();

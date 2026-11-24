@@ -16,7 +16,7 @@
 <body>
   <nav class="top-nav">
     <a href="index.html" class="active">🏠 Home</a>
-    <a href="dice.html">🎲 Dice</a>
+    <a href="library.html">📚 Library</a>
     <a href="character.html">🧙 Characters</a>
     <a href="dm.html">🛡️ GM Screen</a>
     <a href="equipment.html">🛒 Equipment</a>
@@ -169,7 +169,7 @@
     <div id="readyRoll" class="ready-roll hidden">
       <p class="hint">The Game Master asks for a roll:</p>
       <button id="readyRollBtn"></button>
-      <p class="hint">One click rolls it with your bonus and sends it to the Game Master.</p>
+      <p class="hint">One click rolls it, adds your bonus, tells you if it worked, and sends it to the Game Master.</p>
     </div>
 
     <div class="roll-row">
@@ -181,15 +181,22 @@
       </select>
       <button class="small-button" id="rollBtn">🎲 Roll</button>
     </div>
-    <div class="roll-row">
-      <button class="small-button" data-die="4">d4</button>
-      <button class="small-button" data-die="6">d6</button>
-      <button class="small-button" data-die="8">d8</button>
-      <button class="small-button" data-die="10">d10</button>
-      <button class="small-button" data-die="12">d12</button>
-      <button class="small-button" data-die="20">d20</button>
+    <!-- The number to beat. Rolls compare themselves with it and say whether they worked. -->
+    <div class="roll-row target-row">
+      <label class="hint">🎯 Number to beat
+        <select id="targetPreset" aria-label="How hard is it?">
+          <option value="">No number (just add it up)</option>
+          <option value="5">Very easy (5)</option>
+          <option value="10">Easy (10)</option>
+          <option value="15">Medium (15)</option>
+          <option value="20">Hard (20)</option>
+          <option value="25">Very hard (25)</option>
+          <option value="30">Nearly impossible (30)</option>
+        </select>
+      </label>
+      <label class="hint">or type it <input id="targetBox" type="number" min="1" max="40" class="mini-number" placeholder="DC / AC"></label>
     </div>
-    <p class="hint">Rolls go into the message box below. Press Send to tell the Game Master.</p>
+    <p class="hint">Rolls add up for you and say if they worked. The result goes into the message box: press Send to tell the Game Master.</p>
 
     <textarea id="chatInput" class="notes-box chat-input" placeholder="What do you do? (Enter to send, Shift+Enter for a new line)"></textarea>
 
@@ -213,6 +220,7 @@
   <script src="spells.js"></script>
   <script src="play.js"></script>
   <script src="music.js"></script>
+  <script src="monetize.js"></script>
 
   <script>
     // =====================================================================
@@ -288,6 +296,16 @@
         const next = document.createElement("p");
         next.textContent = "Then open http://localhost:8787/ai-dm.html in your browser.";
         panel.append(next);
+        // On the public website: offer a waiting list for the online version (if one is set up).
+        if (onlineCopy && typeof waitlistUrl === "function" && waitlistUrl()) {
+          const wait = document.createElement("a");
+          wait.className = "plain-button";
+          wait.href = waitlistUrl();
+          wait.target = "_blank";
+          wait.rel = "noopener";
+          wait.textContent = "✉️ Tell me when the AI Game Master is online";
+          panel.append(wait);
+        }
       }
 
       const note = document.createElement("p");
@@ -766,6 +784,20 @@
       askDm(text);
     }
 
+
+    // The "number to beat": a preset (Easy, Hard...) fills the box, or type any DC or Armor Class.
+    function connectTarget() {
+      const preset = document.getElementById("targetPreset"), box = document.getElementById("targetBox");
+      if (!preset || !box) return;
+      preset.addEventListener("change", function () { box.value = preset.value; });
+      box.addEventListener("input", function () { preset.value = ""; });
+    }
+    function currentTarget() {
+      const box = document.getElementById("targetBox");
+      const n = box ? Math.round(Number(box.value)) : 0;
+      return n >= 1 ? Math.min(n, 40) : 0;
+    }
+
     // =====================================================================
     // ROLLING DICE INTO THE MESSAGE BOX
     // =====================================================================
@@ -778,7 +810,7 @@
     function rollSelectedCheck() {
       const hero = currentHero();
       const entry = getCheckList(hero)[Number(el("checkSelect").value)];
-      const result = rollCharacterCheck(hero, entry, el("modeSelect").value);
+      const result = rollCharacterCheck(hero, entry, el("modeSelect").value, currentTarget());   // adds it up and says if it worked
       addToInput(result.text);
     }
 
@@ -952,7 +984,7 @@
     // One click: roll, then send the result (plus anything already typed) to the GM.
     function rollReady() {
       if (!pendingRoll || busy) return;
-      const result = rollRequest(currentHero(), pendingRoll);   // from play.js
+      const result = rollRequest(currentHero(), pendingRoll, currentTarget());   // from play.js
       pendingRoll = null;
       el("readyRoll").classList.add("hidden");
 
@@ -1127,12 +1159,7 @@
       }
     });
     el("rollBtn").addEventListener("click", rollSelectedCheck);
-    for (const button of document.querySelectorAll("[data-die]")) {
-      button.addEventListener("click", function () {
-        const sides = Number(button.dataset.die);
-        addToInput("🎲 d" + sides + ": " + rollOneDie(sides));
-      });
-    }
+    connectTarget();
     el("newBtn").addEventListener("click", newAdventure);
 
     // Ready-to-roll and music controls

@@ -16,7 +16,7 @@
 <body>
   <nav class="top-nav">
     <a href="index.html" class="active">🏠 Home</a>
-    <a href="dice.html">🎲 Dice</a>
+    <a href="library.html">📚 Library</a>
     <a href="character.html">🧙 Characters</a>
     <a href="dm.html">🛡️ GM Screen</a>
     <a href="equipment.html">🛒 Equipment</a>
@@ -81,13 +81,20 @@
       </select>
       <button class="small-button" id="rollBtn">🎲 Roll</button>
     </div>
-    <div class="roll-row">
-      <button class="small-button" data-die="4">d4</button>
-      <button class="small-button" data-die="6">d6</button>
-      <button class="small-button" data-die="8">d8</button>
-      <button class="small-button" data-die="10">d10</button>
-      <button class="small-button" data-die="12">d12</button>
-      <button class="small-button" data-die="20">d20</button>
+    <!-- The number to beat. Rolls compare themselves with it and say whether they worked. -->
+    <div class="roll-row target-row">
+      <label class="hint">🎯 Number to beat
+        <select id="targetPreset" aria-label="How hard is it?">
+          <option value="">No number (just add it up)</option>
+          <option value="5">Very easy (5)</option>
+          <option value="10">Easy (10)</option>
+          <option value="15">Medium (15)</option>
+          <option value="20">Hard (20)</option>
+          <option value="25">Very hard (25)</option>
+          <option value="30">Nearly impossible (30)</option>
+        </select>
+      </label>
+      <label class="hint">or type it <input id="targetBox" type="number" min="1" max="40" class="mini-number" placeholder="DC / AC"></label>
     </div>
     <p class="hint">Every roll is shown to your GM.</p>
 
@@ -378,15 +385,23 @@
     function rollSelectedCheck() {
       const hero = selectedHero();
       const entry = getCheckList(hero)[Number(el("checkSelect").value)];
-      const result = rollCharacterCheck(hero, entry, el("modeSelect").value);
+      const result = rollCharacterCheck(hero, entry, el("modeSelect").value, currentTarget());   // adds it up and says if it worked
       addToFeed("You " + result.text);
       send({ type: "roll", text: result.text });   // the GM sees every roll
     }
 
-    function rollDie(sides) {
-      const text = "🎲 d" + sides + ": " + rollOneDie(sides);
-      addToFeed("You " + text);
-      send({ type: "roll", text: text });
+
+    // The "number to beat": a preset (Easy, Hard...) fills the box, or type any DC or Armor Class.
+    function connectTarget() {
+      const preset = document.getElementById("targetPreset"), box = document.getElementById("targetBox");
+      if (!preset || !box) return;
+      preset.addEventListener("change", function () { box.value = preset.value; });
+      box.addEventListener("input", function () { preset.value = ""; });
+    }
+    function currentTarget() {
+      const box = document.getElementById("targetBox");
+      const n = box ? Math.round(Number(box.value)) : 0;
+      return n >= 1 ? Math.min(n, 40) : 0;
     }
 
     function say() {
@@ -553,11 +568,7 @@
       if (event.key === "Enter") requestJoin();
     });
     el("rollBtn").addEventListener("click", rollSelectedCheck);
-    for (const button of document.querySelectorAll("[data-die]")) {
-      button.addEventListener("click", function () {
-        rollDie(Number(button.dataset.die));
-      });
-    }
+    connectTarget();
     el("sayBtn").addEventListener("click", say);
     el("sayText").addEventListener("keydown", function (event) {
       if (event.key === "Enter") say();

@@ -13,15 +13,15 @@
 // ⚠️ When you add a new page or file to the app, add it to APP_FILES below too,
 //    and change CACHE_NAME (v1 → v2) so phones fetch the new list.
 // =====================================================================
-const CACHE_NAME = "dragon-table-v2";
+const CACHE_NAME = "dragon-table-v3";
 
 const APP_FILES = [
   "./",
   "index.html", "player.html", "ai-dm.html", "join.html", "character.html", "dice.html",
   "dm-start.html", "dm-learn.html", "dm.html", "battle.html", "map.html",
-  "equipment.html", "mini.html", "policies.html",
+  "equipment.html", "mini.html", "policies.html", "library.html", "support.html",
   "style.css", "dice.js", "rules.js", "play.js", "music.js", "monsters.js",
-  "equipment.js", "mini3d.js", "feedback.js", "pwa.js", "spells.js",
+  "equipment.js", "mini3d.js", "feedback.js", "pwa.js", "spells.js", "monetize.js",
   "manifest.webmanifest", "icons/icon.svg", "icons/icon-180.png", "icons/icon-192.png", "icons/icon-512.png"
 ];
 

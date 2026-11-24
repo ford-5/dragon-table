@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Library: free rules, spells and monsters</title>
+  <meta name="description" content="Read the free fifth-edition rules in Dragon Table's Library: all 339 SRD spells, 288 monsters, weapons, armor, magic items, classes and quick rules. No sign-up.">
+  <link rel="stylesheet" href="style.css">
+  <!-- App icon, colors, and the file that makes Dragon Table installable -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#2b1d14">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <meta name="apple-mobile-web-app-title" content="Dragon Table">
+</head>
+
+<body>
+  <nav class="top-nav">
+    <a href="index.html">🏠 Home</a>
+    <a href="library.html" class="active">📚 Library</a>
+    <a href="character.html">🧙 Characters</a>
+    <a href="dm.html">🛡️ GM Screen</a>
+    <a href="equipment.html">🛒 Equipment</a>
+  </nav>
+
+  <h1>📚 Library</h1>
+  <p class="lead">Read the rules, spells and monsters. Free, no sign-up.</p>
+
+  <div id="tabs" class="shop-tabs"></div>
+  <div id="content"></div>
+
+  <footer class="site-footer">
+    <p>
+      The rules, spells, monsters and items in this Library come from the System Reference Document 5.2.1 ("SRD 5.2.1") by Wizards of the Coast LLC,
+      available at <a href="https://www.dndbeyond.com/srd">https://www.dndbeyond.com/srd</a>. The SRD 5.2.1 is licensed under the
+      Creative Commons Attribution 4.0 International License, available at
+      <a href="https://creativecommons.org/licenses/by/4.0/legalcode">https://creativecommons.org/licenses/by/4.0/legalcode</a>.
+      Short rule summaries are written in our own words. Compatible with fifth edition.
+    </p>
+  </footer>
+
+  <script src="dice.js"></script>
+  <script src="rules.js"></script>
+  <script src="spells.js"></script>
+  <script src="monsters.js"></script>
+  <script>
+    const el = function (id) {
+      return document.getElementById(id);
+    };
+
+    const TABS = [
+      { key: "spells",    label: "📖 Spells" },
+      { key: "monsters",  label: "🐉 Monsters" },
+      { key: "gear",      label: "⚔️ Weapons & Armor" },
+      { key: "items",     label: "✨ Magic items" },
+      { key: "characters", label: "🧙 Characters" },
+      { key: "rules",     label: "📜 Rules in brief" },
+      { key: "books",     label: "📕 Free books" }
+    ];
+    let currentTab = "spells";
+
+    // Small helpers for building the page without HTML strings (text is never treated as HTML).
+    function make(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+
+    function addLink(parent, href, text) {
+      const a = make("a", "", text);
+      a.href = href;
+      a.target = "_blank";
+      a.rel = "noopener";
+      parent.append(a);
+      return a;
+    }
+
+    // One entry you click to open: <details><summary>title</summary>...</details>
+    function makeEntry(title, subtitle) {
+      const details = make("details", "lib-item");
+      const summary = make("summary");
+      summary.append(make("strong", "", title));
+      if (subtitle) summary.append(make("span", "hint", " " + subtitle));
+      details.append(summary);
+      return details;
+    }
+
+    function makeSearchBox(placeholder, value, onInput) {
+      const input = make("input", "wide-input");
+      input.type = "search";
+      input.placeholder = placeholder;
+      input.value = value;
+      input.setAttribute("aria-label", placeholder);
+      input.addEventListener("input", function () {
+        onInput(input.value);
+      });
+      return input;
+    }
+
+    function makeSelect(options, value, onChange, label) {
+      const select = make("select");
+      select.setAttribute("aria-label", label);
+      for (const [v, text] of options) select.append(new Option(text, v));
+      select.value = value;
+      select.addEventListener("change", function () {
+        onChange(select.value);
+      });
+      return select;
+    }
+
+    function makeTable(headers, rows) {
+      const wrap = make("div", "lib-table-wrap");
+      const table = make("table", "lib-table");
+      const head = make("tr");
+      for (const h of headers) head.append(make("th", "", h));
+      table.append(head);
+      for (const row of rows) {
+        const tr = make("tr");
+        for (const cell of row) tr.append(make("td", "", cell));
+        table.append(tr);
+      }
+      wrap.append(table);
+      return wrap;
+    }
+
+    // =====================================================================
+    // SPELLS
+    // =====================================================================
+    const spellFilter = { text: "", level: "", className: "", school: "", shown: 60 };
+
+    function buildSpellEntry(spell) {
+      const kind = spell.level === 0 ? "Cantrip" : "Level " + spell.level;
+      const entry = makeEntry(spell.n, kind + " · " + spell.school + (spell.conc ? " · ⏳" : "") + (spell.ritual ? " · 🕯️" : ""));
+      entry.id = "spell-" + spell.n.toLowerCase().replace(/[^a-z]+/g, "-");
+      entry.append(make("p", "hint", spell.time + (spell.ritual ? " (or Ritual)" : "") + " · " + spell.range + " · " + spell.comp + " · " + spell.dur));
+      for (const paragraph of spell.text) entry.append(make("p", "lib-text", paragraph));
+      if (spell.higher) entry.append(make("p", "lib-text", "Higher-level slot: " + spell.higher));
+      if (spell.cantripUp) entry.append(make("p", "lib-text", "Cantrip upgrade: " + spell.cantripUp));
+      entry.append(make("p", "hint", "Classes: " + spell.classes.join(", ")));
+      return entry;
+    }
+
+    function renderSpells(box) {
+      const controls = make("div", "panel lib-controls");
+      const results = make("div", "lib-results");
+      const count = make("p", "hint");
+
+      const redraw = function () {
+        results.innerHTML = "";
+        const text = spellFilter.text.trim().toLowerCase();
+        const matches = SPELLS.filter(function (s) {
+          return (spellFilter.level === "" || s.level === Number(spellFilter.level)) &&
+                 (spellFilter.className === "" || s.classes.includes(spellFilter.className)) &&
+                 (spellFilter.school === "" || s.school === spellFilter.school) &&
+                 (!text || s.n.toLowerCase().includes(text));
+        });
+        count.textContent = matches.length + " spell" + (matches.length === 1 ? "" : "s") + (matches.length > spellFilter.shown ? " (showing " + spellFilter.shown + ")" : "");
+        for (const spell of matches.slice(0, spellFilter.shown)) results.append(buildSpellEntry(spell));
+        if (matches.length > spellFilter.shown) {
+          const more = make("button", "small-button", "Show more");
+          more.addEventListener("click", function () {
+            spellFilter.shown += 60;
+            redraw();
+          });
+          results.append(more);
+        }
+      };
+      const change = function (key) {
+        return function (value) {
+          spellFilter[key] = value;
+          spellFilter.shown = 60;
+          redraw();
+        };
+      };
+
+      const levels = [["", "All levels"], ["0", "Cantrips"]];
+      for (let n = 1; n <= 9; n++) levels.push([String(n), "Level " + n]);
+      const classes = [["", "All classes"]].concat(Object.keys(SPELLCASTING).map(function (c) { return [c, c]; }));
+      const schools = [["", "All schools"]].concat(["Abjuration", "Conjuration", "Divination", "Enchantment", "Evocation", "Illusion", "Necromancy", "Transmutation"].map(function (s) { return [s, s]; }));
+      controls.append(
+        makeSearchBox("Search spells…", spellFilter.text, change("text")),
+        makeSelect(levels, spellFilter.level, change("level"), "Spell level"),
+        makeSelect(classes, spellFilter.className, change("className"), "Class"),
+        makeSelect(schools, spellFilter.school, change("school"), "School"),
+        count
+      );
+      box.append(controls, results);
+      redraw();
+
+      // library.html#spell-fireball opens that spell
+      if (location.hash.startsWith("#spell-")) {
+        const target = document.getElementById(location.hash.slice(1));
+        if (target) {
+          target.open = true;
+          target.scrollIntoView();
+        }
+      }
+    }
+
+    // =====================================================================
+    // MONSTERS
+    // =====================================================================
+    const monsterFilter = { text: "", cr: "", shown: 50 };
+    const CR_GROUPS = [["", "All challenge ratings"], ["0-1", "CR 0 to 1"], ["2-4", "CR 2 to 4"], ["5-10", "CR 5 to 10"], ["11-16", "CR 11 to 16"], ["17-30", "CR 17 and up"]];
+
+    function crNumber(cr) {
+      return cr.includes("/") ? Number(cr.split("/")[0]) / Number(cr.split("/")[1]) : Number(cr);
+    }
+
+    function buildMonsterEntry(m) {
+      const entry = makeEntry(m.n, "CR " + m.cr + " · " + m.size + " " + m.type);
+      entry.append(make("p", "lib-text", "AC " + m.ac + " · HP " + m.hp + " (" + m.hpDice + ") · Speed " + m.speed + " · Initiative " + formatBonus(m.init) + " · " + m.xp.toLocaleString() + " XP"));
+      const names = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
+      entry.append(make("p", "lib-text", m.abil.map(function (score, i) {
+        return names[i] + " " + score + " (" + formatBonus(getModifier(score)) + ")";
+      }).join(" · ")));
+      if (m.atk.length) {
+        entry.append(make("p", "lib-text", "Attacks: " + m.atk.map(function (a) {
+          return a.n + " " + formatBonus(a.hit) + " to hit, " + a.dice + " " + a.type + " (" + a.reach + ")";
+        }).join("; ") + (m.multi > 1 ? ". Multiattack: " + m.multi + " attacks." : "")));
+      }
+      const note = make("p", "hint");
+      note.append("Special abilities, spells and legendary actions: see the ");
+      addLink(note, "https://www.dndbeyond.com/srd", "SRD");
+      note.append(". You can also put it on the ");
+      const map = make("a", "", "Battle Map");
+      map.href = "map.html";
+      note.append(map, " or test it in the ");
+      const sim = make("a", "", "Battle Simulator");
+      sim.href = "battle.html";
+      note.append(sim, ".");
+      entry.append(note);
+      return entry;
+    }
+
+    function renderMonsters(box) {
+      const controls = make("div", "panel lib-controls");
+      const results = make("div", "lib-results");
+      const count = make("p", "hint");
+      const sorted = MONSTERS.slice().sort(function (a, b) {
+        return a.n.localeCompare(b.n);
+      });
+      const redraw = function () {
+        results.innerHTML = "";
+        const text = monsterFilter.text.trim().toLowerCase();
+        const matches = sorted.filter(function (m) {
+          let inRange = true;
+          if (monsterFilter.cr) {
+            const [low, high] = monsterFilter.cr.split("-").map(Number);
+            inRange = crNumber(m.cr) >= low && crNumber(m.cr) <= high;
+          }
+          return inRange && (!text || m.n.toLowerCase().includes(text) || m.type.toLowerCase().includes(text));
+        }).sort(function (a, b) {
+          // Names that contain the search come first, then matches on the creature type.
+          const aName = text && a.n.toLowerCase().includes(text) ? 0 : 1;
+          const bName = text && b.n.toLowerCase().includes(text) ? 0 : 1;
+          return aName - bName || a.n.localeCompare(b.n);
+        });
+        count.textContent = matches.length + " creature" + (matches.length === 1 ? "" : "s") + (matches.length > monsterFilter.shown ? " (showing " + monsterFilter.shown + ")" : "");
+        for (const m of matches.slice(0, monsterFilter.shown)) results.append(buildMonsterEntry(m));
+        if (matches.length > monsterFilter.shown) {
+          const more = make("button", "small-button", "Show more");
+          more.addEventListener("click", function () {
+            monsterFilter.shown += 50;
+            redraw();
+          });
+          results.append(more);
+        }
+      };
+      controls.append(
+        makeSearchBox("Search by name or type (dragon, undead…)", monsterFilter.text, function (v) { monsterFilter.text = v; monsterFilter.shown = 50; redraw(); }),
+        makeSelect(CR_GROUPS, monsterFilter.cr, function (v) { monsterFilter.cr = v; monsterFilter.shown = 50; redraw(); }, "Challenge rating"),
+        count
+      );
+      box.append(controls, results);
+      redraw();
+    }
+
+    // =====================================================================
+    // WEAPONS AND ARMOR
+    // =====================================================================
+    function renderGear(box) {
+      const weapons = make("div", "panel");
+      weapons.append(make("h2", "", "⚔️ Weapons"));
+      weapons.append(makeTable(["Weapon", "Kind", "Damage", "Properties", "Mastery"], WEAPONS.map(function (w) {
+        return [w.name, w.category + " " + w.kind.toLowerCase(), w.damage + " " + w.type.toLowerCase() + (w.versatile ? " (" + w.versatile + " two-handed)" : ""),
+          w.props.join(", ") + (w.range ? " (range " + w.range + ")" : "") || "—", w.mastery];
+      })));
+      weapons.append(make("p", "hint", "Weapon Mastery effects are described in the SRD. In Dragon Table, melee weapons use Strength, ranged use Dexterity, and Finesse weapons use the better of the two."));
+
+      const armor = make("div", "panel");
+      armor.append(make("h2", "", "🛡️ Armor"));
+      armor.append(makeTable(["Armor", "Type", "Armor Class", "Needs", "Stealth"], ARMOR.map(function (a) {
+        const dex = a.dexMax === null ? " + Dex" : a.dexMax ? " + Dex (max 2)" : "";
+        return [a.name, a.category, a.base + dex, a.strength ? "Strength " + a.strength : "—", a.stealth ? "Disadvantage" : "—"];
+      }).concat([["Shield", "Shield", "+" + SHIELD_BONUS, "—", "—"]])));
+      armor.append(make("p", "hint", "Armor only works well if your class trains you with it. Heavy armor slows you by 10 ft if your Strength is below its number."));
+      box.append(weapons, armor);
+    }
+
+    // =====================================================================
+    // MAGIC ITEMS
+    // =====================================================================
+    function renderItems(box) {
+      const panel = make("div", "panel");
+      panel.append(make("h2", "", "✨ Magic items (Common and Uncommon)"));
+      for (const item of MAGIC_ITEMS) {
+        const entry = makeEntry(item.name, item.rarity + " · " + item.type);
+        if (item.attunement) entry.append(make("p", "hint", item.attunement));
+        entry.append(make("p", "lib-text", item.powers));
+        panel.append(entry);
+      }
+      panel.append(make("p", "hint", "A selection of the SRD's lower-rarity items. The full list is in the SRD."));
+      box.append(panel);
+    }
+
+    // =====================================================================
+    // CLASSES, SPECIES, BACKGROUNDS
+    // =====================================================================
+    function trainingWords(className) {
+      const t = CLASS_TRAINING[className];
+      const weapon = { simple: "Simple weapons", martial: "Martial weapons", martialLight: "Martial weapons with the Light property", martialFinesseOrLight: "Martial weapons with Finesse or Light" };
+      const armor = { light: "Light armor", medium: "Medium armor", heavy: "Heavy armor", shield: "Shields" };
+      return "Weapons: " + (t.weapons.map(function (w) { return weapon[w]; }).join(", ") || "none") + ". Armor: " + (t.armor.map(function (a) { return armor[a]; }).join(", ") || "none") + ".";
+    }
+
+    function renderCharacters(box) {
+      const classes = make("div", "panel");
+      classes.append(make("h2", "", "🧙 Classes"));
+      for (const c of CLASSES) {
+        const entry = makeEntry(c.name, "d" + c.hitDie + " Hit Die · main ability " + describePrimary(c));
+        entry.append(make("p", "lib-text", "Saving throws: " + c.saves.map(abilityName).join(", ") + ". Skills: choose " + c.skillCount + " from " + (c.skillOptions.length > 12 ? "any skill" : c.skillOptions.join(", ")) + "."));
+        entry.append(make("p", "lib-text", trainingWords(c.name)));
+        entry.append(make("p", "lib-text", "Level 1 features: " + c.features.join(", ") + "."));
+        const sc = SPELLCASTING[c.name];
+        if (sc) entry.append(make("p", "lib-text", "Spellcasting ability: " + abilityName(sc.ability) + ". " + (sc.kind === "pact" ? "Pact Magic: a few slots that come back on a short rest." : sc.kind === "half" ? "Half-caster: gets spells and slots more slowly." : "Full caster.")));
+        classes.append(entry);
+      }
+      const species = make("div", "panel");
+      species.append(make("h2", "", "🧝 Species"));
+      for (const s of SPECIES) {
+        const entry = makeEntry(s.name, s.size + " · Speed " + s.speed + " ft");
+        entry.append(make("p", "lib-text", "Traits: " + s.traits.join(", ") + "."));
+        species.append(entry);
+      }
+      const backgrounds = make("div", "panel");
+      backgrounds.append(make("h2", "", "📖 Backgrounds"));
+      for (const b of BACKGROUNDS) {
+        const entry = makeEntry(b.name, b.skills.join(" and "));
+        entry.append(make("p", "lib-text", "Ability scores: " + b.abilities.map(abilityName).join(", ") + ". Feat: " + b.feat + ". Tool: " + b.tool + "."));
+        backgrounds.append(entry);
+      }
+      box.append(classes, species, backgrounds);
+      const note = make("p", "hint");
+      note.append("Ready to play? ");
+      const link = make("a", "", "Create a character");
+      link.href = "character.html";
+      note.append(link, ".");
+      box.append(note);
+    }
+
+    // =====================================================================
+    // RULES IN BRIEF (written in our own words; the SRD has the full rules)
+    // =====================================================================
+    const RULES_BRIEF = [
+      { title: "How a turn works", lines: [
+        "Fights are played in rounds of about 6 seconds. At the start, everyone rolls Initiative (a Dexterity check) to set the turn order.",
+        "On your turn you can move up to your Speed and take one action. Some features add a bonus action. You also get one reaction per round, such as an opportunity attack when an enemy leaves your reach." ] },
+      { title: "Ability checks, saves and Difficulty Classes", lines: [
+        "To try something risky, roll a d20 and add the right ability modifier (and your proficiency bonus if you're trained). Meet or beat the Difficulty Class (DC) to succeed.",
+        "Typical DCs: Very easy 5, Easy 10, Medium 15, Hard 20, Very hard 25, Nearly impossible 30.",
+        "A saving throw works the same way: you roll to resist something, like a fireball or poison. Your Passive Perception is 10 plus your Perception bonus." ] },
+      { title: "Advantage and Disadvantage", lines: [
+        "With Advantage you roll two d20s and take the higher. With Disadvantage you take the lower.",
+        "Several sources of Advantage still only give you one extra die, and if you have both Advantage and Disadvantage they cancel out." ] },
+      { title: "Attacks, damage and Armor Class", lines: [
+        "To attack, roll a d20 and add your attack bonus. If the total meets or beats the target's Armor Class (AC), you hit and roll damage.",
+        "A natural 20 always hits and is a critical hit: roll the damage dice twice. A natural 1 always misses." ] },
+      { title: "Actions you can take", lines: [
+        "Attack: make an attack. Dash: gain extra movement equal to your Speed. Disengage: your movement doesn't provoke opportunity attacks. Dodge: attacks against you are at a disadvantage until your next turn.",
+        "Help: give an ally Advantage on a check or attack. Hide: try to slip out of sight. Influence: persuade or scare someone. Magic: cast a spell or use a magic item.",
+        "Ready: prepare a reaction to a trigger. Search: look for something. Study: recall lore or investigate. Utilize: use an object." ] },
+      { title: "Hit Points, resting and dying", lines: [
+        "Damage lowers your Hit Points (HP). At 0 HP you fall unconscious and make death saving throws on your turns: roll a d20, 10 or more is a success, and three successes make you stable. Three failures mean death. A natural 20 brings you back with 1 HP, and a natural 1 counts as two failures.",
+        "A Short Rest (about an hour) lets you spend Hit Point Dice to heal. A Long Rest (about 8 hours) restores all your HP, some Hit Dice, and your spell slots." ] },
+      { title: "Moving on a grid", lines: [
+        "Each square is 5 feet. Moving costs 1 square per step, including diagonals. Difficult terrain costs 2 squares to enter. You can't cut the corner of a wall diagonally.",
+        "To measure the range between two creatures, count the squares between them by the shortest route." ] }
+    ];
+
+    function renderRules(box) {
+      const panel = make("div", "panel");
+      panel.append(make("h2", "", "📜 Rules in brief"));
+      panel.append(make("p", "hint", "A quick refresher in our own words. The full rules are in the free SRD."));
+      for (const section of RULES_BRIEF) {
+        const entry = makeEntry(section.title);
+        for (const line of section.lines) entry.append(make("p", "lib-text", line));
+        panel.append(entry);
+      }
+      const conditions = makeEntry("Conditions", "Blinded, Poisoned, Prone and more");
+      for (const c of CONDITIONS) conditions.append(make("p", "lib-text", c.name + ": " + c.text));
+      panel.append(conditions);
+      const more = make("p", "hint");
+      more.append("Want to learn to run games? Try ");
+      const learn = make("a", "", "Learn to be a GM");
+      learn.href = "dm-learn.html";
+      more.append(learn, ".");
+      panel.append(more);
+      box.append(panel);
+    }
+
+    // =====================================================================
+    // FREE BOOKS
+    // =====================================================================
+    function renderBooks(box) {
+      const rules = make("div", "panel");
+      rules.append(make("h2", "", "📕 The free rules"));
+      rules.append(make("p", "lib-text", "The Player's Handbook, Game Master's Guide and Monster Manual are paid books, and we can't copy them. But Wizards of the Coast shares the core of those rules for free as the System Reference Document, and you can read it all here:"));
+      const list = make("ul", "book-list");
+      const rows = [
+        ["https://www.dndbeyond.com/srd", "The SRD 5.2.1 on D&D Beyond", "The official free rules: classes, species, spells, monsters, items and the rules glossary."],
+        ["https://media.dndbeyond.com/compendium-images/srd/5.2/SRD_CC_v5.2.1.pdf", "The SRD 5.2.1 as a PDF", "The same rules as one file you can download and search."],
+        ["https://www.dndbeyond.com/sources/dnd/br-2024", "The free Basic Rules (2024)", "An easy-to-read introduction to playing."],
+        ["https://open5e.com/", "Open5e", "A free, searchable SRD reference made by the community."]
+      ];
+      for (const [href, title, note] of rows) {
+        const li = make("li");
+        addLink(li, href, title);
+        li.append(make("br"), make("span", "hint", note));
+        list.append(li);
+      }
+      rules.append(list);
+      rules.append(make("p", "hint", "Want the full paid books? They're on the D&D Beyond Marketplace (a different company's store)."));
+
+      const stories = make("div", "panel");
+      stories.append(make("h2", "", "🏰 Free stories for inspiration"));
+      stories.append(make("p", "lib-text", "These sites offer public-domain books for free. Look for Beowulf, King Arthur, Norse and Greek myths, fairy tales and old adventure stories: they're where fantasy gaming comes from."));
+      const list2 = make("ul", "book-list");
+      const rows2 = [
+        ["https://standardebooks.org/", "Standard Ebooks", "Beautifully made free ebooks, including classic fantasy and myth."],
+        ["https://en.wikisource.org/wiki/Main_Page", "Wikisource", "A free library of texts anyone can read."],
+        ["https://archive.org/", "Internet Archive", "Millions of free books, audio and more."]
+      ];
+      for (const [href, title, note] of rows2) {
+        const li = make("li");
+        addLink(li, href, title);
+        li.append(make("br"), make("span", "hint", note));
+        list2.append(li);
+      }
+      stories.append(list2);
+      box.append(rules, stories);
+    }
+
+    // =====================================================================
+    // TABS
+    // =====================================================================
+    const RENDERERS = { spells: renderSpells, monsters: renderMonsters, gear: renderGear, items: renderItems,
+                        characters: renderCharacters, rules: renderRules, books: renderBooks };
+
+    function showTab(key) {
+      currentTab = key;
+      el("tabs").innerHTML = "";
+      for (const tab of TABS) {
+        const button = make("button", "small-button" + (tab.key === key ? " picked" : ""), tab.label);
+        button.addEventListener("click", function () {
+          history.replaceState(null, "", "#" + tab.key);
+          showTab(tab.key);
+        });
+        el("tabs").append(button);
+      }
+      el("content").innerHTML = "";
+      RENDERERS[key](el("content"));
+    }
+
+    // library.html#monsters opens that tab; #spell-fireball opens a spell
+    const hash = location.hash.replace("#", "");
+    showTab(hash.startsWith("spell-") ? "spells" : (RENDERERS[hash] ? hash : "spells"));
+  </script>
+
+  <!-- The "Send feedback" link at the bottom of the page -->
+  <script src="pwa.js"></script>
+  <script src="feedback.js"></script>
+</body>
+</html>

@@ -33,7 +33,7 @@ USE_FALLBACKS = ENV["AI_DM_NO_FALLBACKS"].to_s.empty?
 API_VERSION = "2026-10-21"
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
 MAX_BODY    = 200_000
-STATIC_TYPES = %w[.html .js .css .png .jpg .jpeg .webp .svg .ico .webmanifest].freeze   # the only file types this server hands out
+STATIC_TYPES = %w[.html .js .css .png .jpg .jpeg .webp .svg .ico .webmanifest .txt .xml].freeze   # the only file types this server hands out
 
 # ---------------------------------------------------------------------
 # What the AI Game Master is told. The player's character sheet is added at the end.
@@ -55,9 +55,11 @@ DM_INSTRUCTIONS = <<~PROMPT
 
   App tags (the app reads these and hides them from the player):
   - Whenever you ask the player to roll, put ONE roll tag at the very end of your reply, on its own line, using the character sheet's names:
-    [ROLL: Perception]   [ROLL: Dexterity save]   [ROLL: Strength check]   [ROLL: Initiative]
-    For attack or damage rolls, write the dice and the total modifier worked out from the sheet:
-    [ROLL: 1d20+5 attack]   [ROLL: 1d8+3 damage]
+    [ROLL: Perception DC 15]   [ROLL: Dexterity save DC 13]   [ROLL: Strength check DC 10]   [ROLL: Initiative]
+    ALWAYS put the number to beat after the roll's name, "DC" plus the difficulty for checks and saves, or "AC" plus the monster's Armor Class for the player's attacks: [ROLL: Longsword attack AC 14]. The app rolls the dice, adds the bonus, compares with that number, and tells the player and you "SUCCESS" or "FAILED" (or "HIT" or "MISS"), so the player needs no math. Take that result as final and narrate it.
+    The sheet lists the player's real attacks (weapons and attack spells), so ask for them by name, for example [ROLL: Fire Bolt attack AC 13].
+    For damage rolls only, write the dice and the total modifier worked out from the sheet (damage has no number to beat):
+    [ROLL: 1d8+3 damage]
     If the rules give Advantage or Disadvantage, add it: [ROLL: Stealth with advantage]
   - Set the background music in your first reply, and again whenever the mood of the scene changes, with one music tag at the very end:
     [MUSIC: calm] [MUSIC: tavern] [MUSIC: exploration] [MUSIC: mystery] [MUSIC: danger] [MUSIC: battle] [MUSIC: victory]

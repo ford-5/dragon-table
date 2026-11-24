@@ -46,9 +46,41 @@ function getCheckList(character) {
   return list;
 }
 
-// Roll one check. mode is "normal", "advantage" or "disadvantage".
-// Returns { text, total } where text is ready to show, like "🎲 Stealth: 14 +3 = 17".
-function rollCharacterCheck(character, entry, mode) {
+// ---------------------------------------------------------------------
+// PASS OR FAIL, WORKED OUT FOR YOU
+// ---------------------------------------------------------------------
+// A roll succeeds when the total meets or beats the number to beat: a DC for checks and
+// saves, or the target's Armor Class for attacks. On an ATTACK, a natural 20 always hits
+// and a natural 1 always misses (SRD "D20 Tests"); on anything else, only the total counts.
+function isAttackLabel(label) {
+  return /attack/i.test(label);
+}
+
+// The words for the number to beat: "DC" for checks and saves, "AC" for attacks.
+function targetWord(label) {
+  return isAttackLabel(label) ? "AC" : "DC";
+}
+
+// Returns { success, text }, or null when there is no number to beat.
+//   total: the final number   natural: the d20 that was rolled   target: the number to beat
+function resolveOutcome(label, total, natural, target) {
+  const number = Number(target);
+  if (!number || number < 1) return null;
+  const attack = isAttackLabel(label);
+  let success = total >= number;
+  if (attack && natural === 20) success = true;
+  if (attack && natural === 1) success = false;
+  const word = targetWord(label);
+  const text = attack
+    ? (success ? "✅ HIT!" : "❌ MISS") + " (" + total + " vs AC " + number + ")"
+    : (success ? "✅ SUCCESS!" : "❌ FAILED") + " (" + total + " vs DC " + number + ")";
+  return { success: success, text: text, word: word };
+}
+
+// Roll one check. mode is "normal", "advantage" or "disadvantage". target (optional) is the
+// number to beat: the result then says whether it worked.
+// Returns { text, total, success } where text is ready to show, like "🎲 Stealth: 14 +3 = 17 ✅ SUCCESS!".
+function rollCharacterCheck(character, entry, mode, target) {
   // Magic items and armor can change Normal / Advantage / Disadvantage (rules.js).
   const resolved = resolveRollMode(character, mode, { skill: entry.skill, ability: entry.ability });
   mode = resolved.mode;
@@ -69,7 +101,9 @@ function rollCharacterCheck(character, entry, mode) {
   let text = "🎲 " + entry.label + ": " + shown + " " + formatBonus(entry.bonus) + " = " + total;
   if (roll === 20) text += "  🎉 Natural 20!";
   if (roll === 1)  text += "  💀 Natural 1...";
-  return { text: text, total: total };
+  const outcome = resolveOutcome(entry.label, total, roll, target);
+  if (outcome) text += "  " + outcome.text;
+  return { text: text, total: total, success: outcome ? outcome.success : null };
 }
 
 // Fill a <select> with every check the character can roll (the option value is its position).
@@ -114,6 +148,14 @@ function findRollRequest(text, character) {
 function parseRollRequest(raw, character) {
   let words = String(raw).trim().toLowerCase();
 
+  // The Game Master may name the number to beat: "Perception DC 15" or "Longsword attack vs AC 14".
+  let target = 0;
+  const targetMatch = words.match(/\s*(?:\bvs\.?\s*)?\b(?:dc|ac)\s*(\d{1,2})\b/);
+  if (targetMatch) {
+    target = Math.min(Math.max(Number(targetMatch[1]), 1), 40);
+    words = words.replace(targetMatch[0], "").trim();
+  }
+
   let mode = "normal";
   if (/\bdisadvantage\b/.test(words)) mode = "disadvantage";
   else if (/\badvantage\b/.test(words)) mode = "advantage";
@@ -131,12 +173,12 @@ function parseRollRequest(raw, character) {
       "(" + count + "d" + sides + formatModifier(modifier) + ")";
     // Advantage only makes sense for a single d20.
     return { type: "dice", count: count, sides: sides, modifier: modifier,
-             mode: count === 1 && sides === 20 ? mode : "normal", label: label };
+             mode: count === 1 && sides === 20 ? mode : "normal", label: label, target: target };
   }
 
   const found = findCheckEntry(words, character);
   if (!found) return null;
-  return { type: "check", entry: found.entry, index: found.index, mode: mode, label: found.entry.label };
+  return { type: "check", entry: found.entry, index: found.index, mode: mode, label: found.entry.label, target: target };
 }
 
 // Match words like "perception", "dex save", "strength saving throw", "initiative"
@@ -177,14 +219,16 @@ function guessRollFromText(text, character) {
 function describeRollRequest(request) {
   const extra = request.mode !== "normal" ? " with " + request.mode : "";
   if (request.type === "check") {
-    return "🎲 Roll " + request.label + " (" + formatBonus(request.entry.bonus) + ")" + extra;
+    const against = request.target ? " against " + targetWord(request.label) + " " + request.target : "";
+    return "🎲 Roll " + request.label + " (" + formatBonus(request.entry.bonus) + ")" + extra + against;
   }
   return "🎲 Roll " + request.label + extra;
 }
 
-// Roll whatever was requested. Returns { text, total }.
-function rollRequest(character, request) {
-  if (request.type === "check") return rollCharacterCheck(character, request.entry, request.mode);
+// Roll whatever was requested. "fallbackTarget" is the number to beat typed by the player,
+// used when the Game Master didn't name one. Returns { text, total, success }.
+function rollRequest(character, request, fallbackTarget) {
+  if (request.type === "check") return rollCharacterCheck(character, request.entry, request.mode, request.target || fallbackTarget);
 
   let rolls = [];
   let shown;

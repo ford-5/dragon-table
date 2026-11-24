@@ -20,6 +20,7 @@ with plain HTML, CSS and JavaScript.
 - **Mini Maker:** turn any hero into a 3D-printable miniature (.stl file), or order it printed.
 - **Equipment:** a shop for 3D-printed terrain, obstacles, miniatures, tokens and dice. Orders go to a Google Form.
 - A dice roller with modifiers and advantage/disadvantage.
+- **Installable:** add it to your phone's home screen; most pages work offline.
 
 Characters are saved in your own browser. Live games connect the GM's and players' browsers
 directly (using [PeerJS](https://peerjs.com/)); nothing about the game is stored online.

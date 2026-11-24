@@ -7,6 +7,12 @@
 
   <!-- Same shared styles as the player page -->
   <link rel="stylesheet" href="style.css">
+  <!-- App icon, colors, and the file that makes Dragon Table installable -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#2b1d14">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <meta name="apple-mobile-web-app-title" content="Dragon Table">
 </head>
 
 <!-- class="dm" switches on the purple GM theme from style.css -->
@@ -1232,6 +1238,7 @@
     });
   </script>
   <!-- The "Send feedback" link at the bottom of the page -->
+  <script src="pwa.js"></script>
   <script src="feedback.js"></script>
 </body>
 </html>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Dragon Table app icon: a golden twenty-sided die (drawn for this app). -->
+  <rect width="512" height="512" fill="#2b1d14"/>
+  <g fill="none" stroke="#c9a227" stroke-width="14" stroke-linejoin="round" stroke-linecap="round">
+    <polygon points="256,106 386,181 386,331 256,406 126,331 126,181"/>
+    <polygon points="256,166 343,316 169,316"/>
+    <path d="M256,106 L256,166 M126,181 L256,166 M126,181 L169,316 M386,181 L256,166 M386,181 L343,316 M126,331 L169,316 M386,331 L343,316 M256,406 L169,316 M256,406 L343,316"/>
+  </g>
+  <text x="256" y="286" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-weight="bold" font-size="72" fill="#f3e6c8">20</text>
+</svg>

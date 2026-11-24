@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dragon Table</title>
   <link rel="stylesheet" href="style.css">
+  <!-- App icon, colors, and the file that makes Dragon Table installable -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#2b1d14">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <meta name="apple-mobile-web-app-title" content="Dragon Table">
 </head>
 
 <body>
@@ -40,6 +46,9 @@
     </a>
   </div>
 
+  <!-- "Install the app" button or instructions, filled in by pwa.js when it applies -->
+  <div id="installBox" class="panel install-box hidden"></div>
+
   <!-- Required by the SRD's license (CC-BY-4.0): this exact attribution statement. -->
   <footer class="site-footer">
     <p>
@@ -52,6 +61,7 @@
     <p><a href="policies.html">Privacy & Shop Policies</a></p>
   </footer>
   <!-- The "Send feedback" link at the bottom of the page -->
+  <script src="pwa.js"></script>
   <script src="feedback.js"></script>
 </body>
 </html>

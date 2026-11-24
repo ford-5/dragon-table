@@ -33,7 +33,7 @@ USE_FALLBACKS = ENV["AI_DM_NO_FALLBACKS"].to_s.empty?
 API_VERSION = "2026-10-21"
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
 MAX_BODY    = 200_000
-STATIC_TYPES = %w[.html .js .css .png .jpg .jpeg .webp .svg .ico].freeze   # the only file types this server hands out
+STATIC_TYPES = %w[.html .js .css .png .jpg .jpeg .webp .svg .ico .webmanifest].freeze   # the only file types this server hands out
 
 # ---------------------------------------------------------------------
 # What the AI Game Master is told. The player's character sheet is added at the end.
@@ -269,6 +269,7 @@ server.mount_proc("/") do |req, res|
 
   if allowed && %w[GET HEAD].include?(req.request_method)
     res["Content-Type"] = WEBrick::HTTPUtils.mime_type(full, WEBrick::HTTPUtils::DefaultMimeTypes)
+    res["Content-Type"] = "application/manifest+json" if File.extname(full) == ".webmanifest"
     res["Content-Type"] += "; charset=utf-8" if res["Content-Type"] =~ %r{\Atext/|javascript}
     res["Cache-Control"] = "no-store"
     res.body = File.binread(full)

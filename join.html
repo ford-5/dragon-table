@@ -129,8 +129,10 @@
     // =====================================================================
     // CHOOSING A HERO
     // =====================================================================
-    function fillHeroSelect() {
+    // Fill the hero list. "wanted" is the id of the hero to pick (if it exists).
+    function fillHeroSelect(wanted) {
       const select = el("heroSelect");
+      const previous = wanted || Number(select.value);
       select.innerHTML = "";
 
       if (heroes.length === 0) {
@@ -138,7 +140,8 @@
         el("heroInfo").textContent = "You need a character first. ";
         const link = document.createElement("a");
         link.className = "plain-button";
-        link.href = "character.html";
+        // Make one, then come straight back here with them chosen.
+        link.href = "character.html?return=join.html";
         link.textContent = "🧙 Create a character";
         el("heroInfo").append(link);
         el("joinBtn").disabled = true;
@@ -148,7 +151,17 @@
       for (const hero of heroes) {
         select.append(new Option(hero.name + " (" + characterLine(hero) + ")", hero.id));
       }
+      if (heroes.some(function (h) { return h.id === previous; })) select.value = String(previous);
+      el("joinBtn").disabled = false;   // there's a hero now, so joining is possible
       showHeroInfo();
+    }
+
+    // Characters may have changed (made in another tab, or the player came back
+    // with the Back button): read them again. Not while at the table or waiting.
+    function refreshHeroes() {
+      if (joined || peer) return;
+      heroes = loadCharacters();
+      fillHeroSelect();
     }
 
     function selectedHero() {
@@ -490,12 +503,35 @@
     // =====================================================================
     // START UP
     // =====================================================================
-    fillHeroSelect();
+    // Back from making a new hero? (character.html sends us to join.html?hero=ID)
+    const returnedHero = Number(new URLSearchParams(location.search).get("hero")) || 0;
+    fillHeroSelect(returnedHero);
     el("heroSelect").addEventListener("change", showHeroInfo);
 
     // An invite link looks like join.html?code=K7M4QX, so fill the code in for the player.
     const codeFromLink = new URLSearchParams(location.search).get("code");
     if (codeFromLink) el("codeInput").value = normalizeCode(codeFromLink);
+
+    // Remember the typed code for this visit, so a trip to make a hero doesn't lose it.
+    try {
+      if (!el("codeInput").value) el("codeInput").value = sessionStorage.getItem("joinCode") || "";
+    } catch (error) {
+      // Storage blocked: the player just types the code again.
+    }
+    el("codeInput").addEventListener("input", function () {
+      try {
+        sessionStorage.setItem("joinCode", normalizeCode(el("codeInput").value));
+      } catch (error) {
+        // Storage blocked: nothing to remember.
+      }
+    });
+    if (codeFromLink) {
+      try {
+        sessionStorage.setItem("joinCode", normalizeCode(codeFromLink));
+      } catch (error) {
+        // Storage blocked.
+      }
+    }
 
     el("joinBtn").addEventListener("click", requestJoin);
     el("stopWaitBtn").addEventListener("click", function () {
@@ -526,8 +562,12 @@
 
     // If the sheet is edited in another tab while we're at the table, tell the GM automatically.
     window.addEventListener("storage", function (event) {
-      if (event.key === "characters" && joined) sendUpdatedSheet();
+      if (event.key !== "characters") return;
+      if (joined) sendUpdatedSheet();
+      else refreshHeroes();   // a hero was made or changed in another tab
     });
+    // Came back with the Back button (the browser may show a saved copy of the page).
+    window.addEventListener("pageshow", refreshHeroes);
     window.addEventListener("beforeunload", function () {
       leaveGame(true);
     });

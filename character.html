@@ -1553,8 +1553,8 @@
     // Read the guide level and where to go afterwards from the page's address.
     const pageParams = new URLSearchParams(location.search);
     const guideLevel = ["beginner", "intermediate", "advanced"].includes(pageParams.get("guide")) ? pageParams.get("guide") : "";
-    // Only ever go back to OUR OWN page (never an address someone put in a link).
-    const returnTo = pageParams.get("return") === "ai-dm.html" ? "ai-dm.html" : "";
+    // Only ever go back to one of OUR OWN pages (never an address someone put in a link).
+    const returnTo = ["ai-dm.html", "join.html"].includes(pageParams.get("return")) ? pageParams.get("return") : "";
     let currentStep = 0;
 
     // Advice that depends on what's been chosen so far.

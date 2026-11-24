@@ -196,6 +196,26 @@
       <p class="hint">Attack = d20 + the bonus shown. Melee weapons use Strength, ranged use Dexterity, and Finesse weapons use whichever is better. You add your proficiency bonus only for weapons your class is trained with.</p>
     </div>
 
+    <!-- Spellcasting: shown only for characters whose class casts spells -->
+    <div class="panel hidden" id="spellPanel">
+      <h2>✨ Spellcasting</h2>
+      <ul id="spellWarnings" class="problem-list"></ul>
+
+      <h3 class="section-label">Spell slots</h3>
+      <p class="hint">Tap a ● to spend a slot, tap a ○ to get it back.</p>
+      <div id="slotArea"></div>
+      <div class="roll-row">
+        <button class="small-button" id="longRestBtn">🌙 Long rest: restore all slots</button>
+        <button class="small-button hidden" id="shortRestBtn">☕ Short rest: restore Pact Magic slots</button>
+      </div>
+
+      <div id="spellClasses"></div>
+      <p class="hint">
+        Spells come from the free SRD. Damage and healing dice are read from each spell's text, so the description is the final word.
+        Not tracked: a Wizard's spellbook, spells from species or feats, always-prepared spells, and a Warlock's Mystic Arcanum.
+      </p>
+    </div>
+
     <div class="panel">
       <h2>Ability Scores</h2>
       <p class="hint">Click a modifier to roll a check.</p>
@@ -284,6 +304,7 @@
   <!-- Shared code: dice first, then the game rules, then this page's own script -->
   <script src="dice.js"></script>
   <script src="rules.js"></script>
+  <script src="spells.js"></script>
 
   <script>
     // =====================================================================
@@ -1005,6 +1026,7 @@
     // VIEW 3: SHEET
     // =====================================================================
     function openSheet(id) {
+      spellEditorClass = null;
       currentCharacter = characters.find(function (c) {
         return c.id === id;
       });
@@ -1167,6 +1189,7 @@
       document.getElementById("sheetInit").textContent = formatBonus(getModifier(getAbilityScore(c, "dex")));
       document.getElementById("sheetAcTotal").textContent = getAc(c);
       renderWeaponsAndArmor();
+      renderSpellcasting();
 
       // Speed, plus a climb speed if an item gives one (Slippers of Spider Climbing).
       const speed = getSpeed(c);
@@ -1640,6 +1663,423 @@
       });
     }
 
+
+    // =====================================================================
+    // SPELLCASTING
+    // =====================================================================
+    let spellEditorClass = null;     // the class whose "Choose spells" list is open
+    let spellSearchText = "";
+    let spellSearchLevel = "";
+    let spellListScroll = 0;         // keeps the "Choose spells" list where it was after each tick
+    const spellSlotPick = {};        // remembers which slot you picked for each spell: "slot:3" or "pact"
+
+    function abilityShort(className) {
+      return abilityName(SPELLCASTING[className].ability);
+    }
+
+    function renderSpellcasting() {
+      const c = currentCharacter;
+      const panel = document.getElementById("spellPanel");
+      const classes = getSpellcastingClasses(c);
+      panel.classList.toggle("hidden", classes.length === 0);
+      if (classes.length === 0) return;
+
+      // Armor you aren't trained in: no spellcasting (SRD "Armor Training").
+      const armor = wornArmor(c);
+      const blocked = Boolean(armor && !isArmorTrained(c, armor));
+      const warnings = document.getElementById("spellWarnings");
+      warnings.innerHTML = "";
+      if (blocked) {
+        const li = document.createElement("li");
+        li.textContent = "• You're wearing " + armor.name + " without training, so you can't cast spells until you take it off.";
+        warnings.append(li);
+      }
+
+      renderSlots();
+      document.getElementById("shortRestBtn").classList.toggle("hidden", !getPactSlots(c));
+
+      const box = document.getElementById("spellClasses");
+      box.innerHTML = "";
+      for (const entry of classes) box.append(buildSpellClassSection(entry, blocked));
+      // Put the "Choose spells" list back where it was (it can only scroll once it's on the page).
+      const pickList = box.querySelector(".spell-pick-list");
+      if (pickList) pickList.scrollTop = spellListScroll;
+    }
+
+    function renderSlots() {
+      const c = currentCharacter;
+      const area = document.getElementById("slotArea");
+      area.innerHTML = "";
+      const totals = getSpellSlotTotals(c);
+      const left = getSpellSlotsLeft(c);
+      let any = false;
+
+      totals.forEach(function (total, i) {
+        if (total === 0) return;
+        any = true;
+        area.append(makeSlotRow("Level " + (i + 1), total, left[i], function (spendOne) {
+          if (spendOne) spendSpellSlot(c, "slot", i + 1);
+          else c.slotsUsed[i] = Math.max((c.slotsUsed[i] || 0) - 1, 0);
+        }));
+      });
+      const pact = getPactSlots(c);
+      if (pact) {
+        any = true;
+        area.append(makeSlotRow("Pact Magic (level " + pact.level + ")", pact.count, getPactSlotsLeft(c), function (spendOne) {
+          if (spendOne) spendSpellSlot(c, "pact", pact.level);
+          else c.pactUsed = Math.max((c.pactUsed || 0) - 1, 0);
+        }));
+      }
+      if (!any) {
+        const p = document.createElement("p");
+        p.className = "hint";
+        p.textContent = "No spell slots yet. You'll get them as you level up.";
+        area.append(p);
+      }
+    }
+
+    // One row of ● ○ buttons: filled = available, hollow = spent.
+    function makeSlotRow(label, total, left, change) {
+      const row = document.createElement("div");
+      row.className = "slot-row";
+      const name = document.createElement("strong");
+      name.textContent = label + ": " + left + " of " + total;
+      const pips = document.createElement("span");
+      pips.className = "slot-pips";
+      for (let n = 0; n < total; n++) {
+        const available = n < left;
+        const pip = document.createElement("button");
+        pip.className = "slot-pip" + (available ? " available" : "");
+        pip.textContent = available ? "●" : "○";
+        pip.setAttribute("aria-label", (available ? "Spend a " : "Restore a ") + label + " slot");
+        pip.addEventListener("click", function () {
+          change(available);
+          persist();
+          renderSpellcasting();
+        });
+        pips.append(pip);
+      }
+      row.append(name, pips);
+      return row;
+    }
+
+    function buildSpellClassSection(entry, blocked) {
+      const c = currentCharacter;
+      const className = entry.name;
+      const limits = getSpellLimits(c, className);
+      const book = getSpellbook(c, className);
+
+      const section = document.createElement("div");
+      section.className = "spell-class";
+
+      const title = document.createElement("h3");
+      title.className = "section-label";
+      title.textContent = className + " spells (level " + entry.levels + ")";
+      const facts = document.createElement("p");
+      facts.className = "info-box";
+      facts.textContent = "Spellcasting ability: " + abilityShort(className) + " · Spell save DC " + getSpellSaveDc(c, className) +
+        " · Spell attack " + formatBonus(getSpellAttackBonus(c, className));
+
+      const counts = document.createElement("p");
+      counts.className = "hint";
+      const tooMany = book.cantrips.length > limits.cantrips || book.prepared.length > limits.prepared;
+      counts.textContent = (limits.cantrips ? "Cantrips: " + book.cantrips.length + " of " + limits.cantrips + " · " : "") +
+        "Prepared spells: " + book.prepared.length + " of " + limits.prepared + " · Highest spell level: " + limits.maxLevel +
+        (tooMany ? " ⚠️ You have more than your level allows: remove some." : "");
+
+      const buttons = document.createElement("div");
+      buttons.className = "roll-row";
+      buttons.append(
+        makeSheetButton(spellEditorClass === className ? "✔ Done choosing" : "✏️ Choose spells", function () {
+          spellEditorClass = spellEditorClass === className ? null : className;
+          spellListScroll = 0;
+          renderSpellcasting();
+        }),
+        makeSheetButton("✨ Fill with starter spells", function () { fillStarterSpells(className); })
+      );
+      section.append(title, facts, counts, buttons);
+
+      if (spellEditorClass === className) section.append(buildSpellEditor(className, limits, book));
+
+      // The chosen spells
+      const cards = document.createElement("div");
+      cards.className = "spell-cards";
+      const chosen = book.cantrips.concat(book.prepared).map(findSpell).filter(Boolean);
+      chosen.sort(function (a, b) { return a.level - b.level || a.n.localeCompare(b.n); });
+      if (chosen.length === 0) {
+        const hint = document.createElement("p");
+        hint.className = "hint";
+        hint.textContent = "No spells chosen yet. Press \"Choose spells\", or \"Fill with starter spells\" for a good beginner set.";
+        cards.append(hint);
+      }
+      for (const spell of chosen) cards.append(buildSpellCard(spell, className, blocked));
+      section.append(cards);
+      return section;
+    }
+
+    function saveBook(className, book) {
+      if (!currentCharacter.spellbook) currentCharacter.spellbook = {};
+      currentCharacter.spellbook[className] = book;
+      persist();
+      updateSheet();
+    }
+
+    // Fill the empty places with the class's starter spells (in order, only ones it can learn).
+    function fillStarterSpells(className) {
+      const limits = getSpellLimits(currentCharacter, className);
+      const book = getSpellbook(currentCharacter, className);
+      const starters = STARTER_SPELLS[className];
+      const cantrips = book.cantrips.slice(), prepared = book.prepared.slice();
+      for (const name of starters.cantrips) {
+        const spell = findSpell(name);
+        if (spell && spell.classes.includes(className) && cantrips.length < limits.cantrips && !cantrips.includes(name)) cantrips.push(name);
+      }
+      for (const name of starters.spells) {
+        const spell = findSpell(name);
+        if (spell && spell.classes.includes(className) && spell.level <= limits.maxLevel && prepared.length < limits.prepared && !prepared.includes(name)) prepared.push(name);
+      }
+      saveBook(className, { cantrips: cantrips, prepared: prepared });
+    }
+
+    // The "Choose spells" list: search, filter by level, tick to add.
+    function buildSpellEditor(className, limits, book) {
+      const editor = document.createElement("div");
+      editor.className = "spell-editor";
+
+      const controls = document.createElement("div");
+      controls.className = "settings add-form";
+      const search = document.createElement("input");
+      search.type = "text";
+      search.className = "wide-input";
+      search.placeholder = "Search spells…";
+      search.value = spellSearchText;
+      const levelFilter = document.createElement("select");
+      levelFilter.append(new Option("All levels", ""));
+      for (let n = 0; n <= limits.maxLevel; n++) {
+        if (n === 0 && limits.cantrips === 0) continue;
+        levelFilter.append(new Option(n === 0 ? "Cantrips" : "Level " + n, String(n)));
+      }
+      levelFilter.value = spellSearchLevel;
+      controls.append(search, levelFilter);
+
+      const list = document.createElement("div");
+      list.className = "spell-pick-list";
+
+      const draw = function () {
+        list.innerHTML = "";
+        const text = spellSearchText.trim().toLowerCase();
+        for (const spell of getClassSpellList(className)) {
+          if (spell.level > limits.maxLevel || (spell.level === 0 && limits.cantrips === 0)) continue;
+          if (spellSearchLevel !== "" && spell.level !== Number(spellSearchLevel)) continue;
+          if (text && !spell.n.toLowerCase().includes(text)) continue;
+
+          const isCantrip = spell.level === 0;
+          const group = isCantrip ? book.cantrips : book.prepared;
+          const limit = isCantrip ? limits.cantrips : limits.prepared;
+          const on = group.includes(spell.n);
+
+          const row = document.createElement("label");
+          row.className = "spell-pick";
+          const box = document.createElement("input");
+          box.type = "checkbox";
+          box.checked = on;
+          box.disabled = !on && group.length >= limit;
+          box.addEventListener("change", function () {
+            const next = { cantrips: book.cantrips.slice(), prepared: book.prepared.slice() };
+            const target = isCantrip ? next.cantrips : next.prepared;
+            if (box.checked) target.push(spell.n);
+            else target.splice(target.indexOf(spell.n), 1);
+            saveBook(className, next);
+          });
+          const label = document.createElement("span");
+          label.textContent = " " + spell.n + " (" + (isCantrip ? "cantrip" : "level " + spell.level) + ", " + spell.school +
+            (spell.conc ? ", concentration" : "") + (spell.ritual ? ", ritual" : "") + ")";
+          row.append(box, label);
+          list.append(row);
+        }
+        if (!list.children.length) {
+          const none = document.createElement("p");
+          none.className = "hint";
+          none.textContent = "No spells match.";
+          list.append(none);
+        }
+      };
+      draw();
+
+      // Typing only redraws the list (not the whole sheet), so the box keeps focus.
+      search.addEventListener("input", function () {
+        spellSearchText = search.value;
+        draw();
+      });
+      levelFilter.addEventListener("change", function () {
+        spellSearchLevel = levelFilter.value;
+        draw();
+      });
+      // Ticking a spell redraws the sheet; put the list back where it was.
+      list.addEventListener("scroll", function () {
+        spellListScroll = list.scrollTop;
+      });
+      editor.append(controls, list);
+      return editor;
+    }
+
+    // One chosen spell: facts, description, and its buttons.
+    function buildSpellCard(spell, className, blocked) {
+      const c = currentCharacter;
+      const card = document.createElement("div");
+      card.className = "spell-card";
+
+      const head = document.createElement("div");
+      const name = document.createElement("strong");
+      name.textContent = spell.n;
+      const kind = document.createElement("span");
+      kind.className = "hint";
+      kind.textContent = " " + (spell.level === 0 ? "Cantrip" : "Level " + spell.level) + " · " + spell.school +
+        (spell.conc ? " · ⏳ Concentration" : "") + (spell.ritual ? " · 🕯️ Ritual" : "");
+      head.append(name, kind);
+
+      const facts = document.createElement("div");
+      facts.className = "hint";
+      facts.textContent = spell.time + " · " + spell.range + " · " + spell.comp + " · " + spell.dur;
+      card.append(head, facts);
+
+      // Slot to cast with (leveled spells)
+      const choices = spell.level > 0 ? getSlotChoices(c, spell) : [];
+      let slotSelect = null;
+      if (spell.level > 0) {
+        slotSelect = document.createElement("select");
+        slotSelect.setAttribute("aria-label", "Slot for " + spell.n);
+        for (const choice of choices) {
+          const value = choice.kind === "pact" ? "pact" : "slot:" + choice.level;
+          slotSelect.append(new Option((choice.kind === "pact" ? "Pact slot (level " + choice.level + ", " : "Level " + choice.level + " slot (") + choice.left + " left)", value));
+        }
+        if (choices.length === 0) slotSelect.append(new Option("No slot left", ""));
+        if (spellSlotPick[spell.n] && choices.some(function (ch) { return (ch.kind === "pact" ? "pact" : "slot:" + ch.level) === spellSlotPick[spell.n]; })) {
+          slotSelect.value = spellSlotPick[spell.n];
+        }
+        slotSelect.addEventListener("change", function () {
+          spellSlotPick[spell.n] = slotSelect.value;
+          renderSpellcasting();
+        });
+      }
+      const slotLevel = function () {
+        if (!slotSelect || !slotSelect.value) return spell.level;
+        return slotSelect.value === "pact" ? getPactSlots(c).level : Number(slotSelect.value.split(":")[1]);
+      };
+
+      const buttons = document.createElement("div");
+      buttons.className = "attack-buttons";
+      if (slotSelect) buttons.append(slotSelect);
+
+      // Cast
+      const castLabel = spell.level === 0 ? "✨ Cast" : "✨ Cast (spend the slot)";
+      const cast = makeSheetButton(castLabel, function () {
+        if (spell.level > 0) {
+          const kind = slotSelect.value === "pact" ? "pact" : "slot";
+          if (!spendSpellSlot(c, kind, slotLevel())) return;
+          spellSlotPick[spell.n] = slotSelect.value;
+          persist();
+          renderSpellcasting();
+          showToast("✨ " + spell.n + " cast with a " + (kind === "pact" ? "Pact " : "") + "level " + slotLevel() + " slot." +
+            (spell.save ? " DC " + getSpellSaveDc(c, className) + " " + spell.save + " save." : ""));
+        } else {
+          showToast("✨ " + spell.n + " cast." + (spell.save ? " DC " + getSpellSaveDc(c, className) + " " + spell.save + " save." : ""));
+        }
+      });
+      cast.disabled = blocked || (spell.level > 0 && choices.length === 0);
+      buttons.append(cast);
+
+      if (spell.ritual && spell.level > 0) {
+        const ritual = makeSheetButton("🕯️ Cast as a ritual (no slot)", function () {
+          showToast("🕯️ " + spell.n + " cast as a ritual: it takes 10 minutes longer, and uses no spell slot.");
+        });
+        ritual.disabled = blocked;
+        buttons.append(ritual);
+      }
+      if (spell.atk) {
+        buttons.append(makeSheetButton("🎲 " + formatBonus(getSpellAttackBonus(c, className)) + " spell attack", function () {
+          rollCheck(spell.n + " (" + spell.atk.toLowerCase() + " spell attack)", getSpellAttackBonus(c, className), null, null);
+        }));
+      }
+      const damage = getSpellDamage(spell, c, slotLevel());
+      if (damage) {
+        const type = spell.dtype ? " " + spell.dtype.toLowerCase() : "";
+        buttons.append(makeSheetButton("💥 " + damage.dice + type + (damage.beams > 1 ? " × " + damage.beams + " beams" : ""), function () {
+          const crit = document.getElementById("critBox").checked && Boolean(spell.atk);
+          const parts = [];
+          let total = 0;
+          for (let beam = 0; beam < damage.beams; beam++) {
+            const result = rollDiceText(damage.dice, crit);   // from dice.js
+            total += result.total;
+            parts.push(result.text + " = " + result.total);
+          }
+          showToast("💥 " + spell.n + " damage" + (crit ? " (critical hit!)" : "") + ": " + parts.join(" | ") +
+                    (damage.beams > 1 ? " | total " + total : "") + type + (spell.save ? " (DC " + getSpellSaveDc(c, className) + " " + spell.save + " save)" : ""));
+        }));
+      }
+      const healing = getSpellHealing(spell, c, className, slotLevel());
+      if (healing) {
+        buttons.append(makeSheetButton("💚 " + healing, function () {
+          const result = rollDiceText(healing, false);
+          showToast("💚 " + spell.n + " heals: " + result.text + " = " + result.total + " Hit Points");
+        }));
+      }
+      card.append(buttons);
+
+      if (spell.save && !spell.dmg) {
+        const dc = document.createElement("div");
+        dc.className = "hint";
+        dc.textContent = "Targets make a DC " + getSpellSaveDc(c, className) + " " + spell.save + " saving throw.";
+        card.append(dc);
+      }
+      if (spell.note) {
+        const note = document.createElement("div");
+        note.className = "hint";
+        note.textContent = "ℹ️ " + spell.note;
+        card.append(note);
+      }
+
+      const details = document.createElement("details");
+      const summary = document.createElement("summary");
+      summary.textContent = "📖 Read the spell";
+      details.append(summary);
+      for (const paragraph of spell.text) {
+        const p = document.createElement("p");
+        p.className = "spell-text";
+        p.textContent = paragraph;
+        details.append(p);
+      }
+      if (spell.higher) {
+        const p = document.createElement("p");
+        p.className = "spell-text";
+        p.textContent = "Higher-level slot: " + spell.higher;
+        details.append(p);
+      }
+      if (spell.cantripUp) {
+        const p = document.createElement("p");
+        p.className = "spell-text";
+        p.textContent = "Cantrip upgrade: " + spell.cantripUp;
+        details.append(p);
+      }
+      card.append(details);
+      return card;
+    }
+
+    function connectSpellcasting() {
+      document.getElementById("longRestBtn").addEventListener("click", function () {
+        takeLongRest(currentCharacter);
+        persist();
+        renderSpellcasting();
+        showToast("🌙 Long rest: all your spell slots are back.");
+      });
+      document.getElementById("shortRestBtn").addEventListener("click", function () {
+        takeShortRest(currentCharacter);
+        persist();
+        renderSpellcasting();
+        showToast("☕ Short rest: your Pact Magic slots are back.");
+      });
+    }
+
     // =====================================================================
     // ROLLING (uses the Normal / Advantage / Disadvantage setting)
     // =====================================================================
@@ -1795,6 +2235,7 @@
     connectSheet();
     fillArmorPickers();
     connectWeaponsAndArmor();
+    connectSpellcasting();
     fillItemSelects();
     document.getElementById("itemSelect").addEventListener("change", showSelectedItemInfo);
     startGuide();

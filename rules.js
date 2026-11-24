@@ -247,6 +247,83 @@ function makeCustomItem(itemName, type, powers, appearance) {
 // The kinds of item a player can pick for a custom item.
 const ITEM_TYPES = ["Weapon", "Armor or shield", "Ring", "Staff", "Wand", "Rod", "Wondrous item", "Potion or scroll", "Other"];
 
+// ---------- Spellcasting (SRD 5.2.1: each class's features table, and "Multiclassing") ----------
+//   ability:  the spellcasting ability     kind: "full", "half" (Paladin, Ranger) or "pact" (Warlock)
+//   cantrips / prepared: how many you know / prepare, by CLASS level (index 0 = level 1)
+//   pactSlots / pactLevel: a Warlock's slots and their level, by class level
+// Spell slots for everyone but Warlocks come from MULTICLASS_SLOTS (below), because the
+// SRD's single-class tables match it: full casters use their level, half casters half their
+// level rounded up (checked against every class table when this data was made).
+const SPELLCASTING = {
+  Bard: {
+    ability: "cha", kind: "full",
+    cantrips: [2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+    prepared: [4, 5, 6, 7, 9, 10, 11, 12, 14, 15, 16, 16, 17, 17, 18, 18, 19, 20, 21, 22],
+  },
+  Cleric: {
+    ability: "wis", kind: "full",
+    cantrips: [3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+    prepared: [4, 5, 6, 7, 9, 10, 11, 12, 14, 15, 16, 16, 17, 17, 18, 18, 19, 20, 21, 22],
+  },
+  Druid: {
+    ability: "wis", kind: "full",
+    cantrips: [2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+    prepared: [4, 5, 6, 7, 9, 10, 11, 12, 14, 15, 16, 16, 17, 17, 18, 18, 19, 20, 21, 22],
+  },
+  Paladin: {
+    ability: "cha", kind: "half",
+    cantrips: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    prepared: [2, 3, 4, 5, 6, 6, 7, 7, 9, 9, 10, 10, 11, 11, 12, 12, 14, 14, 15, 15],
+  },
+  Ranger: {
+    ability: "wis", kind: "half",
+    cantrips: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    prepared: [2, 3, 4, 5, 6, 6, 7, 7, 9, 9, 10, 10, 11, 11, 12, 12, 14, 14, 15, 15],
+  },
+  Sorcerer: {
+    ability: "cha", kind: "full",
+    cantrips: [4, 4, 4, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6],
+    prepared: [2, 4, 6, 7, 9, 10, 11, 12, 14, 15, 16, 16, 17, 17, 18, 18, 19, 20, 21, 22],
+  },
+  Warlock: {
+    ability: "cha", kind: "pact",
+    cantrips: [2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+    prepared: [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15],
+    pactSlots: [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4],
+    pactLevel: [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+  },
+  Wizard: {
+    ability: "int", kind: "full",
+    cantrips: [3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+    prepared: [4, 5, 6, 7, 9, 10, 11, 12, 14, 15, 16, 16, 17, 18, 19, 21, 22, 23, 24, 25],
+  }
+};
+
+// Spell slots by "caster level" 1-20: [level 1 slots, level 2 slots, ... level 9 slots].
+// (SRD "Multiclass Spellcaster" table)
+const MULTICLASS_SLOTS = [
+  [2, 0, 0, 0, 0, 0, 0, 0, 0],
+  [3, 0, 0, 0, 0, 0, 0, 0, 0],
+  [4, 2, 0, 0, 0, 0, 0, 0, 0],
+  [4, 3, 0, 0, 0, 0, 0, 0, 0],
+  [4, 3, 2, 0, 0, 0, 0, 0, 0],
+  [4, 3, 3, 0, 0, 0, 0, 0, 0],
+  [4, 3, 3, 1, 0, 0, 0, 0, 0],
+  [4, 3, 3, 2, 0, 0, 0, 0, 0],
+  [4, 3, 3, 3, 1, 0, 0, 0, 0],
+  [4, 3, 3, 3, 2, 0, 0, 0, 0],
+  [4, 3, 3, 3, 2, 1, 0, 0, 0],
+  [4, 3, 3, 3, 2, 1, 0, 0, 0],
+  [4, 3, 3, 3, 2, 1, 1, 0, 0],
+  [4, 3, 3, 3, 2, 1, 1, 0, 0],
+  [4, 3, 3, 3, 2, 1, 1, 1, 0],
+  [4, 3, 3, 3, 2, 1, 1, 1, 0],
+  [4, 3, 3, 3, 2, 1, 1, 1, 1],
+  [4, 3, 3, 3, 3, 1, 1, 1, 1],
+  [4, 3, 3, 3, 3, 2, 1, 1, 1],
+  [4, 3, 3, 3, 3, 2, 2, 1, 1]
+];
+
 // ---------- Weapons (SRD 5.2.1 "Weapons" table) ----------
 //   damage: the die rolled     type: damage type     props: weapon properties
 //   range: for thrown and ammunition weapons (normal/long, in feet)
@@ -755,6 +832,231 @@ function averageDamage(text) {
   }
   return total;
 }
+
+// =====================================================================
+// SPELLCASTING: the rules (SRD 5.2.1 "Spells", class features, and "Multiclassing")
+// =====================================================================
+// A character's spells are saved on the character like this:
+//   spellbook: { "Wizard": { cantrips: ["Fire Bolt"], prepared: ["Shield", "Fireball"] } }
+//   slotsUsed: [0, 1, 0, ...]  (spell slots spent, for levels 1-9)      pactUsed: 0  (a Warlock's spent slots)
+// A character with two spellcasting classes has a section for each. The spells data
+// itself (SPELLS) is in spells.js, loaded only by the pages that show spells.
+
+// The classes this character has that cast spells: [{ name, levels, table }].
+function getSpellcastingClasses(character) {
+  return getClassLevels(character).filter(function (entry) {
+    return Boolean(SPELLCASTING[entry.name]);
+  }).map(function (entry) {
+    return { name: entry.name, levels: entry.levels, table: SPELLCASTING[entry.name] };
+  });
+}
+
+function isSpellcaster(character) {
+  return getSpellcastingClasses(character).length > 0;
+}
+
+function getSpellModifier(character, className) {
+  return getModifier(getAbilityScore(character, SPELLCASTING[className].ability));
+}
+
+// Spell save DC = 8 + proficiency bonus + spellcasting ability modifier.
+function getSpellSaveDc(character, className) {
+  return 8 + getProficiencyBonus(character.level) + getSpellModifier(character, className);
+}
+
+// Spell attack bonus = proficiency bonus + spellcasting ability modifier.
+function getSpellAttackBonus(character, className) {
+  return getProficiencyBonus(character.level) + getSpellModifier(character, className);
+}
+
+// The slots a class could have on its own (full casters: their level; half casters: half, rounded up).
+function classOwnSlots(entry) {
+  const level = entry.table.kind === "half" ? Math.ceil(entry.levels / 2) : entry.levels;
+  return MULTICLASS_SLOTS[Math.min(Math.max(level, 1), 20) - 1];
+}
+
+// How many cantrips the character knows, how many spells they prepare, and the highest spell
+// level they may prepare, for ONE class (each class counts as if it were their only class).
+function getSpellLimits(character, className) {
+  const entry = getSpellcastingClasses(character).find(function (e) { return e.name === className; });
+  if (!entry) return { cantrips: 0, prepared: 0, maxLevel: 0 };
+  const index = Math.min(Math.max(entry.levels, 1), 20) - 1;
+  let maxLevel = 0;
+  if (entry.table.kind === "pact") {
+    maxLevel = entry.table.pactLevel[index];
+  } else {
+    classOwnSlots(entry).forEach(function (count, i) {
+      if (count > 0) maxLevel = i + 1;
+    });
+  }
+  return { cantrips: entry.table.cantrips[index], prepared: entry.table.prepared[index], maxLevel: maxLevel };
+}
+
+// The spell slots that aren't a Warlock's: [level 1 total, ..., level 9 total].
+// Add all levels in full-caster classes and half of each half-caster class (rounded up),
+// then look that total up in the Multiclass Spellcaster table.
+function getSpellSlotTotals(character) {
+  let casterLevel = 0;
+  for (const entry of getSpellcastingClasses(character)) {
+    if (entry.table.kind === "full") casterLevel += entry.levels;
+    if (entry.table.kind === "half") casterLevel += Math.ceil(entry.levels / 2);
+  }
+  if (casterLevel < 1) return [0, 0, 0, 0, 0, 0, 0, 0, 0];
+  return MULTICLASS_SLOTS[Math.min(casterLevel, 20) - 1].slice();
+}
+
+// A Warlock's Pact Magic slots: { count, level } (all the same level), or null.
+function getPactSlots(character) {
+  const entry = getSpellcastingClasses(character).find(function (e) { return e.table.kind === "pact"; });
+  if (!entry) return null;
+  const index = Math.min(Math.max(entry.levels, 1), 20) - 1;
+  return { count: entry.table.pactSlots[index], level: entry.table.pactLevel[index] };
+}
+
+// Slots still unspent: [level 1 left, ..., level 9 left].
+function getSpellSlotsLeft(character) {
+  const used = character.slotsUsed || [];
+  return getSpellSlotTotals(character).map(function (total, i) {
+    return Math.max(total - (used[i] || 0), 0);
+  });
+}
+
+function getPactSlotsLeft(character) {
+  const pact = getPactSlots(character);
+  return pact ? Math.max(pact.count - (character.pactUsed || 0), 0) : 0;
+}
+
+// The slots that could cast this spell (its level or higher, with some left):
+// [{ kind: "slot" | "pact", level, left }]. Cantrips need no slot.
+function getSlotChoices(character, spell) {
+  const choices = [];
+  getSpellSlotsLeft(character).forEach(function (left, i) {
+    if (i + 1 >= spell.level && left > 0) choices.push({ kind: "slot", level: i + 1, left: left });
+  });
+  const pact = getPactSlots(character);
+  const pactLeft = getPactSlotsLeft(character);
+  if (pact && pact.level >= spell.level && pactLeft > 0) choices.push({ kind: "pact", level: pact.level, left: pactLeft });
+  return choices;
+}
+
+// Spend one slot (kind "slot" at a level, or "pact"). Returns false if there isn't one.
+function spendSpellSlot(character, kind, level) {
+  if (kind === "pact") {
+    if (getPactSlotsLeft(character) < 1) return false;
+    character.pactUsed = (character.pactUsed || 0) + 1;
+    return true;
+  }
+  if (getSpellSlotsLeft(character)[level - 1] < 1) return false;
+  if (!Array.isArray(character.slotsUsed)) character.slotsUsed = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+  character.slotsUsed[level - 1] = (character.slotsUsed[level - 1] || 0) + 1;
+  return true;
+}
+
+// A Long Rest restores every slot; a Short Rest restores a Warlock's Pact Magic slots.
+function takeLongRest(character) {
+  character.slotsUsed = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+  character.pactUsed = 0;
+}
+function takeShortRest(character) {
+  character.pactUsed = 0;
+}
+
+// What the character has chosen for one class: { cantrips: [names], prepared: [names] }.
+function getSpellbook(character, className) {
+  const book = (character.spellbook && character.spellbook[className]) || {};
+  return {
+    cantrips: Array.isArray(book.cantrips) ? book.cantrips : [],
+    prepared: Array.isArray(book.prepared) ? book.prepared : []
+  };
+}
+
+function findSpell(name) {
+  if (typeof SPELLS === "undefined") return null;
+  return SPELLS.find(function (spell) { return spell.n === name; }) || null;
+}
+
+// Every spell a class can learn (level 0 = cantrips), sorted by level then name.
+function getClassSpellList(className) {
+  if (typeof SPELLS === "undefined") return [];
+  return SPELLS.filter(function (spell) { return spell.classes.includes(className); });
+}
+
+// ---------- Dice that grow ----------
+// "8d6" plus "1d6" three times is "11d6". Dice of the same size are combined.
+function addDice(baseText, extraText, times) {
+  const parse = function (text) {
+    const terms = [];
+    let bonus = 0;
+    for (const part of String(text).replace(/\s+/g, "").match(/[+-]?[^+-]+/g) || []) {
+      const sign = part.startsWith("-") ? -1 : 1;
+      const body = part.replace(/^[+-]/, "");
+      if (body.includes("d")) {
+        const pieces = body.split("d");
+        terms.push({ count: sign * Number(pieces[0]), sides: Number(pieces[1]) });
+      } else {
+        bonus += sign * Number(body);
+      }
+    }
+    return { terms: terms, bonus: bonus };
+  };
+  const base = parse(baseText), extra = parse(extraText);
+  for (const term of extra.terms) {
+    const same = base.terms.find(function (t) { return t.sides === term.sides; });
+    if (same) same.count += term.count * times;
+    else base.terms.push({ count: term.count * times, sides: term.sides });
+  }
+  base.bonus += extra.bonus * times;
+  let text = base.terms.map(function (t) { return t.count + "d" + t.sides; }).join("+");
+  if (base.bonus) text += (base.bonus > 0 ? "+" : "") + base.bonus;
+  return text;
+}
+
+// A cantrip is stronger at character levels 5, 11 and 17 (counting ALL your levels).
+function cantripTier(character) {
+  return 1 + (character.level >= 5 ? 1 : 0) + (character.level >= 11 ? 1 : 0) + (character.level >= 17 ? 1 : 0);
+}
+
+// The damage dice for a spell cast at a slot level ({ dice, beams }), or null if it has none.
+// Cantrips grow with your level; leveled spells grow with the slot ("Using a Higher-Level Spell Slot").
+function getSpellDamage(spell, character, slotLevel) {
+  if (!spell.dmg) return null;
+  if (spell.level === 0) {
+    const tier = cantripTier(character);
+    if (spell.tiers === "beams") return { dice: spell.dmg, beams: tier };
+    if (spell.tiers) return { dice: addDice(spell.dmg, spell.tiers, tier - 1), beams: 1 };
+    return { dice: spell.dmg, beams: 1 };
+  }
+  const slot = Math.max(slotLevel || spell.level, spell.level);
+  let dice = spell.dmg;
+  if (spell.up && slot > spell.up[1]) dice = addDice(dice, spell.up[0], slot - spell.up[1]);
+  return { dice: dice, beams: 1 };
+}
+
+// The healing dice, with the spellcasting modifier added when the spell says so.
+function getSpellHealing(spell, character, className, slotLevel) {
+  if (!spell.heal) return null;
+  const slot = Math.max(slotLevel || spell.level, spell.level);
+  let dice = spell.heal;
+  if (spell.up && !spell.dmg && slot > spell.up[1]) dice = addDice(dice, spell.up[0], slot - spell.up[1]);
+  if (spell.healMod) {
+    const mod = getSpellModifier(character, className);
+    if (mod) dice += (mod > 0 ? "+" : "") + mod;
+  }
+  return dice;
+}
+
+// Good first spells for each class, in the order to pick them. "Fill with starter spells"
+// uses these. (They're suggestions: easy to use and useful at a table.)
+const STARTER_SPELLS = {
+  Bard:     { cantrips: ["Vicious Mockery", "Minor Illusion", "Mage Hand", "Prestidigitation"], spells: ["Healing Word", "Faerie Fire", "Dissonant Whispers", "Charm Person", "Thunderwave", "Cure Wounds", "Heroism", "Sleep", "Hold Person", "Invisibility", "Suggestion", "Hypnotic Pattern"] },
+  Cleric:   { cantrips: ["Sacred Flame", "Guidance", "Light", "Thaumaturgy"], spells: ["Cure Wounds", "Bless", "Guiding Bolt", "Shield of Faith", "Healing Word", "Command", "Spiritual Weapon", "Aid", "Hold Person", "Spirit Guardians", "Revivify", "Dispel Magic"] },
+  Druid:    { cantrips: ["Produce Flame", "Guidance", "Druidcraft", "Shillelagh"], spells: ["Cure Wounds", "Entangle", "Faerie Fire", "Healing Word", "Thunderwave", "Goodberry", "Moonbeam", "Flaming Sphere", "Call Lightning", "Dispel Magic", "Plant Growth", "Conjure Animals"] },
+  Paladin:  { cantrips: [], spells: ["Divine Smite", "Bless", "Cure Wounds", "Shield of Faith", "Command", "Heroism", "Aid", "Find Steed", "Revivify", "Dispel Magic", "Banishment", "Death Ward"] },
+  Ranger:   { cantrips: [], spells: ["Hunter's Mark", "Cure Wounds", "Goodberry", "Fog Cloud", "Ensnaring Strike", "Longstrider", "Pass without Trace", "Spike Growth", "Conjure Animals", "Plant Growth", "Revivify", "Dispel Magic"] },
+  Sorcerer: { cantrips: ["Fire Bolt", "Mage Hand", "Prestidigitation", "Ray of Frost", "Minor Illusion", "Light"], spells: ["Magic Missile", "Shield", "Sleep", "Burning Hands", "Mage Armor", "Chromatic Orb", "Misty Step", "Scorching Ray", "Fireball", "Counterspell", "Haste", "Fly"] },
+  Warlock:  { cantrips: ["Eldritch Blast", "Prestidigitation", "Minor Illusion", "Mage Hand"], spells: ["Hex", "Charm Person", "Hellish Rebuke", "Misty Step", "Hold Person", "Counterspell", "Fly", "Hypnotic Pattern", "Banishment", "Dimension Door", "Dispel Magic", "Fear"] },
+  Wizard:   { cantrips: ["Fire Bolt", "Mage Hand", "Prestidigitation", "Light", "Ray of Frost", "Minor Illusion"], spells: ["Magic Missile", "Shield", "Sleep", "Mage Armor", "Burning Hands", "Misty Step", "Scorching Ray", "Fireball", "Counterspell", "Detect Magic", "Find Familiar", "Thunderwave", "Invisibility", "Fly", "Haste", "Dispel Magic"] }
+};
 
 // =====================================================================
 // WORKING OUT NORMAL / ADVANTAGE / DISADVANTAGE FOR A d20 ROLL

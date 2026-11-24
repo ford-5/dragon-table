@@ -33,6 +33,16 @@ function getCheckList(character) {
   for (const attack of getAttacks(character)) {
     list.push({ label: attack.name + " attack", bonus: attack.toHit, ability: attack.ability });
   }
+  // Spell attacks, for the spells the character has chosen (needs spells.js on the page).
+  for (const entry of getSpellcastingClasses(character)) {
+    const book = getSpellbook(character, entry.name);
+    for (const name of book.cantrips.concat(book.prepared)) {
+      const spell = findSpell(name);
+      if (spell && spell.atk && !list.some(function (e) { return e.label === name + " attack"; })) {
+        list.push({ label: name + " attack", bonus: getSpellAttackBonus(character, entry.name) });
+      }
+    }
+  }
   return list;
 }
 
@@ -227,6 +237,21 @@ function makeSheetText(c) {
 
   for (const entry of getClassLevels(c)) {
     if (entry.data) lines.push(entry.name + " features: " + entry.data.features.join(", "));
+  }
+
+  // Spellcasting: save DC, spell attack, slots left and the chosen spells.
+  for (const entry of getSpellcastingClasses(c)) {
+    const book = getSpellbook(c, entry.name);
+    lines.push(entry.name + " spellcasting: spell save DC " + getSpellSaveDc(c, entry.name) + ", spell attack " + formatBonus(getSpellAttackBonus(c, entry.name)));
+    if (book.cantrips.length) lines.push(entry.name + " cantrips: " + book.cantrips.join(", "));
+    if (book.prepared.length) lines.push(entry.name + " prepared spells: " + book.prepared.join(", "));
+  }
+  if (isSpellcaster(c)) {
+    const left = getSpellSlotsLeft(c), total = getSpellSlotTotals(c);
+    const slotText = total.map(function (t, i) { return t ? "level " + (i + 1) + ": " + left[i] + "/" + t : ""; }).filter(Boolean);
+    const pact = getPactSlots(c);
+    if (pact) slotText.push("Pact Magic level " + pact.level + ": " + getPactSlotsLeft(c) + "/" + pact.count);
+    if (slotText.length) lines.push("Spell slots left: " + slotText.join(", "));
   }
 
   // Weapons and armor, so the Game Master uses the real numbers.

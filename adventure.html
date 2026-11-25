@@ -51,6 +51,7 @@
   <script src="dice.js"></script>
   <script src="rules.js"></script>
   <script src="monsters.js"></script>
+  <script src="voice.js"></script>
   <script>
     const el = function (id) {
       return document.getElementById(id);
@@ -176,6 +177,12 @@
       const read = function (text) {
         const box = make("div", "adv-read");
         box.append(make("div", "adv-label", "Read aloud"), make("p", "", text));
+        // A speaker, so the device can read the shaded text to the table.
+        const speaker = Voice.speakButton(function () { return Voice.textOf(box); });
+        if (speaker) {
+          speaker.classList.add("no-print");
+          box.append(speaker);
+        }
         root.append(box);
       };
       const tip = function (text) {

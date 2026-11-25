@@ -221,6 +221,7 @@
   <script src="play.js"></script>
   <script src="music.js"></script>
   <script src="monetize.js"></script>
+  <script src="voice.js"></script>
 
   <script>
     // =====================================================================
@@ -1160,6 +1161,10 @@
     });
     el("rollBtn").addEventListener("click", rollSelectedCheck);
     connectTarget();
+    // Microphones on the setup boxes (the chat box already has its own).
+    for (const id of ["campaignName", "tone", "pickName", "pickPowers", "pickLooks"]) Voice.micButton(el(id));
+    const howToSpeaker = Voice.speakButton(function () { return Voice.textOf(el("howToPlay")); });   // the lesson, read aloud
+    if (howToSpeaker) el("howToPlay").append(howToSpeaker);
     el("newBtn").addEventListener("click", newAdventure);
 
     // Ready-to-roll and music controls

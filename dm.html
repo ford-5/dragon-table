@@ -222,6 +222,7 @@
   <script src="rules.js"></script>
   <script src="play.js"></script>
   <script src="music.js"></script>
+  <script src="voice.js"></script>
 
   <!-- PeerJS (MIT license, version pinned) connects the GM's browser straight to the players' browsers. -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -713,6 +714,8 @@
         text.textContent = condition.text;
 
         details.append(summary, text);
+        const speaker = Voice.speakButton(function () { return condition.name + ". " + condition.text; });   // reads it aloud
+        if (speaker) details.append(speaker);
         box.append(details);
       }
     }
@@ -1423,6 +1426,8 @@
     }
 
     // "input" fires every time the text changes, so notes save as you type.
+    Voice.micButton(notesBox);                                  // dictate session notes
+    Voice.micButton(document.getElementById("announceText"));   // and messages to the players
     notesBox.addEventListener("input", function () {
       try {
         localStorage.setItem("dmNotes", notesBox.value);

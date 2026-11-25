@@ -80,6 +80,7 @@
   <script src="rules.js"></script>
   <script src="spells.js"></script>
   <script src="monsters.js"></script>
+  <script src="voice.js"></script>
 
   <script>
     // =====================================================================
@@ -550,6 +551,7 @@
     fillMonsterPick();
     renderEncounter();
     el("monsterSearch").addEventListener("input", fillMonsterPick);
+    Voice.micButton(el("monsterSearch"));   // a microphone: say a monster's name
     el("monsterPick").addEventListener("change", showMonsterInfo);
     el("addMonster").addEventListener("click", addMonster);
     el("addQuickHero").addEventListener("click", addQuickHero);

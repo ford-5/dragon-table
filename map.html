@@ -117,6 +117,7 @@
   <script src="rules.js"></script>
   <script src="spells.js"></script>
   <script src="monsters.js"></script>
+  <script src="voice.js"></script>
   <script>
     // =====================================================================
     // RULES FOR THE GRID (SRD "Playing on a Grid", "Creature Size and Space")
@@ -779,6 +780,7 @@
     if (new URLSearchParams(location.search).get("embed") === "1") document.body.classList.add("embedded");   // after setMode, so its message isn't cleared
 
     el("monsterSearch").addEventListener("input", fillMonsterPick);
+    Voice.micButton(el("monsterSearch"));   // a microphone: say a monster's name
     el("addMonsterBtn").addEventListener("click", function () {
       const monster = MONSTERS.find(function (m) { return m.n === el("monsterPick").value; });
       if (monster) addMonster(monster, Math.min(Math.max(Math.round(Number(el("monsterCount").value)) || 1, 1), 20));

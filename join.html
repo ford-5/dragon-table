@@ -79,6 +79,7 @@
       <p class="hint">Voice goes straight between your browsers. Nothing is recorded.</p>
     </div>
 
+    <label class="hint"><input type="checkbox" id="readFeed"> 🔊 Read the GM's messages aloud</label>
     <div id="feed" class="chat-log short-log" aria-live="polite"></div>
 
     <!-- The battle map: appears when the GM shows it -->
@@ -140,6 +141,7 @@
   <script src="spells.js"></script>
   <script src="play.js"></script>
   <script src="music.js"></script>
+  <script src="voice.js"></script>
 
   <!-- PeerJS (MIT license, version pinned) connects your browser straight to your GM's browser. -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -342,7 +344,9 @@
       } else if (data.type === "declined") {
         stopWaiting(cleanText(data.reason, 100) || "The GM declined your request.");
       } else if (data.type === "announce" && joined) {
-        addToFeed("📢 GM: " + cleanText(data.text, 300));
+        const said = cleanText(data.text, 300);
+        addToFeed("📢 GM: " + said);
+        if (el("readFeed").checked) Voice.speak(said);   // a speaker, for players who'd rather listen
       } else if (data.type === "hp" && joined) {
         showHp(data.hp, data.maxHp);
         saveHpToSheet(data.hp);   // keep the character sheet in step with what the GM tracks
@@ -804,6 +808,21 @@
       tableMusic.setVolume(Number(el("musicVol").value) / 100);
     });
     el("sayBtn").addEventListener("click", say);
+    Voice.micButton(el("sayText"));   // a microphone: say something to the GM
+    try {
+      el("readFeed").checked = localStorage.getItem("liveAutoRead") === "yes";
+    } catch (error) {
+      // Storage blocked: starts unticked.
+    }
+    el("readFeed").addEventListener("change", function () {
+      try {
+        localStorage.setItem("liveAutoRead", el("readFeed").checked ? "yes" : "no");
+      } catch (error) {
+        // Can't remember: fine.
+      }
+      if (!el("readFeed").checked) Voice.stop();
+    });
+    if (!Voice.canSpeak()) el("readFeed").parentElement.classList.add("hidden");
     el("sayText").addEventListener("keydown", function (event) {
       if (event.key === "Enter") say();
     });

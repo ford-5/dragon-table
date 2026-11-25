@@ -43,6 +43,7 @@
   <script src="rules.js"></script>
   <script src="spells.js"></script>
   <script src="monsters.js"></script>
+  <script src="voice.js"></script>
   <script>
     const el = function (id) {
       return document.getElementById(id);
@@ -83,6 +84,9 @@
       summary.append(make("strong", "", title));
       if (subtitle) summary.append(make("span", "hint", " " + subtitle));
       details.append(summary);
+      // A speaker: reads the whole entry out loud once it has its content.
+      const speaker = Voice.speakButton(function () { return Voice.textOf(details); });
+      if (speaker) details.append(speaker);
       return details;
     }
 
@@ -95,7 +99,11 @@
       input.addEventListener("input", function () {
         onInput(input.value);
       });
-      return input;
+      // A microphone next to the search box: say what you're looking for.
+      const wrap = make("div", "lib-search");
+      wrap.append(input);
+      Voice.micButton(input, wrap);
+      return wrap;
     }
 
     function makeSelect(options, value, onChange, label) {

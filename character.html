@@ -327,6 +327,7 @@
   <script src="dice.js"></script>
   <script src="rules.js"></script>
   <script src="spells.js"></script>
+  <script src="voice.js"></script>
   <script src="play.js"></script>
 
   <script>
@@ -2081,6 +2082,12 @@
       const summary = document.createElement("summary");
       summary.textContent = "📖 Read the spell";
       details.append(summary);
+      // Reads the spell aloud: its name, what it does, and the higher-level and cantrip notes.
+      const speaker = Voice.speakButton(function () {
+        return spell.n + ". " + spell.text.join(" ") + (spell.higher ? " Higher-level slot: " + spell.higher : "") +
+               (spell.cantripUp ? " Cantrip upgrade: " + spell.cantripUp : "");
+      });
+      if (speaker) details.append(speaker);
       for (const paragraph of spell.text) {
         const p = document.createElement("p");
         p.className = "spell-text";
@@ -2226,11 +2233,18 @@
           tip = document.createElement("div");
           tip.className = "tutor-box";
           panel.querySelector("h2").after(tip);
+          const speaker = Voice.speakButton(function () { return tip.textContent; });   // reads the lesson aloud
+          if (speaker) {
+            speaker.classList.add("tutor-speak");
+            tip.after(speaker);
+          }
         }
         const tips = CREATOR_TIPS[step];
         if (guideLevel === "beginner")          tip.textContent = "🧭 " + tips.long + extraTip(step);
         else if (guideLevel === "intermediate") tip.textContent = "💡 " + tips.short + extraTip(step);
         tip.classList.toggle("hidden", guideLevel !== "beginner" && guideLevel !== "intermediate");
+        const tipSpeaker = panel.querySelector(".tutor-speak");
+        if (tipSpeaker) tipSpeaker.classList.toggle("hidden", tip.classList.contains("hidden"));
 
         panel.classList.toggle("hidden", oneAtATime && index !== currentStep);
       });
@@ -2277,6 +2291,8 @@
     connectWeaponsAndArmor();
     connectSpellcasting();
     connectTarget();
+    // Microphones: speak notes and item descriptions instead of typing.
+    for (const id of ["sheetInventory", "itemAppearance", "itemPowers"]) Voice.micButton(document.getElementById(id));
     fillItemSelects();
     document.getElementById("itemSelect").addEventListener("change", showSelectedItemInfo);
     startGuide();

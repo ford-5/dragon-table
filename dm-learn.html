@@ -41,6 +41,7 @@
   </footer>
 
   <script src="dice.js"></script>
+  <script src="voice.js"></script>
   <script>
     // Each lesson: a title, paragraphs, and (optionally) a practice tool.
     const LESSONS = [
@@ -223,6 +224,8 @@
         const summary = document.createElement("summary");
         summary.textContent = (done.includes(lesson.id) ? "✅ " : "") + lesson.title;
         details.append(summary);
+        const speaker = Voice.speakButton(function () { return Voice.textOf(details); });   // reads the lesson aloud
+        if (speaker) details.append(speaker);
 
         for (const paragraph of lesson.text) {
           const p = document.createElement("p");

@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Sunken Bell: a free starter adventure</title>
+  <meta name="description" content="A free, ready-to-run starter adventure for new Game Masters: three scenes, three fights that size themselves to your party, and tips for every step. Levels 1 to 2, about two hours.">
+  <link rel="stylesheet" href="style.css">
+  <!-- App icon, colors, and the file that makes Dragon Table installable -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#2b1d14">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <meta name="apple-mobile-web-app-title" content="Dragon Table">
+</head>
+
+<body class="paper-body">
+  <nav class="top-nav no-print">
+    <a href="index.html">🏠 Home</a>
+    <a href="library.html">📚 Library</a>
+    <a href="character.html">🧙 Characters</a>
+    <a href="dm.html">🛡️ GM Screen</a>
+    <a href="equipment.html">🛒 Equipment</a>
+  </nav>
+
+  <h1 class="no-print">📜 Starter adventure</h1>
+
+  <!-- Settings (not printed): the fights are sized to your party -->
+  <div class="panel no-print">
+    <h2>Your party</h2>
+    <div class="settings add-form">
+      <label>Heroes
+        <select id="partySize">
+          <option value="3">3</option><option value="4" selected>4</option><option value="5">5</option><option value="6">6</option>
+        </select>
+      </label>
+      <label>Level
+        <select id="partyLevel">
+          <option value="1" selected>1</option><option value="2">2</option>
+        </select>
+      </label>
+      <button class="small-button" id="printBtn">🖨️ Print or save as PDF</button>
+    </div>
+    <p class="hint">The fights below change to fit the party you choose, using the rules' encounter budget table.</p>
+  </div>
+
+  <div id="adv" class="paper-sheet adventure"></div>
+
+  <p class="no-print"><a href="dm-start.html" class="back-link">← Back</a> · <a href="dm-learn.html" class="back-link">🎓 Learn to be a GM</a></p>
+
+  <script src="dice.js"></script>
+  <script src="rules.js"></script>
+  <script src="monsters.js"></script>
+  <script>
+    const el = function (id) {
+      return document.getElementById(id);
+    };
+
+    function make(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;   // textContent: never treated as HTML
+      return node;
+    }
+
+    // =====================================================================
+    // THE FIGHTS: three groups of SRD monsters, sized to the party
+    // =====================================================================
+    //   target:   the difficulty to aim for ("low" or "moderate", from the SRD's XP Budget table)
+    //   fraction: how much of that budget to spend
+    //   perHeroCap: never more than this many creatures per hero (the SRD warns about big crowds,
+    //               and a crowd is a lot to run for a new GM, so the tougher fights use fewer)
+    //   core:     always included.   fillers: added while they still fit the budget.
+    //   mode:     "ordered" = fill with the first filler, then the next; "round" = take turns
+    const ENCOUNTERS = {
+      rats: { title: "Rats in the Pews", target: "low", fraction: 0.75, perHeroCap: 2, core: [], fillers: ["Giant Rat"], mode: "ordered" },
+      dead: { title: "The Restless Dead", target: "low", fraction: 1, perHeroCap: 1.5, core: [["Skeleton", 2]], fillers: ["Zombie", "Skeleton"], mode: "round" },
+      boss: { title: "Snagtooth's Hoard", target: "moderate", fraction: 1, perHeroCap: 1.5, core: [["Goblin Boss", 1]], fillers: ["Goblin Warrior", "Goblin Minion"], mode: "ordered" }
+    };
+
+    function findMonster(name) {
+      return MONSTERS.find(function (m) { return m.n === name; });
+    }
+
+    // Choose the creatures for one fight. Returns { groups: [{ n, count }], xp, total }.
+    function buildEncounter(key, level, size) {
+      const def = ENCOUNTERS[key];
+      const budget = getEncounterBudgets(level, size)[def.target] * def.fraction;   // from rules.js
+      const cap = Math.floor(def.perHeroCap * size);
+      const counts = new Map();
+      let xp = 0, total = 0;
+      const add = function (name) {
+        counts.set(name, (counts.get(name) || 0) + 1);
+        xp += findMonster(name).xp;
+        total++;
+      };
+      const fits = function (name) {
+        return xp + findMonster(name).xp <= budget && total < cap;
+      };
+
+      // Level 2 heroes face a second Goblin Boss.
+      const core = key === "boss" && level >= 2 ? [["Goblin Boss", 2]] : def.core;
+      for (const [name, count] of core) {
+        for (let i = 0; i < count; i++) add(name);
+      }
+      if (def.mode === "round") {
+        let added = true;
+        while (added) {
+          added = false;
+          for (const name of def.fillers) {
+            if (fits(name)) {
+              add(name);
+              added = true;
+            }
+          }
+        }
+      } else {
+        for (const name of def.fillers) {
+          while (fits(name)) add(name);
+        }
+      }
+      return { groups: Array.from(counts).map(function (pair) { return { n: pair[0], count: pair[1] }; }), xp: xp, total: total };
+    }
+
+    // A card for one fight: who, how hard it is, and a button to put it on the Battle Map.
+    function encounterCard(key, level, size, tactics) {
+      const def = ENCOUNTERS[key];
+      const fight = buildEncounter(key, level, size);
+      const card = make("div", "adv-encounter");
+      card.append(make("h3", "", "⚔️ Fight: " + def.title));
+      card.append(make("p", "adv-difficulty", describeEncounterXp(fight.xp, level, size) + " difficulty · " + fight.xp + " XP for " + size + " level " + level + " heroes"));
+
+      const rows = fight.groups.map(function (g) {
+        const m = findMonster(g.n);
+        const a = m.atk[0];
+        return [g.count + " × " + g.n, "CR " + m.cr, "AC " + m.ac, "HP " + m.hp,
+                a ? a.n + " " + formatBonus(a.hit) + ", " + a.dice + " " + a.type + (m.multi > 1 ? " (" + m.multi + " attacks)" : "") : "see the SRD"];
+      });
+      const table = make("table", "ps-table");
+      for (const row of rows) {
+        const tr = make("tr");
+        for (const cell of row) tr.append(make("td", "", cell));
+        table.append(tr);
+      }
+      card.append(table);
+
+      const ul = make("ul", "adv-list");
+      for (const line of tactics) ul.append(make("li", "", line));
+      card.append(ul);
+
+      const button = make("button", "small-button no-print", "🗺️ Put this fight on the Battle Map");
+      button.addEventListener("click", function () {
+        const send = { heroes: [], monsters: fight.groups.map(function (g) { return { n: g.n, count: g.count }; }) };
+        try {
+          localStorage.setItem("battleMapImport", JSON.stringify(send));   // map.html picks this up
+        } catch (error) {
+          return;
+        }
+        location.href = "map.html";
+      });
+      card.append(button);
+      return card;
+    }
+
+    // =====================================================================
+    // THE ADVENTURE TEXT (written for Dragon Table)
+    // =====================================================================
+    function build() {
+      const size = Number(el("partySize").value);
+      const level = Number(el("partyLevel").value);
+      const root = el("adv");
+      root.innerHTML = "";
+
+      const para = function (text) { root.append(make("p", "", text)); };
+      const heading = function (text) { root.append(make("h2", "adv-h2", text)); };
+      const read = function (text) {
+        const box = make("div", "adv-read");
+        box.append(make("div", "adv-label", "Read aloud"), make("p", "", text));
+        root.append(box);
+      };
+      const tip = function (text) {
+        const box = make("div", "adv-tip");
+        box.append(make("strong", "", "💡 GM tip: "), text);
+        root.append(box);
+      };
+      const bullets = function (lines) {
+        const ul = make("ul", "adv-list");
+        for (const line of lines) ul.append(make("li", "", line));
+        root.append(ul);
+      };
+      const checks = function (rows) {
+        const table = make("table", "ps-table");
+        const head = make("tr");
+        for (const h of ["Check", "DC", "What happens"]) head.append(make("th", "", h));
+        table.append(head);
+        for (const row of rows) {
+          const tr = make("tr");
+          for (const cell of row) tr.append(make("td", "", cell));
+          table.append(tr);
+        }
+        root.append(table);
+      };
+
+      // ---------- Title ----------
+      root.append(make("h1", "", "The Sunken Bell"));
+      root.append(make("div", "ps-sub", "A free starter adventure for new Game Masters · 3 to 6 heroes of level 1 to 2 · about 2 hours"));
+
+      heading("How to run this");
+      bullets([
+        "Read the shaded \"Read aloud\" boxes out loud. Everything else is for you.",
+        "After each description, ask the players what they do. Say yes to good ideas.",
+        "Ask for a roll only when the result is uncertain and failing would be interesting. The DC (the number to beat) is shown for each check.",
+        "The fights below already fit your party (choose its size and level at the top). Use the Battle Map button on each fight to set the scene in one click.",
+        "New to all this? The course in Learn to be a GM takes about 20 minutes."
+      ]);
+
+      heading("The story in a nutshell");
+      para("The village of Mossbrook has a great bronze bell called Old Marrow. For a hundred years its deep ring has soothed the dead who sleep in the crypt beneath the old riverside chapel. Three nights ago a gang of goblins, led by a loud, greedy Goblin Boss named Snagtooth, stole the bell to melt it down for coin. They hid in the flooded crypt. Now a cold fog has rolled into the village, the dead are stirring, and nobody has heard the bell. Mayor Odette Quill wants it back, and she'll pay.");
+      para("Reward: the town's gold, the bell, the goblins' hoard, and one magic item of your choice from the Library.");
+
+      // ---------- Scene 1 ----------
+      heading("Scene 1: A silent morning");
+      read("Thick fog hangs over Mossbrook like wet wool. A dog howls somewhere you can't see. You realize what's wrong: this is the first dawn in living memory without the bell. In the market square, a woman in a muddy coat waves you over. \"Please,\" she says, \"you look like people who can help.\"");
+      para("Mayor Odette Quill is practical and worried. Tam Pell, the young bell-ringer, hovers behind her with red eyes. They know the bell vanished three nights ago, that small muddy footprints lead upriver to the old chapel, and that something is knocking from inside the graveyard hill.");
+      checks([
+        ["Persuasion", "12", "The mayor raises the reward from 100 gp to 150 gp."],
+        ["Insight", "10", "Odette is also afraid she'll be blamed: she forgot to lock the chapel gate."],
+        ["Survival (follow the tracks)", "10", "You reach the chapel quickly. On a failure you wander in the fog for an hour and arrive wet and grumpy."]
+      ]);
+      tip("Let the players ask questions. Make up answers that fit. If someone asks about something you didn't plan, say yes, or roll a die to decide. The story belongs to everyone.");
+
+      // ---------- Scene 2 ----------
+      heading("Scene 2: The drowned chapel");
+      read("The old chapel squats beside the river, its stone walls green with moss. The river has crept over the floor, and you can see pews half underwater. The big door is swollen shut. Faint scratching comes from inside.");
+      checks([
+        ["Athletics (force the door)", "12", "It scrapes open. Another hero using the Help action gives the roller Advantage."],
+        ["Acrobatics or Athletics (climb in a broken window)", "10", "You get inside, but the splash alerts the rats."],
+        ["Investigation, after the fight (search the altar)", "12", "You find a trapdoor under a fallen altar cloth, with fresh goblin footprints on the stairs."],
+        ["Perception (listen)", "12", "You hear a deep, dull clang far below: someone is hammering at metal."]
+      ]);
+      root.append(encounterCard("rats", level, size, [
+        "The rats burst out of the pews as soon as the door opens. They're weak but fast, so keep the turns quick.",
+        "The ankle-deep water is easy to move through. Pews work well as cover.",
+        "Map idea: a 16 by 12 room with rubble for toppled pews and water along the south side."
+      ]));
+      para("Treasure: a dented offering box holds 15 gp.");
+      tip("If a fight is going badly early, let the rats flee. A clever GM changes the story to keep it fun and fair.");
+
+      // ---------- Scene 3 ----------
+      heading("Scene 3: The flooded crypt");
+      read("Cold, stale air breathes up the trapdoor stairs. Below, black water laps at the bottom steps, and goblin torches burn in brackets along the walls. In the alcoves lining the crypt, you hear dry bones shifting. Something groans.");
+      checks([
+        ["Religion (what do you know?)", "10", "You recall that the bell's ring calmed the dead. Getting it back should settle them for good."],
+        ["Dexterity save (the rotten stairs)", "11", "On a failure the steps collapse: you fall 5 feet into the water and take 1d6 bludgeoning damage."],
+        ["Athletics (climb down carefully, or use rope)", "10", "You reach the floor safely, with no save needed."],
+        ["Perception (spot the tripwire)", "12", "You find a tripwire strung with rusty cups that would warn the goblins ahead. Cut it, or step carefully over it."]
+      ]);
+      para("The crypt's central chamber is knee-deep in water: treat it as difficult terrain (each square costs double movement). The dead rise when anyone steps in.");
+      root.append(encounterCard("dead", level, size, [
+        "The skeletons shoot from the alcoves while the slow zombies wade in. Skeletons are Vulnerable to bludgeoning damage, so a mace or maul is great.",
+        "A zombie that's reduced to 0 Hit Points can sometimes stand back up (its Undead Fortitude trait). Don't forget it: it makes the fight tense.",
+        "The dead won't follow the heroes out of the crypt. Heroes who need a rest can retreat to the chapel.",
+        "Map idea: a 14 by 10 room, water over the middle, walls and alcoves along the edges."
+      ]));
+      para("Treasure: a rusted coffer in an alcove holds 25 gp and an old silver ring (worth 10 gp).");
+
+      // ---------- Scene 4 ----------
+      heading("Scene 4: Snagtooth's hoard");
+      read("A tunnel opens into a low cavern lit by a fire. The great bronze bell hangs from a crossbeam, and goblins are hammering it with picks, producing a dull, ugly clang. On a stack of crates, wearing a stolen mayoral chain that's far too big, sits a goblin with one huge tooth. \"Intruders!\" he squeals. \"Get them!\"");
+      root.append(encounterCard("boss", level, size, [
+        "Goblins use Nimble Escape (a bonus action): they hit, then duck behind crates or crossbeams. Let them be annoying, but not unfair.",
+        "Snagtooth fights from the crates and shouts orders. Make him funny: he is more brag than brawn.",
+        "Shortbows let goblins fire from the ledges. The heroes can charge, or use the bell as cover.",
+        "A level " + level + " party of " + size + " is a fair match for this fight. If it's too easy, add one more goblin; if it's too hard, have a few goblins surrender.",
+        "Map idea: an irregular cave 16 by 12, crates as walls, the bell in the middle."
+      ]));
+      checks([
+        ["Persuasion (parley with Snagtooth)", "15", "He gives up the bell and flees with his gang. Award the XP as if the heroes won the fight."],
+        ["Persuasion, if the heroes offer a share of the reward", "12", "An easier deal: goblins respect gold."],
+        ["Intimidation (after the boss falls)", "10", "The remaining goblins drop their weapons and run."]
+      ]);
+      para("Treasure: 120 gp in sacks, the stolen mayoral chain (worth 50 gp), and one Uncommon magic item of your choice: the Ring of Jumping works well (see the Library). The bell itself is the real prize.");
+
+      // ---------- Ending ----------
+      heading("Ending");
+      read("When the great bronze bell is hauled back to the chapel and rung, a deep, warm note rolls out over the fog, and the fog begins to thin. In the crypt, the old bones settle with a sigh. Tam Pell is crying and laughing at the same time. Mayor Odette presses a heavy purse into your hands.");
+      para("Pay the heroes the promised gold and give each one a title in Mossbrook. Then use one of these hooks for the next adventure:");
+      bullets([
+        "In the goblins' hoard is a note in a rough hand with a black sun drawn on it: \"Bring the bell. We'll pay double.\" Who wanted it?",
+        "The crypt has a door on its far side that the goblins never opened. What's behind it?",
+        "Snagtooth escaped with the mayoral chain, and he swears he'll be back."
+      ]);
+
+      heading("Rewards at a glance");
+      const xpTotal = ["rats", "dead", "boss"].reduce(function (sum, key) { return sum + buildEncounter(key, level, size).xp; }, 0);
+      para("Experience from all three fights: " + xpTotal + " XP, about " + Math.round(xpTotal / size) + " XP per hero. Gold: 100 to 150 from the mayor, plus 15 + 25 + 120 found, plus the silver ring and chain.");
+      para("Not sure about a rule? Look it up in the Library, or use the Battle Simulator to test a fight before your players do.");
+
+      const footer = make("footer", "ps-footer");
+      footer.append(make("p", "", "The Sunken Bell is an original adventure made for Dragon Table. Monsters and rules are from the System Reference Document 5.2.1 by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd, licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode. Compatible with fifth edition."));
+      root.append(footer);
+    }
+
+    // Remember the party between visits.
+    try {
+      const saved = JSON.parse(localStorage.getItem("adventureParty") || "null");
+      if (saved && [3, 4, 5, 6].includes(saved.size) && [1, 2].includes(saved.level)) {
+        el("partySize").value = String(saved.size);
+        el("partyLevel").value = String(saved.level);
+      }
+    } catch (error) {
+      // Storage blocked: the defaults are fine.
+    }
+    for (const id of ["partySize", "partyLevel"]) {
+      el(id).addEventListener("change", function () {
+        try {
+          localStorage.setItem("adventureParty", JSON.stringify({ size: Number(el("partySize").value), level: Number(el("partyLevel").value) }));
+        } catch (error) {
+          // Can't remember: fine.
+        }
+        build();
+      });
+    }
+    el("printBtn").addEventListener("click", function () {
+      window.print();
+    });
+    build();
+  </script>
+
+  <!-- The "Send feedback" link at the bottom of the page -->
+  <script src="pwa.js"></script>
+  <script src="feedback.js"></script>
+</body>
+</html>

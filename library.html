@@ -405,7 +405,10 @@
       more.append("Want to learn to run games? Try ");
       const learn = make("a", "", "Learn to be a GM");
       learn.href = "dm-learn.html";
-      more.append(learn, ".");
+      more.append(learn, " or run the free ");
+      const adventure = make("a", "", "starter adventure");
+      adventure.href = "adventure.html";
+      more.append(adventure, ".");
       panel.append(more);
       box.append(panel);
     }

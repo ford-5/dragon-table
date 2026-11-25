@@ -431,7 +431,7 @@
         const monster = MONSTERS.find(function (m) { return m.n === entry.n; });
         if (monster) addMonster(monster, Math.min(Math.max(Number(entry.count) || 1, 1), 30));
       }
-      showStatus("⚔️ The encounter from the Battle Simulator is on the map.");
+      showStatus("⚔️ The encounter is on the map. Drag the tokens to set the scene.");
     }
 
     // =====================================================================

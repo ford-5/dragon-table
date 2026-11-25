@@ -19,6 +19,10 @@ The person building it is a beginner who is learning to code through this projec
 - Two additions, both approved by the user: **PeerJS 1.5.4** (MIT, loaded from unpkg, pinned) for live games, and a small **Ruby helper server** (`server.rb`, Ruby ships with macOS) that holds the Anthropic API key for the AI Dungeon Master.
 - Later (only when ready): Git, then possibly React.
 
+## The double-click launcher (made 2026-11-25)
+- `~/Applications/Dragon Table.app` (with a shortcut `~/Desktop/Dragon Table`): a small macOS app that opens Terminal and runs `Contents/Resources/run.command`, which starts `ruby server.rb` (port 8787) from a **snapshot copy of the published site** inside the app (`Contents/Resources/site`, taken with `git archive HEAD`, so it needs no access to ~/Documents), then opens http://localhost:8787. If the port is already in use it just opens the browser. It asks in Terminal for an Anthropic key (typed hidden, kept only in that window's memory, NEVER written to a file); pressing Enter skips the AI. The icon is the d20 made into `icon.icns`.
+- It is a SNAPSHOT: after we publish new features, rebuild it (rsync/`git archive` into the app's `site` folder, copy to ~/Applications). The build lived in the scratchpad (not in the project). Not tested: double-clicking it from Finder (the pieces were tested separately so as not to open windows on the user's screen).
+
 ## Running the app
 - Just the pages (no AI): open `index.html` from Finder, or `ruby server.rb` and go to http://localhost:8787 (recommended: all pages then share saved data).
 - With the AI Dungeon Master: the USER types their own key in Terminal (never ask for it or put it in any file or chat):

@@ -332,6 +332,10 @@
   <script src="play.js"></script>
 
   <script>
+    // Shown inside the GM Screen (?embed=1): hide the page furniture.
+    const embedded = new URLSearchParams(location.search).get("embed") === "1" && window.parent !== window;
+    if (embedded) document.body.classList.add("embedded");
+
     // =====================================================================
     // STATE
     // =====================================================================

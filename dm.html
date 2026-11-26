@@ -30,7 +30,7 @@
 
   <header class="gm-header">
     <h1>🛡️ GM Screen</h1>
-    <p><a href="dm-start.html" class="back-link">← Back</a> · <a href="dm-learn.html" class="back-link">🎓 Learn to be a GM</a></p>
+    <p><a href="dm-start.html" class="back-link">← Back</a></p>
   </header>
 
   <!-- ONE screen in three parts: tools on the LEFT and RIGHT sides, and the
@@ -111,6 +111,7 @@
         <p class="hint">Your players at a glance. Saved in this browser.</p>
 
         <button class="small-button" onclick="importCharacters()">📥 Import from saved characters</button>
+        <button class="small-button" onclick="setStage('characters')">🧙 See full sheets in the middle</button>
         <p id="importStatus" class="hint"></p>
 
         <div class="settings add-form">
@@ -152,6 +153,9 @@
         <button class="small-button" data-stage="map">🗺️ Battle map</button>
         <button class="small-button" data-stage="adventure">📜 Starter adventure</button>
         <button class="small-button" data-stage="library">📚 Library</button>
+        <button class="small-button" data-stage="battle">⚔️ Battle Simulator</button>
+        <button class="small-button" data-stage="characters">🧙 Characters</button>
+        <button class="small-button" data-stage="learn">🎓 Learn</button>
         <button class="small-button" data-stage="none">🙈 Hide</button>
       </div>
       <!-- Each page gets its own frame, made the first time it's shown and then kept,
@@ -160,6 +164,9 @@
         <div class="stage-pane hidden" id="stage-map"></div>
         <div class="stage-pane hidden" id="stage-adventure"></div>
         <div class="stage-pane hidden" id="stage-library"></div>
+        <div class="stage-pane hidden" id="stage-battle"></div>
+        <div class="stage-pane hidden" id="stage-characters"></div>
+        <div class="stage-pane hidden" id="stage-learn"></div>
         <div class="stage-pane stage-empty hidden" id="stage-none"></div>
       </div>
     </main>
@@ -255,7 +262,7 @@
       <details class="panel drawer">
         <summary>⚔️ Battle Simulator</summary>
         <p class="hint">Pick monsters from the SRD, see how hard the fight is by the rules, and play it out.</p>
-        <a class="plain-button" href="battle.html">⚔️ Open the Battle Simulator</a>
+        <button class="small-button" onclick="setStage('battle')">⚔️ Show it in the middle</button>
       </details>
     </aside>
   </div>
@@ -1227,9 +1234,13 @@
     const STAGE_PAGES = {
       map: "map.html?embed=1",
       adventure: "adventure.html?embed=1",
-      library: "library.html?embed=1"
+      library: "library.html?embed=1",
+      battle: "battle.html?embed=1",
+      characters: "character.html?embed=1",
+      learn: "dm-learn.html?embed=1"
     };
-    const STAGE_TITLES = { map: "Battle map", adventure: "Starter adventure", library: "Library" };
+    const STAGE_TITLES = { map: "Battle map", adventure: "Starter adventure", library: "Library",
+                           battle: "Battle Simulator", characters: "Characters", learn: "Learn to be a GM" };
     let stageNow = "map";
 
     // libraryTab (optional) opens one Library tab, e.g. "monsters".
@@ -1254,7 +1265,7 @@
         }
       }
 
-      for (const key of ["map", "adventure", "library", "none"]) {
+      for (const key of Object.keys(STAGE_PAGES).concat("none")) {
         document.getElementById("stage-" + key).classList.toggle("hidden", key !== name);
       }
       for (const button of document.querySelectorAll("#stageTabs button")) {
@@ -1289,7 +1300,11 @@
 
     for (const button of document.querySelectorAll("#stageTabs button")) {
       button.addEventListener("click", function () {
-        setStage(button.dataset.stage);
+        const name = button.dataset.stage;
+        // Already showing it? Then go back to its first page (handy after following a link inside it).
+        const frame = document.querySelector("#stage-" + name + " iframe");
+        if (name === stageNow && frame) frame.src = STAGE_PAGES[name];
+        setStage(name);
       });
     }
     {

@@ -43,6 +43,10 @@
   <script src="dice.js"></script>
   <script src="voice.js"></script>
   <script>
+    // Shown inside the GM Screen (?embed=1): hide the page furniture.
+    const embedded = new URLSearchParams(location.search).get("embed") === "1" && window.parent !== window;
+    if (embedded) document.body.classList.add("embedded");
+
     // Each lesson: a title, paragraphs, and (optionally) a practice tool.
     const LESSONS = [
       {

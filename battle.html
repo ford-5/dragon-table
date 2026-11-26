@@ -83,6 +83,10 @@
   <script src="voice.js"></script>
 
   <script>
+    // Shown inside the GM Screen (?embed=1): hide the page furniture.
+    const embedded = new URLSearchParams(location.search).get("embed") === "1" && window.parent !== window;
+    if (embedded) document.body.classList.add("embedded");
+
     // =====================================================================
     // RULES: encounter difficulty (XP_BUDGET is in rules.js, shared with the starter adventure)
     // =====================================================================
@@ -573,7 +577,12 @@
         showSummary("This browser won't let the page pass the fight to the map.");
         return;
       }
-      location.href = "map.html";
+      // Inside the GM Screen? Ask it to show its own map. Otherwise go to the map page.
+      if (embedded) {
+        window.parent.postMessage({ type: "showMap" }, location.origin);
+      } else {
+        location.href = "map.html";
+      }
     });
   </script>
   <!-- The "Send feedback" link at the bottom of the page -->

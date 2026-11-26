@@ -1361,6 +1361,11 @@ body.embedded {
   padding-top: 8px;
 }
 
+/* The Characters page's title says which view you're in, so keep it */
+body.embedded h1#pageTitle {
+  display: block;
+}
+
 /* The battle map shown inside the GM Screen */
 .map-frame-box {
   margin-top: 10px;

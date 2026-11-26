@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solo Adventures</title>
+  <meta name="description" content="Take your hero into a dungeon alone: monsters fight back by the rules, no Game Master or AI needed.">
+  <link rel="stylesheet" href="style.css">
+  <!-- App icon, colors, and the file that makes Dragon Table installable -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#2b1d14">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <meta name="apple-mobile-web-app-title" content="Dragon Table">
+</head>
+
+<body>
+  <nav class="top-nav">
+    <a href="index.html">🏠 Home</a>
+    <a href="library.html">📚 Library</a>
+    <a href="character.html">🧙 Characters</a>
+    <a href="dm.html">🛡️ GM Screen</a>
+    <a href="equipment.html">🛒 Equipment</a>
+  </nav>
+
+  <h1>🗡️ Solo Adventures</h1>
+  <p class="hint">Take your hero into a dungeon on your own. The monsters fight back by the rules: no Game Master and no AI needed. Great for practice!</p>
+
+  <!-- ===================== SETUP ===================== -->
+  <div class="panel" id="setupPanel">
+    <h2>1. Your hero</h2>
+    <select id="heroPick" aria-label="Your hero"></select>
+    <p id="heroInfo" class="hint"></p>
+    <p id="noHeroes" class="hint hidden">You have no heroes yet. <a href="character.html?return=solo.html">🧙 Make one first</a>.</p>
+    <button class="small-button hidden" id="restBtn">🛌 Take a long rest (full HP and spell slots)</button>
+
+    <h2>2. Where to?</h2>
+    <div id="adventureList" class="premade-list"></div>
+
+    <h3 class="section-label">🎯 Training arena</h3>
+    <p class="hint">Practice against any monster from the rules, in a small open arena.</p>
+    <div class="settings add-form">
+      <select id="arenaMonster" aria-label="Monster to practice against"></select>
+      <select id="arenaCount" aria-label="How many">
+        <option value="1">×1</option><option value="2">×2</option><option value="3">×3</option><option value="4">×4</option>
+      </select>
+      <button class="small-button" id="arenaBtn">🎯 Train</button>
+    </div>
+  </div>
+
+  <!-- ===================== PLAYING ===================== -->
+  <div class="hidden" id="playArea">
+    <div class="panel solo-status">
+      <div id="heroStatus"></div>
+      <div id="turnCards" class="turn-cards player-turns"></div>
+      <p id="turnHint" class="solo-hint"></p>
+      <div id="actionButtons" class="action-chips"></div>
+      <div class="settings add-form">
+        <button class="small-button" id="endTurnBtn">⏭️ End my turn</button>
+        <label class="hint">Zoom
+          <select id="soloZoom">
+            <option value="28">Small</option>
+            <option value="36" selected>Normal</option>
+            <option value="46">Big</option>
+          </select>
+        </label>
+        <button class="small-button" id="quitBtn">🚪 Leave the adventure</button>
+      </div>
+    </div>
+
+    <div class="map-scroll" id="soloScroll">
+      <div class="map-board" id="soloBoard"></div>
+    </div>
+
+    <div class="panel">
+      <h3 class="section-label">📜 What happened</h3>
+      <div id="soloLog" class="chat-log short-log" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <p><a href="player.html" class="back-link">← Back</a></p>
+
+  <footer class="site-footer">
+    <p>
+      This work includes material from the System Reference Document 5.2.1 ("SRD 5.2.1") by Wizards of the Coast LLC,
+      available at <a href="https://www.dndbeyond.com/srd">https://www.dndbeyond.com/srd</a>. The SRD 5.2.1 is licensed under the
+      Creative Commons Attribution 4.0 International License, available at
+      <a href="https://creativecommons.org/licenses/by/4.0/legalcode">https://creativecommons.org/licenses/by/4.0/legalcode</a>.
+    </p>
+    <p>Compatible with fifth edition.</p>
+  </footer>
+
+  <script src="dice.js"></script>
+  <script src="rules.js"></script>
+  <script src="spells.js"></script>
+  <script src="monsters.js"></script>
+  <script src="play.js"></script>
+  <script src="combat.js"></script>
+  <script src="maps.js"></script>
+  <script src="voice.js"></script>
+  <script>
+    // =====================================================================
+    // SOLO ADVENTURES
+    // One hero, a map, and monsters that take their own turns:
+    //   - Explore: move anywhere you can reach. Fog lifts around you as you go.
+    //   - A monster that can SEE you (close, nothing in the way) wakes up: combat starts.
+    //   - Combat: everyone rolls initiative. On your turn you move (up to your Speed)
+    //     and take ONE action: an attack or a spell. Then the monsters take theirs.
+    // The dice and damage use the same rules as the GM Screen (combat.js).
+    // =====================================================================
+    const el = function (id) { return document.getElementById(id); };
+    const SIGHT = 8;        // how many squares away a monster notices you
+    const TORCH = 4;        // how far the fog lifts around you (squares)
+
+    let game = null;        // the adventure in progress (see startAdventure)
+    let picked = null;      // the attack or spell chosen, waiting for a target
+    let busy = false;       // monsters are taking their turns
+
+    // ---------- Your hero (saved on the Characters page) ----------
+    function heroRecord() {
+      const id = game ? game.heroId : Number(el("heroPick").value);
+      return loadCharacters().find(function (c) { return c.id === id; }) || null;
+    }
+
+    // Save HP / spell slots back onto the character, so the adventure counts.
+    function updateHeroRecord(change) {
+      const list = loadCharacters();
+      const c = list.find(function (h) { return h.id === (game ? game.heroId : Number(el("heroPick").value)); });
+      if (!c) return;
+      change(c);
+      saveCharacters(list);
+    }
+
+    function fillHeroes() {
+      const list = loadCharacters();
+      const pick = el("heroPick");
+      pick.innerHTML = "";
+      for (const c of list) pick.append(new Option(c.name + " (Level " + c.level + " " + c.species + " " + classSummary(c) + ")", c.id));
+      // Came back from making a hero (character.html?return=solo.html sends ?hero=ID)?
+      const fromLink = Number(new URLSearchParams(location.search).get("hero"));
+      if (fromLink && list.some(function (c) { return c.id === fromLink; })) pick.value = String(fromLink);
+      el("noHeroes").classList.toggle("hidden", list.length > 0);
+      pick.classList.toggle("hidden", list.length === 0);
+      showHeroInfo();
+    }
+
+    function showHeroInfo() {
+      const c = heroRecord();
+      el("restBtn").classList.toggle("hidden", !c);
+      if (!c) { el("heroInfo").textContent = ""; return; }
+      const maxHp = getMaxHp(c);
+      const hp = Math.min(c.hp === undefined ? maxHp : c.hp, maxHp);
+      const slots = getSpellSlotsLeft(c).map(function (n, i) { return n ? "level " + (i + 1) + ": " + n : ""; }).filter(Boolean);
+      el("heroInfo").textContent = "❤️ " + hp + "/" + maxHp + " HP · 🛡️ AC " + getAc(c) + " · 🏃 " + getSpeed(c) + " ft" +
+        (slots.length ? " · 🔮 slots " + slots.join(", ") : "") + (hp <= 0 ? " · 💤 You're down: take a long rest first." : "");
+    }
+
+    // ---------- Where to go ----------
+    function soloMaps() {
+      const list = PREMADE_MAPS.map(function (p) {
+        const parsed = parsePremade(p);
+        return { name: p.name, about: p.about + " " + p.level + ".", fog: p.fog, build: function () { return parsed; } };
+      });
+      // The GM's own saved maps (Battle Map page) that allow solo play and have monsters
+      let saved = [];
+      try { saved = JSON.parse(localStorage.getItem("savedMaps") || "[]"); } catch (error) { saved = []; }
+      for (const entry of Array.isArray(saved) ? saved : []) {
+        if (!entry || !entry.solo || !entry.map || !Array.isArray(entry.map.tokens)) continue;
+        const monsters = entry.map.tokens.filter(function (t) { return t.side === "monster" && t.monster && t.hp > 0; });
+        if (!monsters.length) continue;
+        const hero = entry.map.tokens.find(function (t) { return t.side === "hero"; });
+        list.push({
+          name: "🗺️ " + entry.name, about: "Your own saved map (" + monsters.length + " monsters).",
+          fog: Object.keys(entry.map.fog || {}).length > 0,
+          build: function () {
+            return {
+              cols: entry.map.cols, rows: entry.map.rows, ground: entry.map.ground,
+              terrain: Object.assign({}, entry.map.terrain),
+              start: hero ? { x: hero.x, y: hero.y } : { x: 1, y: 1 },
+              monsters: monsters.map(function (t) { return { name: t.monster, x: t.x, y: t.y }; })
+            };
+          }
+        });
+      }
+      return list;
+    }
+
+    function fillAdventures() {
+      const box = el("adventureList");
+      box.innerHTML = "";
+      for (const adventure of soloMaps()) {
+        const card = document.createElement("button");
+        card.className = "premade-card";
+        const title = document.createElement("strong");
+        title.textContent = adventure.name;
+        const about = document.createElement("span");
+        about.className = "hint";
+        about.textContent = adventure.about + (adventure.fog ? " Starts in darkness." : "");
+        card.append(title, about);
+        card.addEventListener("click", function () { startAdventure(adventure.name, adventure.build(), adventure.fog); });
+        box.append(card);
+      }
+      const pick = el("arenaMonster");
+      const sorted = MONSTERS.slice().sort(function (a, b) { return a.xp - b.xp || a.n.localeCompare(b.n); });
+      for (const m of sorted) pick.append(new Option(m.n + " (CR " + m.cr + ")", m.n));
+      pick.value = "Goblin Warrior";
+    }
+
+    function startArena() {
+      const monster = MONSTERS.find(function (m) { return m.n === el("arenaMonster").value; });
+      const count = Number(el("arenaCount").value) || 1;
+      const layout = { cols: 14, rows: 10, ground: "grass", terrain: { "6,2": "rubble", "7,7": "rubble", "5,6": "tree", "9,3": "tree" },
+                       start: { x: 2, y: 5 }, monsters: [] };
+      for (let i = 0; i < count; i++) layout.monsters.push({ name: monster.n, x: 10, y: 2 + i * 2 });
+      startAdventure("🎯 Training arena: " + monster.n + (count > 1 ? " ×" + count : ""), layout, false);
+    }
+
+    // =====================================================================
+    // STARTING AN ADVENTURE
+    // =====================================================================
+    function shortLabel(name) {
+      const words = name.split(/\s+/).filter(Boolean);
+      const number = /\d+$/.test(words[words.length - 1] || "") ? words.pop() : "";
+      const letters = words.length > 1 ? words[0][0] + words[1][0] : (words[0] || "?").slice(0, 2);
+      return (letters + number).slice(0, 3);
+    }
+
+    function speedSquares(text) {
+      return Math.max(Math.floor((parseInt(text, 10) || 30) / 5), 1);
+    }
+
+    function startAdventure(name, layout, fogOn) {
+      const c = heroRecord();
+      if (!c) { alert("Choose a hero first (or make one on the Characters page)."); return; }
+      const maxHp = getMaxHp(c);
+      const hp = Math.min(c.hp === undefined ? maxHp : c.hp, maxHp);
+      if (hp <= 0) { alert(c.name + " is down. Take a long rest first."); return; }
+
+      game = {
+        name: name, heroId: c.id, cols: layout.cols, rows: layout.rows, ground: layout.ground,
+        terrain: layout.terrain, fogOn: fogOn, fog: {}, round: 0, inCombat: false, order: [], turn: 0,
+        moveLeft: Infinity, actionUsed: false, over: null, xp: 0, log: [],
+        hero: { id: "hero", side: "hero", name: c.name, label: shortLabel(c.name), x: layout.start.x, y: layout.start.y, size: 1,
+                hp: hp, maxHp: maxHp, ac: getAc(c), speed: Math.floor(getSpeed(c) / 5) },
+        monsters: []
+      };
+      const counts = {};
+      let nextId = 1;
+      for (const spot of layout.monsters) {
+        const monster = MONSTERS.find(function (m) { return m.n === spot.name; });
+        if (!monster) continue;
+        counts[monster.n] = (counts[monster.n] || 0) + 1;
+        const fullName = monster.n + " " + counts[monster.n];
+        game.monsters.push({ id: nextId++, side: "monster", name: fullName, label: shortLabel(fullName), monster: monster,
+                             x: spot.x, y: spot.y, size: SIZE_OF[monster.size] || 1, hp: monster.hp, maxHp: monster.hp,
+                             ac: monster.ac, speed: speedSquares(monster.speed), awake: false });
+      }
+      if (fogOn) {
+        for (let x = 0; x < game.cols; x++) for (let y = 0; y < game.rows; y++) game.fog[x + "," + y] = 1;
+      }
+      picked = null;
+      el("setupPanel").classList.add("hidden");
+      el("playArea").classList.remove("hidden");
+      log("🗺️ " + name + ". " + (fogOn ? "It's dark. Your light shows only what's near you." : "Look around: danger is near."));
+      lightAround(game.hero);
+      checkWakeUps();
+      render();
+      el("playArea").scrollIntoView({ block: "start" });
+    }
+
+    const SIZE_OF = { Tiny: 1, Small: 1, Medium: 1, Large: 2, Huge: 3, Gargantuan: 4 };
+
+    // =====================================================================
+    // THE GRID: terrain, distance, line of sight, paths
+    // =====================================================================
+    function inBounds(x, y) { return x >= 0 && y >= 0 && x < game.cols && y < game.rows; }
+    function blocksAt(x, y) { const t = game.terrain[x + "," + y]; return t === "wall" || t === "tree"; }
+    function difficultAt(x, y) { const t = game.terrain[x + "," + y]; return t === "rubble" || t === "water"; }
+    function living() { return game.monsters.filter(function (m) { return m.hp > 0; }); }
+
+    // Squares between two creatures (5 ft each); diagonals count as 1, like the map.
+    function distance(a, b) {
+      const dx = Math.max(0, a.x - (b.x + b.size - 1), b.x - (a.x + a.size - 1));
+      const dy = Math.max(0, a.y - (b.y + b.size - 1), b.y - (a.y + a.size - 1));
+      return Math.max(dx, dy);
+    }
+
+    // Can a see b? Follow the straight line between their centers: a wall or big tree blocks it.
+    function canSee(a, b) {
+      const ax = a.x + a.size / 2, ay = a.y + a.size / 2;
+      const bx = b.x + b.size / 2, by = b.y + b.size / 2;
+      const steps = Math.ceil(Math.max(Math.abs(bx - ax), Math.abs(by - ay)) * 4);
+      for (let i = 1; i < steps; i++) {
+        const x = Math.floor(ax + (bx - ax) * i / steps), y = Math.floor(ay + (by - ay) * i / steps);
+        const insideA = x >= a.x && x < a.x + a.size && y >= a.y && y < a.y + a.size;
+        const insideB = x >= b.x && x < b.x + b.size && y >= b.y && y < b.y + b.size;
+        if (!insideA && !insideB && blocksAt(x, y)) return false;
+      }
+      return true;
+    }
+
+    // Is a square free for this creature to stand on (all the squares it covers)?
+    function canStand(who, x, y) {
+      for (let dx = 0; dx < who.size; dx++) {
+        for (let dy = 0; dy < who.size; dy++) {
+          const sx = x + dx, sy = y + dy;
+          if (!inBounds(sx, sy) || blocksAt(sx, sy)) return false;
+          const others = [game.hero].concat(living()).filter(function (o) { return o !== who; });
+          for (const o of others) {
+            if (sx >= o.x && sx < o.x + o.size && sy >= o.y && sy < o.y + o.size) return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    // The cheapest way to every reachable square (Dijkstra, the same idea as the Battle Map):
+    // each square costs 1, difficult terrain 2, and you can't cut a wall's corner diagonally.
+    function paths(who) {
+      const key = function (x, y) { return x + "," + y; };
+      const cost = new Map([[key(who.x, who.y), 0]]);
+      const prev = new Map();
+      const frontier = [{ x: who.x, y: who.y, c: 0 }];
+      while (frontier.length) {
+        frontier.sort(function (a, b) { return a.c - b.c; });
+        const here = frontier.shift();
+        if (here.c > cost.get(key(here.x, here.y))) continue;
+        for (let dx = -1; dx <= 1; dx++) {
+          for (let dy = -1; dy <= 1; dy++) {
+            if (!dx && !dy) continue;
+            const nx = here.x + dx, ny = here.y + dy;
+            if (!canStand(who, nx, ny)) continue;
+            if (dx && dy && (blocksAt(here.x + dx, here.y) || blocksAt(here.x, here.y + dy))) continue;   // no corner cutting
+            const step = who.size === 1 && difficultAt(nx, ny) ? 2 : 1;
+            const total = here.c + step;
+            if (total < (cost.has(key(nx, ny)) ? cost.get(key(nx, ny)) : Infinity)) {
+              cost.set(key(nx, ny), total);
+              prev.set(key(nx, ny), key(here.x, here.y));
+              frontier.push({ x: nx, y: ny, c: total });
+            }
+          }
+        }
+      }
+      return { cost: cost, prev: prev };
+    }
+
+    // ---------- Fog and noticing ----------
+    function lightAround(who) {
+      if (!game.fogOn) return;
+      for (let x = who.x - TORCH; x <= who.x + TORCH; x++) {
+        for (let y = who.y - TORCH; y <= who.y + TORCH; y++) {
+          if (!inBounds(x, y)) continue;
+          if (canSee(who, { x: x, y: y, size: 1 })) delete game.fog[x + "," + y];
+        }
+      }
+    }
+
+    function isHidden(m) { return game.fogOn && game.fog[m.x + "," + m.y] === 1; }
+
+    // Monsters that can see you wake up. The first one starts a fight.
+    function checkWakeUps() {
+      const woke = [];
+      for (const m of living()) {
+        if (m.awake || isHidden(m)) continue;
+        if (distance(m, game.hero) <= SIGHT && canSee(m, game.hero)) {
+          m.awake = true;
+          woke.push(m);
+        }
+      }
+      if (!woke.length) return;
+      log("👀 " + woke.map(function (m) { return m.name; }).join(", ") + (woke.length > 1 ? " spot you!" : " spots you!"));
+      if (!game.inCombat) {
+        startCombat(woke);
+      } else {
+        for (const m of woke) {
+          m.init = rollOneDie(20) + m.monster.init;
+          game.order.push(m.id);   // joins the fight at the end of the round order
+          log("🎲 " + m.name + " joins the fight (initiative " + m.init + ").");
+        }
+      }
+    }
+
+    // =====================================================================
+    // COMBAT TURNS
+    // =====================================================================
+    function startCombat(monsters) {
+      const c = heroRecord();
+      const heroBonus = c ? getModifier(getAbilityScore(c, "dex")) : 0;
+      game.hero.init = rollOneDie(20) + heroBonus;
+      for (const m of monsters) m.init = rollOneDie(20) + m.monster.init;
+      const everyone = [game.hero].concat(monsters).sort(function (a, b) { return b.init - a.init; });
+      game.order = everyone.map(function (w) { return w.id; });
+      game.inCombat = true;
+      game.round = 1;
+      game.turn = 0;
+      log("⚔️ Roll for initiative! " + everyone.map(function (w) { return w.name + " " + w.init; }).join(", ") + ".");
+      beginTurn();
+    }
+
+    function whoById(id) {
+      return id === "hero" ? game.hero : game.monsters.find(function (m) { return m.id === id; });
+    }
+
+    function current() { return game.inCombat ? whoById(game.order[game.turn]) : game.hero; }
+
+    function beginTurn() {
+      if (game.over) return;
+      const who = current();
+      if (!who || who.hp <= 0) { nextTurn(); return; }
+      if (who === game.hero) {
+        game.moveLeft = game.hero.speed;
+        game.actionUsed = false;
+        picked = null;
+        render();
+        return;
+      }
+      busy = true;
+      render();
+      const sameGame = game;
+      setTimeout(function () {
+        if (game !== sameGame) { busy = false; return; }   // you left the adventure meanwhile
+        monsterTurn(who);
+        busy = false;
+        if (!game.over) nextTurn();
+      }, 650);   // a short pause, so you can follow what the monsters do
+    }
+
+    function nextTurn() {
+      if (game.over || !game.inCombat) return;
+      game.turn++;
+      if (game.turn >= game.order.length) {
+        game.turn = 0;
+        game.round++;
+      }
+      beginTurn();
+    }
+
+    function endHeroTurn() {
+      if (!game || game.over || busy) return;
+      if (!game.inCombat) return;
+      nextTurn();
+    }
+
+    // Everyone awake and alive is gone: the fight is over.
+    function checkFightOver() {
+      if (game.over) return true;
+      if (game.hero.hp <= 0) {
+        game.over = "lost";
+        log("💀 " + game.hero.name + " falls! The adventure is over. Take a long rest and try again.");
+        render();
+        return true;
+      }
+      if (!living().length) {
+        game.over = "won";
+        log("🏆 Victory! Every monster is defeated. You earned " + game.xp + " XP.");
+        render();
+        return true;
+      }
+      if (game.inCombat && !living().some(function (m) { return m.awake; })) {
+        game.inCombat = false;
+        game.moveLeft = Infinity;
+        game.actionUsed = false;
+        log("😮‍💨 The fight is over. Explore on: more monsters may be waiting.");
+      }
+      return false;
+    }
+
+    // ---------- Damage ----------
+    function applyChanges(result) {
+      for (const line of result.lines) log(line);
+      for (const change of result.changes) {
+        const target = whoById(change.id);
+        if (!target) continue;
+        const before = target.hp;
+        target.hp = Math.min(Math.max(target.hp + change.amount, 0), target.maxHp);
+        if (target.side === "monster" && change.amount < 0) target.awake = true;   // you hit it: it knows you're there
+        if (target.side === "monster" && before > 0 && target.hp === 0) {
+          game.xp += target.monster.xp;
+          log("☠️ " + target.name + " is defeated!");
+        }
+      }
+      updateHeroRecord(function (c) { c.hp = game.hero.hp; });
+    }
+
+    // =====================================================================
+    // THE MONSTERS' TURN (simple, but by the rules)
+    // Use the best attack that can reach you; otherwise walk closer and try again.
+    // =====================================================================
+    function reachOf(attackDescription) {
+      let best = 1;
+      const text = String(attackDescription || "");
+      const reach = /reach (\d+)/.exec(text);
+      const range = /range (\d+)/.exec(text);
+      if (reach) best = Math.max(best, Math.floor(Number(reach[1]) / 5));
+      if (range) best = Math.max(best, Math.floor(Number(range[1]) / 5));
+      return best;
+    }
+
+    function monsterOptions(m) {
+      return monsterActions(m.monster).map(function (action) {
+        const raw = m.monster.atk.find(function (a) { return a.n === action.attack.n; });
+        return { action: action, reach: reachOf(raw && raw.reach) };
+      });
+    }
+
+    function usableFrom(m, options) {
+      const d = distance(m, game.hero);
+      return options.filter(function (o) { return o.reach >= d && canSee(m, game.hero); });
+    }
+
+    function monsterTurn(m) {
+      if (m.hp <= 0 || game.hero.hp <= 0) return;
+      const options = monsterOptions(m);
+      if (!options.length) return;
+      let usable = usableFrom(m, options);
+      if (!usable.length) {
+        // Walk toward the nearest spot where an attack can reach you, as far as its Speed allows.
+        const longest = Math.max.apply(null, options.map(function (o) { return o.reach; }));
+        const found = paths(m);
+        let goal = null;
+        for (const [k, cost] of found.cost) {
+          const [x, y] = k.split(",").map(Number);
+          const spot = { x: x, y: y, size: m.size };
+          if (distance(spot, game.hero) <= longest && canSee(spot, game.hero) && (!goal || cost < goal.cost)) goal = { key: k, cost: cost };
+        }
+        if (goal) {
+          // Step back along the path until the monster can afford it.
+          let k = goal.key;
+          while (found.cost.get(k) > m.speed && found.prev.has(k)) k = found.prev.get(k);
+          const [x, y] = k.split(",").map(Number);
+          if (x !== m.x || y !== m.y) {
+            m.x = x;
+            m.y = y;
+            log("🐾 " + m.name + " moves " + found.cost.get(k) * 5 + " ft toward you.");
+          }
+        } else {
+          log("🐾 " + m.name + " can't find a way to reach you.");
+        }
+        usable = usableFrom(m, options);
+      }
+      if (!usable.length) return;
+      // Multiattack if it can, otherwise the attack that hurts most on average.
+      usable.sort(function (a, b) {
+        return averageDamage(b.action.attack.dmg) * (b.action.times || 1) - averageDamage(a.action.attack.dmg) * (a.action.times || 1);
+      });
+      const choice = usable[0].action;
+      const result = resolveAction(m.name, choice, [{ id: "hero", name: game.hero.name, ac: game.hero.ac, saves: {} }], { mode: "normal" });
+      applyChanges(result);
+      checkFightOver();
+    }
+
+    // =====================================================================
+    // YOUR TURN: move, then one attack or spell
+    // =====================================================================
+    function heroActionsWithRange() {
+      const c = heroRecord();
+      if (!c) return [];
+      const profile = makeCombatProfile(c);
+      const weapons = getAttacks(c);
+      const list = [];
+      for (const action of heroActions(profile)) {
+        if (action.kind === "weapon") {
+          const w = weapons.find(function (a) { return a.name === action.name; });
+          const weapon = w && w.weapon;
+          let reach = weapon && weapon.props.includes("Reach") ? 2 : 1;
+          let range = 0;
+          if (weapon && weapon.range) range = Math.floor(Number(weapon.range.split("/")[0]) / 5);
+          if (weapon && weapon.kind === "Ranged") reach = 0;
+          list.push({ action: action, reach: reach, range: range, profile: profile });
+        } else {
+          const spell = action.spell;
+          // In solo play, only spells with dice (damage or healing) do something by themselves.
+          if (!spell.dmg && !spell.heal) continue;
+          list.push({ action: action, reach: 0, range: spellRange(spell), profile: profile });
+        }
+      }
+      return list;
+    }
+
+    // A spell's range in squares: "120 feet" = 24, "Touch" = 1, "Self (15-foot cone)" = 3.
+    function spellRange(spell) {
+      const range = String(spell.range || "");
+      if (/^Touch/i.test(range)) return 1;
+      const self = /^Self \((\d+)-foot/i.exec(range);
+      if (self) return Math.floor(Number(self[1]) / 5);
+      if (/^Self/i.test(range)) return 0;
+      const feet = /(\d+) feet/.exec(range);
+      if (feet) return Math.floor(Number(feet[1]) / 5);
+      return 24;
+    }
+
+    // An area spell's radius around the point you aim at ("20-foot-radius Sphere" = 4 squares).
+    function areaRadius(spell) {
+      const match = /(\d+)-foot[- ](?:radius|Cube|Sphere|Emanation)/i.exec((spell.text || []).join(" "));
+      return match ? Math.max(Math.floor(Number(match[1]) / 5), 1) : 2;
+    }
+
+    function pickAction(option) {
+      if (!game || game.over || busy || game.actionUsed) return;
+      const spell = option.action.kind === "spell" ? option.action.spell : null;
+      if (spell && spell.level > 0 && !profileSlotChoices(option.profile, spell).length) {
+        log("⚠️ No spell slots left for " + spell.n + ".");
+        return;
+      }
+      // Healing (on yourself) and "Self" area spells (cones, bursts) don't need you to pick a target.
+      if (spell && (spell.heal || /^Self/i.test(spell.range || ""))) {
+        doHeroAction(option, null);
+        return;
+      }
+      picked = option;
+      render();
+    }
+
+    function lowestSlot(option) {
+      const choices = profileSlotChoices(option.profile, option.action.spell);
+      return choices.length ? choices[0] : null;
+    }
+
+    function doHeroAction(option, target) {
+      const action = option.action;
+      const spell = action.kind === "spell" ? action.spell : null;
+      let slot = null;
+      if (spell && spell.level > 0) {
+        slot = lowestSlot(option);
+        if (!slot) { log("⚠️ No spell slots left for " + spell.n + "."); return; }
+      }
+
+      let targets = [];
+      let mode = "normal";
+      if (spell && spell.heal) {
+        targets = [game.hero];
+      } else if (spell && /^Self/i.test(spell.range || "")) {
+        // A cone or burst around you: every monster you can see within its size
+        const size = Math.max(spellRange(spell), 1);
+        targets = living().filter(function (m) { return !isHidden(m) && distance(game.hero, m) <= size && canSee(game.hero, m); });
+        if (!targets.length) { log("Nobody is close enough for " + spell.n + " (" + size * 5 + " ft)."); return; }
+      } else {
+        // Aimed at one monster: check it's in range and you can see it
+        const d = distance(game.hero, target);
+        if (!canSee(game.hero, target)) { log("You can't see " + target.name + " from here: something is in the way."); return; }
+        const inMelee = option.reach > 0 && d <= option.reach;
+        const inRange = option.range > 0 && d <= option.range;
+        const longRange = action.kind === "weapon" && option.range > 0 && d <= option.range * 4;   // long range: up to 4× normal
+        if (!inMelee && !inRange && !longRange) {
+          log(target.name + " is too far away for " + action.name + " (" + d * 5 + " ft).");
+          return;
+        }
+        // Disadvantage: shooting at long range, or shooting while a monster is right next to you
+        const shooting = !inMelee;
+        if (action.kind === "weapon" && !inMelee && !inRange) mode = "disadvantage";
+        if (shooting && (action.kind === "weapon" || (spell && spell.atk)) &&
+            living().some(function (m) { return m.awake && distance(game.hero, m) <= 1; })) mode = "disadvantage";
+        if (mode === "disadvantage") log("(Disadvantage: " + (inRange || inMelee ? "a monster is right next to you" : "long range") + ".)");
+
+        targets = [target];
+        if (spell && spell.save && isAreaSpell(spell)) {
+          // An area: everyone within the radius of the point you aimed at (yes, you too!)
+          const r = areaRadius(spell);
+          targets = [game.hero].concat(living()).filter(function (w) { return distance(w, target) <= r && (w === game.hero || !isHidden(w)); });
+          if (targets.includes(game.hero)) log("⚠️ You're inside your own " + spell.n + "!");
+        }
+      }
+
+      const c = heroRecord();
+      const result = resolveAction(game.hero.name, action, targets.map(function (w) {
+        return { id: w.id, name: w.name, ac: w.ac, saves: w === game.hero ? option.profile.saves : monsterSaves(w.monster) };
+      }), { mode: mode, slotLevel: slot ? slot.level : 0, profile: option.profile });
+      if (slot) updateHeroRecord(function (h) { spendSpellSlot(h, slot.kind, slot.level); });
+      applyChanges(result);
+      picked = null;
+      if (game.inCombat) game.actionUsed = true;
+      checkWakeUps();   // the noise wakes up anyone who can see you
+      if (!checkFightOver()) render();
+    }
+
+    function moveHeroTo(x, y) {
+      const hero = game.hero;
+      const found = paths(hero);
+      const k = x + "," + y;
+      if (!found.cost.has(k)) return;
+      const cost = found.cost.get(k);
+      if (cost > game.moveLeft) { log("That's too far: you have " + game.moveLeft * 5 + " ft of movement left."); return; }
+      // Light up every square along the way
+      const steps = [];
+      let step = k;
+      while (step) { steps.unshift(step); step = found.prev.get(step); }
+      for (const s of steps) {
+        const [sx, sy] = s.split(",").map(Number);
+        lightAround({ x: sx, y: sy, size: 1 });
+      }
+      hero.x = x;
+      hero.y = y;
+      if (game.inCombat) game.moveLeft -= cost;
+      checkWakeUps();
+      render();
+    }
+
+    function clickSquare(x, y) {
+      if (!game || game.over || busy) return;
+      if (game.inCombat && current() !== game.hero) return;
+      const monster = living().find(function (m) { return x >= m.x && x < m.x + m.size && y >= m.y && y < m.y + m.size && !isHidden(m); });
+      if (monster) {
+        if (picked) doHeroAction(picked, monster);
+        else log("Pick an attack or spell first (the buttons above the map), then tap " + monster.name + ".");
+        return;
+      }
+      if (picked) { picked = null; render(); return; }   // tapping the floor cancels the aim
+      moveHeroTo(x, y);
+    }
+
+    // =====================================================================
+    // DRAWING
+    // =====================================================================
+    function log(text) {
+      if (!game) return;
+      game.log.push(text);
+      if (game.log.length > 120) game.log.shift();
+      const box = el("soloLog");
+      box.innerHTML = "";
+      for (const line of game.log) {
+        const row = document.createElement("div");
+        row.className = "chat-note";
+        row.textContent = line;
+        box.append(row);
+      }
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function render() {
+      if (!game) return;
+      const cell = Number(el("soloZoom").value) || 36;
+      const board = el("soloBoard");
+      board.innerHTML = "";
+      board.style.width = game.cols * cell + "px";
+      board.style.height = game.rows * cell + "px";
+      board.style.setProperty("--cell", cell + "px");
+      board.dataset.ground = game.ground;
+
+      const myTurn = !game.over && !busy && (!game.inCombat || current() === game.hero);
+      // Where you can walk this turn (only shown in a fight: exploring, you can go anywhere you can see)
+      const reach = myTurn && !picked && game.inCombat ? paths(game.hero) : null;
+
+      for (let x = 0; x < game.cols; x++) {
+        for (let y = 0; y < game.rows; y++) {
+          const k = x + "," + y;
+          const square = document.createElement("div");
+          square.style.left = x * cell + "px";
+          square.style.top = y * cell + "px";
+          if (game.fogOn && game.fog[k] === 1) {
+            square.className = "map-fog";
+          } else if (game.terrain[k]) {
+            square.className = "map-terrain terrain-" + game.terrain[k];
+            square.textContent = { wall: "🧱", tree: "🌳", rubble: "🪨", water: "🌊" }[game.terrain[k]];
+          } else {
+            square.className = "solo-square";
+          }
+          if (reach && reach.cost.has(k) && reach.cost.get(k) > 0 && reach.cost.get(k) <= game.moveLeft && !(game.fog[k] === 1)) {
+            square.classList.add("solo-reach");
+          }
+          square.addEventListener("click", function () { clickSquare(x, y); });
+          board.append(square);
+        }
+      }
+
+      for (const w of [game.hero].concat(game.monsters)) {
+        if (w.side === "monster" && (w.hp <= 0 || isHidden(w))) continue;
+        const piece = document.createElement("div");
+        piece.className = "map-token side-" + w.side;
+        if (w === current() && game.inCombat) piece.classList.add("selected");
+        if (picked && w.side === "monster") piece.classList.add("solo-target");
+        piece.style.left = w.x * cell + "px";
+        piece.style.top = w.y * cell + "px";
+        piece.style.width = piece.style.height = w.size * cell + "px";
+        piece.style.fontSize = Math.round(cell * 0.36 * Math.min(w.size, 2)) + "px";
+        piece.textContent = w.label;
+        piece.title = w.name + " (" + w.hp + "/" + w.maxHp + " HP)";
+        const bar = document.createElement("span");
+        bar.className = "map-hp";
+        bar.style.width = Math.max(0, Math.min(1, w.hp / w.maxHp)) * 100 + "%";
+        piece.append(bar);
+        piece.addEventListener("click", function () { clickSquare(w.x, w.y); });
+        board.append(piece);
+      }
+
+      renderStatus(myTurn);
+    }
+
+    function renderStatus(myTurn) {
+      const hero = game.hero;
+      const c = heroRecord();
+      const slots = c ? getSpellSlotsLeft(c).map(function (n, i) { return n ? "L" + (i + 1) + "×" + n : ""; }).filter(Boolean) : [];
+      el("heroStatus").textContent = game.name + " · " + hero.name + ": ❤️ " + hero.hp + "/" + hero.maxHp + " · 🛡️ AC " + hero.ac +
+        (slots.length ? " · 🔮 " + slots.join(" ") : "") + (game.xp ? " · ⭐ " + game.xp + " XP" : "");
+
+      // Turn order cards (during a fight)
+      const row = el("turnCards");
+      row.innerHTML = "";
+      if (game.inCombat) {
+        for (const id of game.order) {
+          const w = whoById(id);
+          if (!w) continue;
+          const card = document.createElement("div");
+          card.className = "turn-card side-" + w.side + (w === current() ? " now" : "") + (w.hp <= 0 ? " down" : "");
+          const name = document.createElement("strong");
+          name.className = "turn-name";
+          name.textContent = w.name;
+          const line = document.createElement("span");
+          line.className = "turn-line";
+          line.textContent = "🎲 " + w.init + "  ❤️ " + w.hp + "/" + w.maxHp;
+          card.append(name, line);
+          row.append(card);
+        }
+      }
+
+      let hint;
+      if (game.over === "won") hint = "🏆 You won! Leave the adventure to pick another, or take on a training fight.";
+      else if (game.over === "lost") hint = "💀 You fell. Leave the adventure, take a long rest, and try again.";
+      else if (busy || (game.inCombat && current() !== hero)) hint = "⏳ " + (current() ? current().name : "The monsters") + " is acting…";
+      else if (picked) hint = "🎯 Tap a monster to use " + picked.action.name + ". (Tap the floor to cancel.)";
+      else if (!game.inCombat) hint = "🧭 Exploring: tap a lit square to walk there. Monsters that see you will attack.";
+      else hint = "🎯 Your turn! Move: " + game.moveLeft * 5 + " ft left (tap a glowing square). Action: " +
+        (game.actionUsed ? "used." : "pick one below, then tap a monster.");
+      el("turnHint").textContent = hint;
+
+      const buttons = el("actionButtons");
+      buttons.innerHTML = "";
+      if (myTurn && !game.actionUsed) {
+        for (const option of heroActionsWithRange()) {
+          const b = document.createElement("button");
+          b.className = "small-button" + (picked && picked.action.key === option.action.key ? " picked" : "");
+          b.textContent = option.action.label;
+          b.addEventListener("click", function () { pickAction(option); });
+          buttons.append(b);
+        }
+      }
+      el("endTurnBtn").classList.toggle("hidden", !game.inCombat || !myTurn);
+    }
+
+    // =====================================================================
+    // BUTTONS
+    // =====================================================================
+    el("heroPick").addEventListener("change", showHeroInfo);
+    el("arenaBtn").addEventListener("click", startArena);
+    el("endTurnBtn").addEventListener("click", endHeroTurn);
+    el("soloZoom").addEventListener("change", render);
+    el("quitBtn").addEventListener("click", function () {
+      if (game && !game.over && !confirm("Leave this adventure? Your hero keeps their HP and spent spell slots.")) return;
+      game = null;
+      el("playArea").classList.add("hidden");
+      el("setupPanel").classList.remove("hidden");
+      fillHeroes();
+    });
+    el("restBtn").addEventListener("click", function () {
+      updateHeroRecord(function (c) {
+        takeLongRest(c);
+        c.hp = getMaxHp(c);
+      });
+      showHeroInfo();
+    });
+
+    fillHeroes();
+    fillAdventures();
+  </script>
+  <script src="pwa.js"></script>
+  <script src="feedback.js"></script>
+</body>
+</html>

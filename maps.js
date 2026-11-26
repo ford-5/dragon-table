@@ -143,3 +143,21 @@ const PREMADE_MAPS = [
     ]
   }
 ];
+
+// Turn a drawn map into its parts (used by the Solo Adventures page):
+// { cols, rows, ground, terrain: { "x,y": "wall" ... }, start: { x, y }, monsters: [{ name, x, y }] }
+const MAP_LETTER_TERRAIN = { "#": "wall", "T": "tree", ":": "rubble", "~": "water" };
+function parsePremade(preset) {
+  const result = { cols: preset.rows[0].length, rows: preset.rows.length, ground: preset.ground,
+                   terrain: {}, start: null, monsters: [] };
+  preset.rows.forEach(function (row, y) {
+    for (let x = 0; x < row.length; x++) {
+      const letter = row[x];
+      if (MAP_LETTER_TERRAIN[letter]) result.terrain[x + "," + y] = MAP_LETTER_TERRAIN[letter];
+      else if (letter === "S") { if (!result.start) result.start = { x: x, y: y }; }
+      else if (preset.monsters[letter]) result.monsters.push({ name: preset.monsters[letter], x: x, y: y });
+    }
+  });
+  result.start = result.start || { x: 1, y: 1 };
+  return result;
+}

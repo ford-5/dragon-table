@@ -2231,7 +2231,7 @@
     const pageParams = new URLSearchParams(location.search);
     const guideLevel = ["beginner", "intermediate", "advanced"].includes(pageParams.get("guide")) ? pageParams.get("guide") : "";
     // Only ever go back to one of OUR OWN pages (never an address someone put in a link).
-    const returnTo = ["ai-dm.html", "join.html"].includes(pageParams.get("return")) ? pageParams.get("return") : "";
+    const returnTo = ["ai-dm.html", "join.html", "solo.html"].includes(pageParams.get("return")) ? pageParams.get("return") : "";
     let currentStep = 0;
 
     // Advice that depends on what's been chosen so far.

@@ -2344,3 +2344,43 @@ details.by-hand > summary {
   background-color: #1a1424;
   border-radius: 6px;
 }
+
+/* =====================================================================
+   SOLO ADVENTURES (solo.html)
+   ===================================================================== */
+.solo-status {
+  max-width: 900px;
+  padding: 10px 14px;
+  text-align: left;
+}
+
+.solo-hint {
+  margin: 6px 0;
+  font-weight: bold;
+}
+
+/* Every floor square is clickable (to walk there) */
+.solo-square,
+#soloBoard .map-terrain {
+  position: absolute;
+  width: var(--cell);
+  height: var(--cell);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* Squares you can walk to this turn */
+.solo-reach {
+  background-color: rgba(120, 200, 255, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(150, 215, 255, 0.5);
+}
+
+/* Monsters you can aim at, once you picked an attack or spell */
+.map-token.solo-target {
+  outline: 3px dashed #ffde59;
+  cursor: crosshair;
+}
+
+#soloBoard .map-token {
+  cursor: pointer;
+}

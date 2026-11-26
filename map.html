@@ -64,6 +64,16 @@
     <h2>📦 Pre-made maps &amp; dungeons</h2>
     <p class="hint">Pick one to load it, with its monsters and your heroes at the start. You can change anything afterwards. Loading replaces the map you have now.</p>
     <div id="premadeList" class="premade-list"></div>
+
+    <h3 class="section-label">💾 My saved maps</h3>
+    <p class="hint">Made something you like? Save it here (terrain, monsters, heroes and fog) and load it any time. Saved maps with monsters can also be played in Solo Adventures. They're kept in this browser.</p>
+    <div class="settings add-form">
+      <input id="saveMapName" type="text" maxlength="40" placeholder="Name it, e.g. Dragon's Lair">
+      <label class="hint"><input type="checkbox" id="saveMapSolo" checked> Allow it in Solo Adventures</label>
+      <button class="small-button" id="saveMapBtn">💾 Save this map</button>
+    </div>
+    <p id="saveMapStatus" class="hint"></p>
+    <div id="savedMapList" class="premade-list"></div>
   </div>
 
   <!-- ===== Adding things ===== -->
@@ -1022,6 +1032,111 @@
       }
     }
     renderPremadeList();
+
+    // =====================================================================
+    // MY SAVED MAPS (localStorage key "savedMaps": a list of named copies of the map)
+    // =====================================================================
+    const MAX_SAVED_MAPS = 30;
+
+    function loadSavedMaps() {
+      try {
+        const list = JSON.parse(localStorage.getItem("savedMaps") || "[]");
+        return Array.isArray(list) ? list.filter(function (m) { return m && m.map && m.name; }) : [];
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function storeSavedMaps(list) {
+      try {
+        localStorage.setItem("savedMaps", JSON.stringify(list));
+        return true;
+      } catch (error) {
+        return false;   // storage full or blocked
+      }
+    }
+
+    function saveCurrentMap() {
+      const name = el("saveMapName").value.trim();
+      const status = el("saveMapStatus");
+      if (!name) {
+        status.textContent = "Give your map a name first.";
+        return;
+      }
+      const list = loadSavedMaps();
+      const existing = list.find(function (m) { return m.name.toLowerCase() === name.toLowerCase(); });
+      if (existing && !confirm("You already have a map called \"" + existing.name + "\". Replace it?")) return;
+      if (!existing && list.length >= MAX_SAVED_MAPS) {
+        status.textContent = "You have " + MAX_SAVED_MAPS + " saved maps. Delete one to make room.";
+        return;
+      }
+      // JSON.parse(JSON.stringify(...)) makes a full copy, so later changes don't touch the saved one
+      const copy = JSON.parse(JSON.stringify(map));
+      const entry = { key: existing ? existing.key : "my-" + Date.now(), name: name, solo: el("saveMapSolo").checked,
+                      savedAt: new Date().toISOString().slice(0, 10), map: copy };
+      if (existing) list[list.indexOf(existing)] = entry;
+      else list.push(entry);
+      status.textContent = storeSavedMaps(list) ? "💾 Saved \"" + name + "\"." : "⚠️ This browser wouldn't save it (storage full or blocked).";
+      renderSavedMaps();
+    }
+
+    function loadSavedMap(entry) {
+      if ((map.tokens.length > 0 || Object.keys(map.terrain).length > 0) &&
+          !confirm("Load \"" + entry.name + "\"? This replaces the map you have now.")) return;
+      const fresh = Object.assign(newMap(), JSON.parse(JSON.stringify(entry.map)));
+      if (!fresh.fog || typeof fresh.fog !== "object") fresh.fog = {};
+      fresh.cell = map.cell;   // keep the zoom the GM likes
+      map = fresh;
+      el("colsBox").value = map.cols;
+      el("rowsBox").value = map.rows;
+      el("groundBox").value = map.ground;
+      saveMap();
+      setMode(Object.keys(map.fog).length ? "reveal" : "move");
+      showStatus("Loaded your map \"" + entry.name + "\".");
+    }
+
+    function renderSavedMaps() {
+      const box = el("savedMapList");
+      box.innerHTML = "";
+      const list = loadSavedMaps();
+      if (!list.length) {
+        const none = document.createElement("p");
+        none.className = "hint";
+        none.textContent = "No saved maps yet.";
+        box.append(none);
+        return;
+      }
+      for (const entry of list) {
+        const card = document.createElement("div");
+        card.className = "premade-card";
+        const title = document.createElement("strong");
+        title.textContent = "🗺️ " + entry.name;
+        const info = document.createElement("span");
+        info.className = "hint";
+        const monsters = entry.map.tokens.filter(function (t) { return t.side === "monster"; }).length;
+        info.textContent = entry.map.cols + "×" + entry.map.rows + " · " + monsters + " monster" + (monsters === 1 ? "" : "s") +
+          (Object.keys(entry.map.fog || {}).length ? " · fog" : "") + (entry.solo ? " · in Solo" : "") + " · saved " + entry.savedAt;
+        const buttons = document.createElement("div");
+        const load = document.createElement("button");
+        load.className = "small-button";
+        load.textContent = "📂 Load";
+        load.addEventListener("click", function () { loadSavedMap(entry); });
+        const remove = document.createElement("button");
+        remove.className = "small-button";
+        remove.textContent = "🗑️ Delete";
+        remove.addEventListener("click", function () {
+          if (!confirm("Delete your saved map \"" + entry.name + "\"? This can't be undone.")) return;
+          storeSavedMaps(loadSavedMaps().filter(function (m) { return m.key !== entry.key; }));
+          renderSavedMaps();
+        });
+        buttons.append(load, remove);
+        card.append(title, info, buttons);
+        box.append(card);
+      }
+    }
+
+    el("saveMapBtn").addEventListener("click", saveCurrentMap);
+    renderSavedMaps();
 
     // Fog of war for the whole map at once
     el("fogAllBtn").addEventListener("click", function () {

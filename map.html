@@ -33,6 +33,8 @@
   <div class="panel map-tools">
     <div class="shop-tabs" id="modeButtons"></div>
     <p id="modeHint" class="hint"></p>
+    <button class="small-button" id="fogAllBtn">☁️ Cover the whole map in fog</button>
+    <button class="small-button" id="revealAllBtn">🔦 Clear all fog</button>
   </div>
 
   <!-- ===== The map ===== -->
@@ -143,8 +145,9 @@
     // =====================================================================
     //   terrain: { "x,y": "wall" | "tree" | "rubble" | "water" }
     //   tokens:  [{ id, side: "hero"|"monster"|"other", name, label, size, x, y, hp, maxHp, ac, speed, conditions }]
+    //   fog:     { "x,y": 1 } squares covered by fog of war (players can't see what's there)
     let map = null;
-    let mode = "move";           // "move", "range", or a terrain key, or "erase"
+    let mode = "move";           // "move", "range", a terrain key, "erase", or "fog" / "reveal"
     let selectedId = null;       // the token whose panel is open
     let rangeFrom = null;        // first token picked when measuring range
     let painting = false;        // holding the pointer down while painting terrain
@@ -154,7 +157,7 @@
     };
 
     function newMap() {
-      return { cols: 20, rows: 14, cell: 38, ground: "stone", terrain: {}, tokens: [], nextId: 1 };
+      return { cols: 20, rows: 14, cell: 38, ground: "stone", terrain: {}, tokens: [], fog: {}, nextId: 1 };
     }
 
     function loadMap() {
@@ -162,6 +165,7 @@
         const saved = JSON.parse(localStorage.getItem("battleMap") || "null");
         if (saved && Array.isArray(saved.tokens) && saved.terrain && typeof saved.terrain === "object") {
           map = Object.assign(newMap(), saved);
+          if (!map.fog || typeof map.fog !== "object" || Array.isArray(map.fog)) map.fog = {};   // older maps had no fog
           return;
         }
       } catch (error) {
@@ -200,11 +204,39 @@
       return "Unhurt";
     }
 
+    // ---------- Fog of war ----------
+    function isFogged(x, y) {
+      return map.fog[x + "," + y] === 1;
+    }
+
+    // A token is lost in the fog when EVERY square it covers is fogged.
+    function inFog(token) {
+      for (let dx = 0; dx < token.size; dx++) {
+        for (let dy = 0; dy < token.size; dy++) {
+          if (!isFogged(token.x + dx, token.y + dy)) return false;
+        }
+      }
+      return true;
+    }
+
     // What the players get to see: no hidden tokens, no monster HP or AC, no GM notes.
+    // Fog: players get the LIST of fogged squares (to paint them dark) but never what's
+    // under them: terrain and monsters in the fog are simply left out of the message.
+    // Heroes always show, so players know where their own party is.
     function playerView() {
+      const terrain = {};
+      for (const k in map.terrain) {
+        if (map.fog[k] !== 1) terrain[k] = map.terrain[k];
+      }
+      const fog = Object.keys(map.fog).filter(function (k) {
+        const [x, y] = k.split(",").map(Number);
+        return inBounds(x, y);
+      });
       return {
-        cols: map.cols, rows: map.rows, ground: map.ground, terrain: map.terrain,
-        tokens: map.tokens.filter(function (t) { return !t.hidden; }).map(function (t) {
+        cols: map.cols, rows: map.rows, ground: map.ground, terrain: terrain, fog: fog,
+        tokens: map.tokens.filter(function (t) {
+          return !t.hidden && (t.side === "hero" || !inFog(t));
+        }).map(function (t) {
           const view = { id: t.id, side: t.side, name: t.name, label: t.label, size: t.size, x: t.x, y: t.y,
                          status: healthStatus(t), conditions: t.conditions };
           if (t.side === "hero") {
@@ -461,6 +493,17 @@
         board.append(square);
       }
 
+      // Fog: the GM sees it as a see-through dark cloud; players see solid dark squares
+      for (const k in map.fog) {
+        const [x, y] = k.split(",").map(Number);
+        if (!inBounds(x, y)) continue;
+        const cloud = document.createElement("div");
+        cloud.className = "map-fog gm-fog";
+        cloud.style.left = x * cell + "px";
+        cloud.style.top = y * cell + "px";
+        board.append(cloud);
+      }
+
       // Tokens
       for (const token of map.tokens) {
         const piece = document.createElement("div");
@@ -468,7 +511,7 @@
         if (token.id === selectedId) piece.classList.add("selected");
         if (rangeFrom === token.id) piece.classList.add("range-from");
         if (token.hp <= 0) piece.classList.add("down");
-        if (token.hidden) piece.classList.add("secret");
+        if (token.hidden || (token.side !== "hero" && inFog(token))) piece.classList.add("secret");   // players can't see it
         piece.style.left = token.x * cell + "px";
         piece.style.top = token.y * cell + "px";
         piece.style.width = piece.style.height = token.size * cell + "px";
@@ -597,21 +640,46 @@
     // =====================================================================
     // PAINTING TERRAIN (tap or drag across squares)
     // =====================================================================
+    // A quick swipe jumps several squares between two pointer events, so we also paint
+    // every square on the straight line from the last one (no gaps).
+    let lastPainted = null;
+
     function paintAt(event) {
       const [x, y] = squareUnderPointer(event);
       if (!inBounds(x, y)) return;
+      const from = lastPainted || { x: x, y: y };
+      const steps = Math.max(Math.abs(x - from.x), Math.abs(y - from.y));
+      let changed = false;
+      // Start at 0 for a new stroke (paint the first square); otherwise the
+      // "from" square was already painted last time, so start at 1.
+      for (let i = lastPainted ? 1 : 0; i <= steps; i++) {
+        const t = steps === 0 ? 0 : i / steps;
+        if (paintSquare(Math.round(from.x + (x - from.x) * t), Math.round(from.y + (y - from.y) * t))) changed = true;
+      }
+      lastPainted = { x: x, y: y };
+      if (changed) render();
+    }
+
+    // Paint ONE square with the current tool. Returns true if something changed.
+    function paintSquare(x, y) {
       const k = x + "," + y;
-      if (mode === "erase") {
-        if (!map.terrain[k]) return;
+      if (mode === "fog") {
+        if (map.fog[k] === 1) return false;
+        map.fog[k] = 1;
+      } else if (mode === "reveal") {
+        if (map.fog[k] !== 1) return false;
+        delete map.fog[k];
+      } else if (mode === "erase") {
+        if (!map.terrain[k]) return false;
         delete map.terrain[k];
       } else {
         if (TERRAIN[mode].blocks && map.tokens.some(function (t) {
           return x >= t.x && x < t.x + t.size && y >= t.y && y < t.y + t.size;
-        })) return;   // don't build a wall on top of someone
-        if (map.terrain[k] === mode) return;
+        })) return false;   // don't build a wall on top of someone
+        if (map.terrain[k] === mode) return false;
         map.terrain[k] = mode;
       }
-      render();
+      return true;
     }
 
     function connectBoard() {
@@ -620,6 +688,7 @@
         if (mode === "move" || mode === "range") return;
         event.preventDefault();
         painting = true;
+        lastPainted = null;   // a new stroke starts here
         board.setPointerCapture(event.pointerId);
         paintAt(event);
       });
@@ -645,7 +714,9 @@
       { key: "tree", label: "🌳 Tree / boulder", hint: "Paint big trees or boulders. They block movement like walls." },
       { key: "rubble", label: "🪨 Rubble", hint: "Paint difficult terrain: each square costs 2 squares (10 ft) of movement to enter." },
       { key: "water", label: "🌊 Water", hint: "Paint shallow water: difficult terrain, 10 ft per square." },
-      { key: "erase", label: "🧽 Erase", hint: "Tap or drag to remove terrain." }
+      { key: "erase", label: "🧽 Erase", hint: "Tap or drag to remove terrain." },
+      { key: "fog", label: "☁️ Fog", hint: "Fog of war: tap or drag to cover squares. Players see only darkness there: no terrain and no monsters (heroes always show). You still see through it." },
+      { key: "reveal", label: "🔦 Reveal", hint: "Tap or drag to clear the fog as the heroes explore." }
     ];
 
     function setMode(key) {
@@ -834,6 +905,22 @@
     el("clearTerrainBtn").addEventListener("click", function () {
       if (!confirm("Remove all walls, trees, rubble and water?")) return;
       map.terrain = {};
+      saveMap();
+      render();
+    });
+
+    // Fog of war for the whole map at once
+    el("fogAllBtn").addEventListener("click", function () {
+      map.fog = {};
+      for (let x = 0; x < map.cols; x++) {
+        for (let y = 0; y < map.rows; y++) map.fog[x + "," + y] = 1;
+      }
+      setMode("reveal");   // the next thing a GM does is reveal where the heroes are
+      saveMap();
+      render();
+    });
+    el("revealAllBtn").addEventListener("click", function () {
+      map.fog = {};
       saveMap();
       render();
     });

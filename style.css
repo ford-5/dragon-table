@@ -1960,3 +1960,17 @@ body.gm-screen {
 .table-seat.library-choice:hover {
   background-color: #2a4770;
 }
+
+/* Fog of war on the battle map: players see solid darkness... */
+.map-fog {
+  position: absolute;
+  width: var(--cell);
+  height: var(--cell);
+  background-color: #0b0810;
+  pointer-events: none;          /* clicks and drags go through to the map */
+}
+
+/* ...and the GM sees a see-through cloud, so they still know what's there */
+.map-fog.gm-fog {
+  background-color: rgba(8, 6, 16, 0.72);
+}

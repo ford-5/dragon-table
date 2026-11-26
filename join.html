@@ -523,6 +523,16 @@
         board.append(square);
       }
 
+      // Fog of war: solid darkness. The GM never sends what's under it.
+      for (const key of map.fog) {
+        const [x, y] = key.split(",").map(Number);
+        const cloud = document.createElement("div");
+        cloud.className = "map-fog";
+        cloud.style.left = x * cell + "px";
+        cloud.style.top = y * cell + "px";
+        board.append(cloud);
+      }
+
       let mine = null;
       for (const token of map.tokens) {
         const piece = document.createElement("div");

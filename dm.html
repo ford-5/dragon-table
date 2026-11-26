@@ -1174,7 +1174,7 @@
         if (mapChannel) mapChannel.postMessage({ type: "hello" });
         setTimeout(function () {
           if (!mapShare.latest) {
-            document.getElementById("mapStatus").textContent = "⚠️ No map found yet. Press \"Show the map here\" (or open the map in its own tab), put some tokens on it, then try again.";
+            document.getElementById("mapStatus").textContent = "⚠️ No map found yet. Show the 🗺️ Battle map in the middle, put some tokens on it, then try again.";
           } else {
             toggleMapShare();
           }
@@ -1223,7 +1223,7 @@
         const tokens = mapShare.latest ? mapShare.latest.tokens.length : 0;
         status = "🟢 Players can see the map (" + tokens + " token" + (tokens === 1 ? "" : "s") + " visible to them)." +
           (mapShare.moves ? " They can move their own hero." : " They can look but not move.") +
-          " Tokens marked 🙈 stay hidden, and monsters show only how hurt they are.";
+          " Tokens marked 🙈 and anything under ☁️ fog stay hidden, and monsters show only how hurt they are.";
       }
       document.getElementById("mapStatus").textContent = status;
     }

@@ -456,6 +456,18 @@ function cleanMapSnapshot(raw) {
     }
   }
 
+  // Fog of war: a list of "x,y" squares the players can't see into.
+  const fog = [];
+  if (Array.isArray(raw.fog)) {
+    const seen = {};
+    for (const key of raw.fog.slice(0, 1700)) {
+      const match = /^(\d{1,2}),(\d{1,2})$/.exec(key);
+      if (!match || Number(match[1]) >= cols || Number(match[2]) >= rows || seen[key]) continue;
+      seen[key] = true;
+      fog.push(key);
+    }
+  }
+
   const tokens = [];
   for (const t of (Array.isArray(raw.tokens) ? raw.tokens : []).slice(0, 120)) {
     if (!t || typeof t !== "object" || !["hero", "monster", "other"].includes(t.side)) continue;
@@ -476,7 +488,7 @@ function cleanMapSnapshot(raw) {
     }
     tokens.push(token);
   }
-  return { cols: cols, rows: rows, ground: MAP_GROUNDS.includes(raw.ground) ? raw.ground : "stone", terrain: terrain, tokens: tokens };
+  return { cols: cols, rows: rows, ground: MAP_GROUNDS.includes(raw.ground) ? raw.ground : "stone", terrain: terrain, fog: fog, tokens: tokens };
 }
 
 // ---------------------------------------------------------------------

@@ -45,7 +45,7 @@ Pages should **calculate** from the rules (modifiers, proficiency, HP, AC, saves
 - `index.html` start screen (Player / GM / Library / Equipment, install box, share + support links); `player.html` AI-or-live choice
 - `ai-dm.html` AI Game Master (5 setup steps, chat, ready-roll button, music, redo, voice); `join.html` live games for players (waiting room, table feed, voice chat, music, shared map)
 - `character.html` roster, creator (guide levels, multiclass), sheet (weapons & armor, spells, special item, minis/print links); `sheet.html` printable sheet + share links; `mini.html` Mini Maker (3D-print STL)
-- `dm-start.html` GM choice; `dm-learn.html` GM course; `dm.html` GM Screen (live game, voice, music, shared map, party, initiative, notes, books); `battle.html` Battle Simulator; `map.html` Battle Map; `adventure.html` starter adventure "The Sunken Bell"
+- `dm-start.html` GM choice; `dm-learn.html` GM course; `dm.html` GM Screen (one screen: side drawers + middle stage showing the map, adventure or Library; live game, voice, music, party, initiative, notes, books); `battle.html` Battle Simulator; `map.html` Battle Map; `adventure.html` starter adventure "The Sunken Bell"
 - `library.html` free SRD Library; `equipment.html` shop (3D-printed gear, Google Form orders); `support.html` tips, share, waiting list; `policies.html` privacy + shop policies; `dice.html` old dice roller (no longer linked)
 
 **Shared scripts** (load order on a page: `dice.js`, `rules.js`, `spells.js`, `monsters.js`, `play.js`, `music.js`, `voice.js`, then the page script, then `pwa.js` and `feedback.js` last)

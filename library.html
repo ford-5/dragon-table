@@ -487,6 +487,15 @@
     // library.html#monsters opens that tab; #spell-fireball opens a spell
     const hash = location.hash.replace("#", "");
     showTab(hash.startsWith("spell-") ? "spells" : (RENDERERS[hash] ? hash : "spells"));
+
+    // The GM Screen changes the #tab to switch tabs without reloading the page.
+    window.addEventListener("hashchange", function () {
+      const key = location.hash.replace("#", "");
+      if (RENDERERS[key]) showTab(key);
+    });
+
+    // Shown inside the GM Screen (library.html?embed=1): hide the page furniture.
+    if (new URLSearchParams(location.search).get("embed") === "1") document.body.classList.add("embedded");
   </script>
 
   <!-- The "Send feedback" link at the bottom of the page -->

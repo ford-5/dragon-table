@@ -17,7 +17,7 @@
 </head>
 
 <!-- class="dm" switches on the purple GM theme from style.css -->
-<body class="dm">
+<body class="dm gm-screen">
   <nav class="top-nav">
     <a href="index.html">🏠 Home</a>
     <a href="library.html">📚 Library</a>
@@ -28,193 +28,236 @@
     <a href="map.html">🗺️ Map</a>
   </nav>
 
-  <h1>🛡️ GM Screen</h1>
-  <p><a href="dm-start.html" class="back-link">← Back</a> · <a href="dm-learn.html" class="back-link">🎓 Learn to be a GM</a></p>
+  <header class="gm-header">
+    <h1>🛡️ GM Screen</h1>
+    <p><a href="dm-start.html" class="back-link">← Back</a> · <a href="dm-learn.html" class="back-link">🎓 Learn to be a GM</a></p>
+  </header>
 
-  <!-- ===================== REQUEST PLAYERS (live game) ===================== -->
-  <div class="panel" id="livePanel">
-    <h2>📣 Request players</h2>
-    <p class="hint">Open a game, share the code, and players ask to join. You accept or decline each one.</p>
+  <!-- ONE screen in three parts: tools on the LEFT and RIGHT sides, and the
+       STAGE in the middle (battle map, adventure or library). Each side tool is a
+       <details> "drawer": click its title to pull it open or push it closed. -->
+  <div class="gm-layout">
 
-    <!-- Before the game is open -->
-    <div id="liveClosed">
-      <label class="sheet-field">Game name (optional) <input id="gameName" type="text" class="wide-input" maxlength="40" placeholder="e.g. The Hollow Crown"></label>
-      <button onclick="openGame()">🚪 Open a game</button>
-    </div>
+    <!-- ===================== LEFT SIDE ===================== -->
+    <aside class="gm-side">
 
-    <!-- While the game is open -->
-    <div id="liveOpen" class="hidden">
-      <p class="hint">Your game code</p>
-      <div id="gameCode" class="game-code"></div>
-      <button class="small-button" onclick="copyText(gameCode, 'Code copied!')">📋 Copy code</button>
-      <button class="small-button" onclick="copyText(inviteLink, 'Invite link copied!')" id="copyInviteBtn">🔗 Copy invite link</button>
-      <p id="inviteNote" class="hint"></p>
-      <p id="liveStatus" class="hint"></p>
+      <!-- REQUEST PLAYERS (live game) -->
+      <details class="panel drawer" id="livePanel" open>
+        <summary>📣 Game &amp; players</summary>
+        <p class="hint">Open a game, share the code, and players ask to join. You accept or decline each one.</p>
 
-      <h3 class="section-label">Join requests</h3>
-      <ul id="requests" class="request-list"></ul>
+        <!-- Before the game is open -->
+        <div id="liveClosed">
+          <label class="sheet-field">Game name (optional) <input id="gameName" type="text" class="wide-input" maxlength="40" placeholder="e.g. The Hollow Crown"></label>
+          <button onclick="openGame()">🚪 Open a game</button>
+        </div>
 
-      <h3 class="section-label">🗺️ Battle map</h3>
-      <div id="mapControls">
-        <button id="mapShareBtn" onclick="toggleMapShare()">🗺️ Show the map to players</button>
-        <label class="hint"><input type="checkbox" id="mapMoveBox" onchange="setMapMoves()"> Let players move their own hero</label>
-        <p id="mapStatus" class="hint">Players can't see the map yet. Set it up below (or in its own tab), then press the button.</p>
-        <button class="small-button" id="mapShowBtn" onclick="toggleMapFrame()">👁️ Show the map here</button>
-        <a class="plain-button" href="map.html" target="_blank" rel="noopener">↗️ Open the map in its own tab</a>
-        <div id="mapFrameBox" class="map-frame-box hidden"></div>
+        <!-- While the game is open -->
+        <div id="liveOpen" class="hidden">
+          <p class="hint">Your game code</p>
+          <div id="gameCode" class="game-code"></div>
+          <button class="small-button" onclick="copyText(gameCode, 'Code copied!')">📋 Copy code</button>
+          <button class="small-button" onclick="copyText(inviteLink, 'Invite link copied!')" id="copyInviteBtn">🔗 Copy invite link</button>
+          <p id="inviteNote" class="hint"></p>
+          <p id="liveStatus" class="hint"></p>
+
+          <h3 class="section-label">Join requests</h3>
+          <ul id="requests" class="request-list"></ul>
+
+          <h3 class="section-label">🗺️ Sharing the map</h3>
+          <div id="mapControls">
+            <button id="mapShareBtn" onclick="toggleMapShare()">🗺️ Show the map to players</button>
+            <label class="hint"><input type="checkbox" id="mapMoveBox" onchange="setMapMoves()"> Let players move their own hero</label>
+            <p id="mapStatus" class="hint">Players can't see the map yet. Set it up in the middle, then press the button.</p>
+          </div>
+
+          <button class="small-button" onclick="closeGame()">Close game</button>
+        </div>
+
+        <p id="liveError" class="chat-error hidden"></p>
+      </details>
+
+      <!-- TABLE TALK + VOICE. This block MOVES: when the middle is empty it sits
+           there (big); otherwise it lives in this drawer. See placeTableBlock(). -->
+      <details class="panel drawer" id="tableDrawer" open>
+        <summary>💬 Table talk &amp; voice</summary>
+        <div id="tableDock">
+          <div id="tableBlock">
+            <p id="tableClosed" class="hint">Open a game (📣 Game &amp; players) to talk with your players here.</p>
+            <div id="tableOpen" class="hidden">
+              <h3 class="section-label">🎙️ Voice chat</h3>
+              <div id="voiceControls">
+                <button id="voiceStartBtn" onclick="startVoice()">🎙️ Start voice chat</button>
+                <button class="small-button hidden" id="voiceMuteBtn" onclick="toggleDmMute()">🔇 Mute me</button>
+                <button class="small-button hidden" id="voiceStopBtn" onclick="stopVoice()">Stop voice chat</button>
+                <p id="voiceStatus" class="hint">Players choose whether to join. Everyone who joins hears everyone else. Headphones stop echo.</p>
+                <ul id="voiceList" class="voice-list"></ul>
+              </div>
+
+              <h3 class="section-label">Table talk</h3>
+              <div id="talkFeed" class="chat-log short-log"></div>
+              <div class="settings add-form">
+                <input id="announceText" type="text" class="wide-input" maxlength="300" placeholder="Message to all players">
+                <button class="small-button" onclick="sendAnnouncement()">Send</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- THE PARTY -->
+      <details class="panel drawer">
+        <summary>🧑‍🤝‍🧑 The Party</summary>
+        <p class="hint">Your players at a glance. Saved in this browser.</p>
+
+        <button class="small-button" onclick="importCharacters()">📥 Import from saved characters</button>
+        <p id="importStatus" class="hint"></p>
+
+        <div class="settings add-form">
+          <input id="partyName" type="text" placeholder="Player name">
+          <input id="partyAc" type="number" placeholder="AC">
+          <input id="partyHp" type="number" placeholder="Max HP">
+          <button class="small-button" onclick="addPartyMember()">Add</button>
+        </div>
+
+        <ul id="party" class="combatant-list"></ul>
+      </details>
+
+      <!-- INITIATIVE TRACKER -->
+      <details class="panel drawer">
+        <summary>⚔️ Initiative Tracker</summary>
+
+        <!-- The form for adding a creature or player to the fight -->
+        <div class="settings add-form">
+          <input id="combatantName" type="text" placeholder="Name">
+          <input id="combatantInit" type="number" placeholder="Init">
+          <button class="small-button" onclick="rollInitiative()" title="Roll a d20 for initiative">🎲</button>
+          <input id="combatantHp" type="number" placeholder="HP">
+          <button class="small-button" onclick="addCombatant()">Add</button>
+        </div>
+
+        <p id="roundInfo"></p>
+        <ul id="combatants"></ul>
+
+        <button onclick="nextTurn()">Next turn ▶</button>
+        <br>
+        <button class="small-button" onclick="endCombat()">End combat</button>
+      </details>
+    </aside>
+
+    <!-- ===================== THE MIDDLE (the stage) ===================== -->
+    <main class="gm-stage">
+      <!-- One button per thing that can fill the middle. setStage() does the work. -->
+      <div class="stage-tabs" id="stageTabs">
+        <button class="small-button" data-stage="map">🗺️ Battle map</button>
+        <button class="small-button" data-stage="adventure">📜 Starter adventure</button>
+        <button class="small-button" data-stage="library">📚 Library</button>
+        <button class="small-button" data-stage="none">🙈 Hide</button>
       </div>
-
-      <h3 class="section-label">🎵 Music for the table</h3>
-      <div id="musicControls">
-        <button id="tableMusicBtn" onclick="toggleTableMusic()">🎵 Start music for the table</button>
-        <div id="moodButtons" class="shop-tabs"></div>
-        <label class="hint"><input type="checkbox" id="gmMusicBox" onchange="toggleGmMusic()"> Also play it on this device</label>
-        <label class="hint">Volume here <input type="range" id="gmMusicVol" min="0" max="100" value="40"></label>
-        <p id="tableMusicStatus" class="hint">The music is made right on each device, so it uses no data. Players choose whether to join in.</p>
+      <!-- Each page gets its own frame, made the first time it's shown and then kept,
+           so switching back doesn't lose your place. -->
+      <div id="stagePanes">
+        <div class="stage-pane hidden" id="stage-map"></div>
+        <div class="stage-pane hidden" id="stage-adventure"></div>
+        <div class="stage-pane hidden" id="stage-library"></div>
+        <div class="stage-pane stage-empty hidden" id="stage-none"></div>
       </div>
+    </main>
 
-      <h3 class="section-label">🎙️ Voice chat</h3>
-      <div id="voiceControls">
-        <button id="voiceStartBtn" onclick="startVoice()">🎙️ Start voice chat</button>
-        <button class="small-button hidden" id="voiceMuteBtn" onclick="toggleDmMute()">🔇 Mute me</button>
-        <button class="small-button hidden" id="voiceStopBtn" onclick="stopVoice()">Stop voice chat</button>
-        <p id="voiceStatus" class="hint">Players choose whether to join. Everyone who joins hears everyone else. Headphones stop echo.</p>
-        <ul id="voiceList" class="voice-list"></ul>
-      </div>
+    <!-- ===================== RIGHT SIDE ===================== -->
+    <aside class="gm-side">
 
-      <h3 class="section-label">Table talk</h3>
-      <div id="talkFeed" class="chat-log short-log"></div>
-      <div class="settings add-form">
-        <input id="announceText" type="text" class="wide-input" maxlength="300" placeholder="Message to all players">
-        <button class="small-button" onclick="sendAnnouncement()">Send</button>
-      </div>
-      <button class="small-button" onclick="closeGame()">Close game</button>
-    </div>
+      <!-- SECRET ROLLS -->
+      <details class="panel drawer" open>
+        <summary>🤫 Secret Roll</summary>
+        <p class="hint">For rolls the players shouldn't see: hidden checks, monster saves, random encounters.</p>
 
-    <p id="liveError" class="chat-error hidden"></p>
-  </div>
+        <button class="small-button" onclick="secretRoll(4)">d4</button>
+        <button class="small-button" onclick="secretRoll(6)">d6</button>
+        <button class="small-button" onclick="secretRoll(8)">d8</button>
+        <button class="small-button" onclick="secretRoll(10)">d10</button>
+        <button class="small-button" onclick="secretRoll(12)">d12</button>
+        <button class="small-button" onclick="secretRoll(20)">d20</button>
+        <button class="small-button" onclick="secretRoll(100)">d100</button>
 
-  <!-- ===================== BATTLE SIMULATOR ===================== -->
-  <div class="panel">
-    <h2>⚔️ Battle Simulator</h2>
-    <p class="hint">Pick monsters from the SRD, see how hard the fight is by the rules, and play it out.</p>
-    <a class="plain-button" href="battle.html">⚔️ Open the Battle Simulator</a>
-  </div>
+        <div id="secretResult" class="big-result">–</div>
+        <p id="secretLabel" class="hint"></p>
+      </details>
 
-  <!-- ===================== BATTLE MAP ===================== -->
-  <div class="panel">
-    <h2>🗺️ Battle Map</h2>
-    <p class="hint">A grid for heroes, monsters, walls and water. Drag tokens and it counts the movement by the rules.</p>
-    <a class="plain-button" href="map.html">🗺️ Open the Battle Map</a>
-  </div>
+      <!-- MUSIC -->
+      <details class="panel drawer">
+        <summary>🎵 Music for the table</summary>
+        <div id="musicControls">
+          <button id="tableMusicBtn" onclick="toggleTableMusic()">🎵 Start music for the table</button>
+          <div id="moodButtons" class="shop-tabs"></div>
+          <label class="hint"><input type="checkbox" id="gmMusicBox" onchange="toggleGmMusic()"> Also play it on this device</label>
+          <label class="hint">Volume here <input type="range" id="gmMusicVol" min="0" max="100" value="40"></label>
+          <p id="tableMusicStatus" class="hint">The music is made right on each device, so it uses no data. Players in a live game choose whether to join in.</p>
+        </div>
+      </details>
 
-  <!-- ===================== STARTER ADVENTURE ===================== -->
-  <div class="panel">
-    <h2>📜 Starter adventure</h2>
-    <p class="hint">"The Sunken Bell": a free, ready-to-run adventure for 3 to 6 heroes of level 1 to 2.</p>
-    <a class="plain-button" href="adventure.html">📜 Open the adventure</a>
-  </div>
+      <!-- SESSION NOTES -->
+      <details class="panel drawer">
+        <summary>📝 Session Notes</summary>
+        <textarea id="notes" placeholder="NPC names, plot hooks, what the party did last session..."></textarea>
+        <p id="notesStatus" class="hint">Notes save automatically in this browser.</p>
+      </details>
 
-  <!-- ===================== SECRET ROLLS ===================== -->
-  <div class="panel">
-    <h2>🤫 Secret Roll</h2>
-    <p class="hint">For rolls the players shouldn't see: hidden checks, monster saves, random encounters.</p>
+      <!-- BOOKS: our free Library opens in the middle; the official books open in a new tab -->
+      <details class="panel drawer">
+        <summary>📚 Books &amp; rules</summary>
+        <p class="hint">Open a part of the free Library in the middle:</p>
+        <button class="small-button" onclick="setStage('library', 'spells')">✨ Spells</button>
+        <button class="small-button" onclick="setStage('library', 'monsters')">🐉 Monsters</button>
+        <button class="small-button" onclick="setStage('library', 'rules')">📏 Rules in brief</button>
+        <button class="small-button" onclick="setStage('library', 'items')">💎 Magic items</button>
+        <button class="small-button" onclick="setStage('library', 'books')">📖 Free books</button>
+        <button class="small-button" onclick="setStage('adventure')">📜 Starter adventure</button>
 
-    <button class="small-button" onclick="secretRoll(4)">d4</button>
-    <button class="small-button" onclick="secretRoll(6)">d6</button>
-    <button class="small-button" onclick="secretRoll(8)">d8</button>
-    <button class="small-button" onclick="secretRoll(10)">d10</button>
-    <button class="small-button" onclick="secretRoll(12)">d12</button>
-    <button class="small-button" onclick="secretRoll(20)">d20</button>
-    <button class="small-button" onclick="secretRoll(100)">d100</button>
+        <h3 class="section-label">Free official rules</h3>
+        <ul class="book-list">
+          <!-- target="_blank" opens the link in a new tab, so the GM screen stays open -->
+          <li>
+            <a href="https://www.dndbeyond.com/srd" target="_blank" rel="noopener">System Reference Document (SRD 5.2.1)</a>
+            <br><span class="hint">The core rules, classes, spells and monsters. Free to read and download.</span>
+          </li>
+          <li>
+            <a href="https://www.dndbeyond.com/sources/dnd/br-2024" target="_blank" rel="noopener">Basic Rules (2024)</a>
+            <br><span class="hint">A free, easy-to-read version of the rules for getting started.</span>
+          </li>
+        </ul>
 
-    <div id="secretResult" class="big-result">–</div>
-    <p id="secretLabel" class="hint"></p>
-  </div>
+        <h3 class="section-label">The three core books</h3>
+        <ul class="book-list">
+          <li>📕 <strong>Player's Handbook</strong> <span class="hint">— classes, species, spells, character creation</span></li>
+          <li>📘 <strong>Game Master's Guide</strong> <span class="hint">— running games, building worlds, magic items</span></li>
+          <li>📗 <strong>Monster Manual</strong> <span class="hint">— hundreds of creatures and their stat blocks</span></li>
+          <li>
+            <a href="https://marketplace.dndbeyond.com/" target="_blank" rel="noopener">Get them on the official marketplace</a>
+            <span class="hint">(paid, digital or print)</span>
+          </li>
+        </ul>
+      </details>
 
-  <!-- ===================== THE PARTY ===================== -->
-  <div class="panel">
-    <h2>🧑‍🤝‍🧑 The Party</h2>
-    <p class="hint">Your players at a glance. Saved in this browser.</p>
+      <!-- CONDITIONS -->
+      <details class="panel drawer">
+        <summary>🌀 Conditions</summary>
+        <p class="hint">Click a condition to see what it does.</p>
+        <!-- Filled in by JavaScript from the CONDITIONS list -->
+        <div id="conditions"></div>
+        <p class="hint attribution">
+          Condition summaries are paraphrased from the System Reference Document 5.2.1 by Wizards of the Coast LLC,
+          available at dndbeyond.com/srd, licensed under the Creative Commons Attribution 4.0 International License.
+        </p>
+      </details>
 
-    <button class="small-button" onclick="importCharacters()">📥 Import from saved characters</button>
-    <p id="importStatus" class="hint"></p>
-
-    <div class="settings add-form">
-      <input id="partyName" type="text" placeholder="Player name">
-      <input id="partyAc" type="number" placeholder="AC">
-      <input id="partyHp" type="number" placeholder="Max HP">
-      <button class="small-button" onclick="addPartyMember()">Add</button>
-    </div>
-
-    <ul id="party" class="combatant-list"></ul>
-  </div>
-
-  <!-- ===================== INITIATIVE TRACKER ===================== -->
-  <div class="panel">
-    <h2>⚔️ Initiative Tracker</h2>
-
-    <!-- The form for adding a creature or player to the fight -->
-    <div class="settings add-form">
-      <input id="combatantName" type="text" placeholder="Name">
-      <input id="combatantInit" type="number" placeholder="Init">
-      <button class="small-button" onclick="rollInitiative()" title="Roll a d20 for initiative">🎲</button>
-      <input id="combatantHp" type="number" placeholder="HP">
-      <button class="small-button" onclick="addCombatant()">Add</button>
-    </div>
-
-    <p id="roundInfo"></p>
-    <ul id="combatants"></ul>
-
-    <button onclick="nextTurn()">Next turn ▶</button>
-    <br>
-    <button class="small-button" onclick="endCombat()">End combat</button>
-  </div>
-
-  <!-- ===================== SESSION NOTES ===================== -->
-  <div class="panel">
-    <h2>📜 Session Notes</h2>
-    <textarea id="notes" placeholder="NPC names, plot hooks, what the party did last session..."></textarea>
-    <p id="notesStatus" class="hint">Notes save automatically in this browser.</p>
-  </div>
-
-  <!-- ===================== RULEBOOKS & REFERENCE ===================== -->
-  <div class="panel">
-    <h2>📚 Rulebooks & Reference</h2>
-
-    <h3 class="section-label">Free official rules</h3>
-    <ul class="book-list">
-      <!-- target="_blank" opens the link in a new tab, so the GM screen stays open -->
-      <li>
-        <a href="https://www.dndbeyond.com/srd" target="_blank">System Reference Document (SRD 5.2.1)</a>
-        <br><span class="hint">The core rules, classes, spells and monsters. Free to read and download.</span>
-      </li>
-      <li>
-        <a href="https://www.dndbeyond.com/sources/dnd/br-2024" target="_blank">D&D Beyond Basic Rules (2024)</a>
-        <br><span class="hint">A free, easy-to-read version of the rules for getting started.</span>
-      </li>
-    </ul>
-
-    <h3 class="section-label">The three core books</h3>
-    <ul class="book-list">
-      <li>📕 <strong>Player's Handbook</strong> <span class="hint">— classes, species, spells, character creation</span></li>
-      <li>📘 <strong>Game Master's Guide</strong> <span class="hint">— running games, building worlds, magic items</span></li>
-      <li>📗 <strong>Monster Manual</strong> <span class="hint">— hundreds of creatures and their stat blocks</span></li>
-      <li>
-        <a href="https://marketplace.dndbeyond.com/" target="_blank">Get them on the D&D Beyond Marketplace</a>
-        <span class="hint">(paid, digital or print)</span>
-      </li>
-    </ul>
-
-    <h3 class="section-label">Conditions quick reference</h3>
-    <p class="hint">Click a condition to see what it does.</p>
-    <!-- Filled in by JavaScript from the CONDITIONS list -->
-    <div id="conditions"></div>
-
-    <p class="hint attribution">
-      Condition summaries are paraphrased from the System Reference Document 5.2.1 by Wizards of the Coast LLC,
-      available at dndbeyond.com/srd, licensed under the Creative Commons Attribution 4.0 International License.
-    </p>
+      <!-- BATTLE SIMULATOR -->
+      <details class="panel drawer">
+        <summary>⚔️ Battle Simulator</summary>
+        <p class="hint">Pick monsters from the SRD, see how hard the fight is by the rules, and play it out.</p>
+        <a class="plain-button" href="battle.html">⚔️ Open the Battle Simulator</a>
+      </details>
+    </aside>
   </div>
 
   <!-- Shared dice helpers (rollOneDie). Must load BEFORE the script below. -->
@@ -792,6 +835,8 @@
     async function showOpenGame() {
       document.getElementById("liveClosed").classList.add("hidden");
       document.getElementById("liveOpen").classList.remove("hidden");
+      document.getElementById("tableOpen").classList.remove("hidden");
+      document.getElementById("tableClosed").classList.add("hidden");
       document.getElementById("gameCode").textContent = gameCode;
       setLiveStatus("🟢 Game open. Waiting for players…");
       renderRequests();
@@ -849,6 +894,8 @@
       talkLog.length = 0;
       document.getElementById("liveOpen").classList.add("hidden");
       document.getElementById("liveClosed").classList.remove("hidden");
+      document.getElementById("tableOpen").classList.add("hidden");
+      document.getElementById("tableClosed").classList.remove("hidden");
       renderParty();
     }
 
@@ -1162,7 +1209,7 @@
       if (!button) return;
       button.textContent = mapShare.on ? "🙈 Hide the map from players" : "🗺️ Show the map to players";
       document.getElementById("mapMoveBox").checked = mapShare.moves;
-      let status = "Players can't see the map yet. Set it up below (or in its own tab), then press the button.";
+      let status = "Players can't see the map yet. Set it up in the middle, then press the button.";
       if (mapShare.on) {
         const tokens = mapShare.latest ? mapShare.latest.tokens.length : 0;
         status = "🟢 Players can see the map (" + tokens + " token" + (tokens === 1 ? "" : "s") + " visible to them)." +
@@ -1172,20 +1219,83 @@
       document.getElementById("mapStatus").textContent = status;
     }
 
-    // The map shown right here on the GM Screen (a frame of map.html).
-    function toggleMapFrame() {
-      const box = document.getElementById("mapFrameBox");
-      const open = box.classList.contains("hidden");
-      box.innerHTML = "";
-      if (open) {
-        const frame = document.createElement("iframe");
-        frame.src = "map.html?embed=1";
-        frame.title = "Battle map";
-        frame.className = "map-frame";
-        box.append(frame);
+    // ---------- The stage (the middle of the screen) ----------
+    // The middle shows ONE thing at a time: the battle map, the starter adventure,
+    // the Library, or nothing ("none"), which shows table talk + voice there instead.
+    // An <iframe> is a window that shows another page inside this one. "?embed=1" tells
+    // that page to hide its own menus, because the GM Screen already has them.
+    const STAGE_PAGES = {
+      map: "map.html?embed=1",
+      adventure: "adventure.html?embed=1",
+      library: "library.html?embed=1"
+    };
+    const STAGE_TITLES = { map: "Battle map", adventure: "Starter adventure", library: "Library" };
+    let stageNow = "map";
+
+    // libraryTab (optional) opens one Library tab, e.g. "monsters".
+    function setStage(name, libraryTab) {
+      if (!STAGE_PAGES[name] && name !== "none") name = "map";
+      stageNow = name;
+      try { localStorage.setItem("dmStage", name); } catch (error) { /* private mode: just don't remember */ }
+
+      const pane = document.getElementById("stage-" + name);
+      if (STAGE_PAGES[name]) {
+        let frame = pane.querySelector("iframe");
+        const wanted = STAGE_PAGES[name] + (libraryTab ? "#" + libraryTab : "");
+        if (!frame) {
+          // First time: make the frame. After that we keep it, so you don't lose your place.
+          frame = document.createElement("iframe");
+          frame.title = STAGE_TITLES[name];
+          frame.className = "stage-frame";
+          frame.src = wanted;
+          pane.append(frame);
+        } else if (libraryTab) {
+          frame.src = wanted;   // a different Library tab: load it
+        }
       }
-      box.classList.toggle("hidden", !open);
-      document.getElementById("mapShowBtn").textContent = open ? "🙈 Hide the map here" : "👁️ Show the map here";
+
+      for (const key of ["map", "adventure", "library", "none"]) {
+        document.getElementById("stage-" + key).classList.toggle("hidden", key !== name);
+      }
+      for (const button of document.querySelectorAll("#stageTabs button")) {
+        button.classList.toggle("active", button.dataset.stage === name);
+      }
+      placeTableBlock();
+    }
+
+    // Table talk + voice go in the middle when it's empty, otherwise in their side drawer.
+    // Moving an element with append() keeps everything inside it working.
+    function placeTableBlock() {
+      const block = document.getElementById("tableBlock");
+      const drawer = document.getElementById("tableDrawer");
+      if (stageNow === "none") {
+        document.getElementById("stage-none").append(block);
+        drawer.classList.add("hidden");
+      } else {
+        document.getElementById("tableDock").append(block);
+        drawer.classList.remove("hidden");
+      }
+    }
+
+    // A "Put this fight on the Battle Map" button inside the adventure frame asks us
+    // to show the map (it saved the fight first). Only accept messages from our own pages.
+    window.addEventListener("message", function (event) {
+      if (event.origin !== location.origin) return;
+      if (!event.data || event.data.type !== "showMap") return;
+      const mapFrame = document.querySelector("#stage-map iframe");
+      if (mapFrame) mapFrame.src = STAGE_PAGES.map;   // reload, so the map picks up the fight
+      setStage("map");
+    });
+
+    for (const button of document.querySelectorAll("#stageTabs button")) {
+      button.addEventListener("click", function () {
+        setStage(button.dataset.stage);
+      });
+    }
+    {
+      let saved = "map";
+      try { saved = localStorage.getItem("dmStage") || "map"; } catch (error) { /* use the map */ }
+      setStage(saved);
     }
 
 

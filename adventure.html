@@ -53,6 +53,10 @@
   <script src="monsters.js"></script>
   <script src="voice.js"></script>
   <script>
+    // Shown inside the GM Screen (adventure.html?embed=1): hide the page furniture.
+    const embedded = new URLSearchParams(location.search).get("embed") === "1" && window.parent !== window;
+    if (embedded) document.body.classList.add("embedded");
+
     const el = function (id) {
       return document.getElementById(id);
     };
@@ -157,7 +161,12 @@
         } catch (error) {
           return;
         }
-        location.href = "map.html";
+        // Inside the GM Screen? Ask it to show its own map. Otherwise go to the map page.
+        if (embedded) {
+          window.parent.postMessage({ type: "showMap" }, location.origin);
+        } else {
+          location.href = "map.html";
+        }
       });
       card.append(button);
       return card;

@@ -1352,6 +1352,7 @@ body.embedded .top-nav,
 body.embedded h1,
 body.embedded .site-footer,
 body.embedded .back-link,
+body.embedded .feedback-link,
 body.embedded #shareHint {
   display: none;
 }
@@ -1733,4 +1734,117 @@ body.embedded {
 .tutor-speak {
   display: block;
   margin: 0 0 10px;
+}
+
+/* =====================================================================
+   GM SCREEN: one screen in three parts (dm.html)
+   Phone: the middle (stage) comes first, then the side drawers below it.
+   Wide screen: left side | middle | right side, each scrolling on its own.
+   ===================================================================== */
+body.gm-screen {
+  padding: 12px 12px 24px;
+}
+
+.gm-header h1 {
+  margin: 4px 0;
+}
+
+.gm-header p {
+  margin: 0 0 12px;
+}
+
+.gm-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gm-stage {
+  order: -1;                   /* on a phone, show the middle first */
+  min-width: 0;
+}
+
+/* A side "drawer": a panel you open and close by clicking its title */
+.panel.drawer {
+  max-width: none;
+  margin: 0 0 10px;
+  padding: 0 14px;
+}
+
+.panel.drawer[open] {
+  padding-bottom: 14px;
+}
+
+.drawer > summary {
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1.1em;
+  padding: 12px 0;
+  text-align: left;
+}
+
+.stage-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.stage-tabs button.active {
+  background-color: #9b7fd1;
+  color: #1a1424;
+}
+
+.stage-frame {
+  display: block;
+  width: 100%;
+  height: 75vh;
+  border: 2px solid #9b7fd1;
+  border-radius: 10px;
+  background-color: #1a1424;
+}
+
+/* When the middle is empty, table talk + voice fill it */
+.stage-empty {
+  padding: 16px;
+  border: 2px solid #9b7fd1;
+  border-radius: 10px;
+  background-color: #261c33;
+}
+
+.stage-empty .short-log {
+  height: 50vh;
+}
+
+@media (min-width: 1000px) {
+  .gm-layout {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr) 300px;
+    align-items: start;
+  }
+
+  .gm-stage {
+    order: 0;
+  }
+
+  /* Sticky: once you scroll past the title, all three parts stay on screen */
+  .gm-side,
+  .gm-stage {
+    position: sticky;
+    top: 8px;
+  }
+
+  .gm-side {
+    max-height: calc(100vh - 16px);
+    overflow-y: auto;
+  }
+
+  .stage-frame {
+    height: calc(100vh - 70px);
+  }
+
+  .stage-empty .short-log {
+    height: calc(100vh - 360px);
+  }
 }

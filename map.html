@@ -266,7 +266,18 @@
         if (!data || typeof data !== "object") return;
         if (data.type === "hello") broadcastMap();                 // the GM Screen asks for the latest map
         if (data.type === "playerMove") applyPlayerMove(data);     // a player moved their own hero
+        if (data.type === "setHp") applyHpFromScreen(data);        // the GM Screen's turn cards dealt damage
       };
+    }
+
+    // The GM Screen's turn cards changed a token's HP (an attack or a spell).
+    function applyHpFromScreen(data) {
+      const token = findToken(Number(data.tokenId));
+      const hp = Math.round(Number(data.hp));
+      if (!token || !isFinite(hp)) return;
+      token.hp = Math.min(Math.max(hp, 0), token.maxHp);
+      saveMap();
+      render();
     }
 
     // A player dragged their own hero. The GM Screen has already checked WHO they are

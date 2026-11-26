@@ -917,43 +917,30 @@
 
       const box = el("chatInput");
       const before = box.value.trim() ? box.value.trim() + " " : "";   // keep what's already typed
-      recognizer = new Recognition();
-      recognizer.lang = navigator.language || "en-US";
-      recognizer.interimResults = true;   // show words while you're still talking
-      recognizer.continuous = false;      // stop after you pause
-
-      recognizer.onresult = function (event) {
-        let heard = "";
-        for (const result of event.results) {
-          heard += result[0].transcript;
-        }
-        box.value = before + heard;
+      const messages = {
+        "not-allowed": "The microphone is blocked. Allow it in your browser's address bar, then try again.",
+        "service-not-allowed": "The microphone is blocked. Allow it in your browser's address bar, then try again.",
+        "audio-capture": "No microphone was found.",
+        "network": "Voice typing needs an internet connection."
       };
-
-      recognizer.onerror = function (event) {
-        const messages = {
-          "not-allowed": "The microphone is blocked. Allow it in your browser's address bar, then try again.",
-          "service-not-allowed": "The microphone is blocked. Allow it in your browser's address bar, then try again.",
-          "no-speech": "I didn't hear anything. Press the button and speak.",
-          "audio-capture": "No microphone was found.",
-          "network": "Voice typing needs an internet connection."
-        };
-        setVoiceStatus(messages[event.error] || "Voice typing stopped (" + event.error + ").");
-      };
-
-      recognizer.onend = function () {
-        recognizer = null;
-        el("micBtn").textContent = "🎤 Speak your reply";
-        if (el("voiceStatus").textContent === "Listening… speak now.") {
-          setVoiceStatus("Got it. Check the text, then press Send.");
-        }
-        box.focus();
-      };
-
       try {
-        recognizer.start();
+        // Voice.patientListen (voice.js) keeps listening through short pauses and
+        // stops after about 4 quiet seconds, so you aren't cut off mid-sentence.
+        recognizer = Voice.patientListen({
+          onText: function (heard) {
+            box.value = before + heard;
+          },
+          onEnd: function (reason) {
+            recognizer = null;
+            el("micBtn").textContent = "🎤 Speak your reply";
+            if (messages[reason]) setVoiceStatus(messages[reason]);
+            else if (box.value.trim() === before.trim()) setVoiceStatus("I didn't hear anything. Press the button and speak.");
+            else setVoiceStatus("Got it. Check the text, then press Send.");
+            box.focus();
+          }
+        });
         el("micBtn").textContent = "⏹ Stop listening";
-        setVoiceStatus("Listening… speak now.");
+        setVoiceStatus("Listening… speak now. (It stops after a few quiet seconds.)");
       } catch (error) {
         recognizer = null;
         setVoiceStatus("Couldn't start voice typing. Try again.");

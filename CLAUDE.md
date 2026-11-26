@@ -48,10 +48,10 @@ Pages should **calculate** from the rules (modifiers, proficiency, HP, AC, saves
 - `dm-start.html` GM choice; `dm-learn.html` GM course; `dm.html` GM Screen (one screen: side drawers + middle stage showing the map, adventure, Library, Battle Simulator, Characters, GM course or shop; live game, voice, music, party + initiative in one auto-filled drawer, notes, books); `battle.html` Battle Simulator; `map.html` Battle Map; `adventure.html` starter adventure "The Sunken Bell"
 - `library.html` free SRD Library; `equipment.html` shop (3D-printed gear, Google Form orders); `support.html` tips, share, waiting list; `policies.html` privacy + shop policies; `dice.html` old dice roller (no longer linked)
 
-**Shared scripts** (load order on a page: `dice.js`, `rules.js`, `spells.js`, `monsters.js`, `play.js`, `music.js`, `voice.js`, then the page script, then `pwa.js` and `feedback.js` last)
+**Shared scripts** (load order on a page: `dice.js`, `rules.js`, `spells.js`, `monsters.js`, `play.js`, `combat.js`, `music.js`, `voice.js`, then the page script, then `pwa.js` and `feedback.js` last)
 - `rules.js` ALL game rules and data (classes, species, items, weapons, armor, spellcasting tables, conditions, XP budgets) and every rule calculation; `spells.js` 339 SRD spells; `monsters.js` 288 SRD monsters
 - `play.js` roll helpers (pass/fail), the sheet text for the AI, live-game data cleaners (`clean*`), share-link helpers; `dice.js` dice math; `music.js` generated music + `createMusicController`; `voice.js` 🔊/🎤 helper (`window.Voice`)
-- `maps.js` pre-made maps & dungeons drawn as letter rows; `mini3d.js` 3D shapes + STL export; `equipment.js` shop products + order form settings; `monetize.js` tip links + waiting-list form; `feedback.js` the 💬 link on every page; `pwa.js` + `sw.js` install and offline support
+- `combat.js` attack/spell rules for turn cards and live player actions (profiles, plausibility checks, dice); `maps.js` pre-made maps & dungeons drawn as letter rows; `mini3d.js` 3D shapes + STL export; `equipment.js` shop products + order form settings; `monetize.js` tip links + waiting-list form; `feedback.js` the 💬 link on every page; `pwa.js` + `sw.js` install and offline support
 - `server.rb` the Ruby helper server (serves the pages, hosts the AI endpoint, holds the API key); `style.css` all styles; `manifest.webmanifest`, `icons/`, `sitemap.xml`, `robots.txt`
 - `docs/FEATURES.md` detailed notes per file/feature; `docs/LIMITS_AND_TESTING.md` known limits, how we test, roadmap
 

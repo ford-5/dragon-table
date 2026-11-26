@@ -33,6 +33,18 @@
     <a href="dm-start.html" class="back-link">← Back</a>
   </header>
 
+  <!-- TURN CARDS: one card per creature in the fight, in initiative order. Click a card to
+       see what it can do; pick an attack or spell and a target, and the dice do the rest. -->
+  <section id="turnBar" class="turn-bar hidden">
+    <div class="turn-head">
+      <strong id="turnRound"></strong>
+      <button class="small-button" onclick="nextTurn()">Next turn ▶</button>
+      <button class="small-button" onclick="endCombat()">End combat</button>
+    </div>
+    <div id="turnCards" class="turn-cards"></div>
+    <div id="actionPanel" class="action-panel"></div>
+  </section>
+
   <!-- ONE screen in three parts: tools on the LEFT and RIGHT sides, and the
        STAGE in the middle (battle map, adventure or library). Each side tool is a
        <details> "drawer": click its title to pull it open or push it closed. -->
@@ -275,8 +287,10 @@
   <!-- Shared dice helpers (rollOneDie). Must load BEFORE the script below. -->
   <script src="dice.js"></script>
   <script src="rules.js"></script>
+  <script src="spells.js"></script>
   <script src="monsters.js"></script>
   <script src="play.js"></script>
+  <script src="combat.js"></script>
   <script src="music.js"></script>
   <script src="voice.js"></script>
 
@@ -365,6 +379,7 @@
       if (combatant.partyId) {
         setPartyHp(combatant.partyId, combatant.hp);
       }
+      syncMapHp(combatant);
       render();
     }
 
@@ -404,6 +419,12 @@
         }
         currentId = combatants[index].id;
       }
+      const now = findCombatant(currentId);
+      if (now) now.acted = false;     // a new turn: they can act again
+      panelActorId = currentId;       // show their actions
+      panelActionKey = null;
+      panelTargets = [];
+      lastResult = "";
       render();
     }
 
@@ -465,6 +486,11 @@
         list.append(item);
       }
 
+      if (combatUiReady) {
+        renderTurnCards();
+        sendTurnInfo();
+      }
+
       // Update the round message.
       const roundInfo = document.getElementById("roundInfo");
       if (currentId === null) {
@@ -472,6 +498,346 @@
       } else {
         roundInfo.textContent = "Round " + round + " — " + findCombatant(currentId).name + "'s turn";
       }
+    }
+
+    // =====================================================================
+    // TURN CARDS AND ACTIONS (the row across the top of the screen)
+    // The rules for attacks and spells live in combat.js. This part shows the
+    // cards, lets the GM pick an action and targets, and applies the damage.
+    // =====================================================================
+    let combatUiReady = false;   // true once the whole page (party, live game) has loaded
+    let panelActorId = null;     // whose card is open
+    let panelActionKey = null;   // the attack or spell picked
+    let panelTargets = [];       // the ids of the chosen targets
+    let panelSlot = "";          // the spell slot picked, like "slot:2" or "pact:3"
+    let panelMode = "normal";    // normal, advantage or disadvantage
+    let lastResult = "";         // what the dice said last time
+    const lastTurnSent = new Map();   // player key -> the last turn message (so we don't repeat it)
+
+    function monsterByName(name) {
+      return MONSTERS.find(function (m) { return m.n === name; }) || null;
+    }
+
+    // A party member's combat profile: worked out from their saved character (heroes made
+    // in this browser), or the one their own device sent (players in a live game).
+    function profileOfMember(member) {
+      if (!member) return null;
+      if (member.characterId) {
+        const saved = loadCharacters().find(function (ch) { return ch.id === member.characterId; });
+        if (saved) return makeCombatProfile(saved);
+      }
+      return member.combat || null;
+    }
+
+    // Everything the cards and the dice need to know about one combatant.
+    function combatInfo(c) {
+      if (c.partyId) {
+        const member = findPartyMember(c.partyId);
+        const profile = profileOfMember(member);
+        return { side: "hero", ac: member ? member.ac : 10, profile: profile,
+                 saves: profile ? profile.saves : {}, actions: heroActions(profile) };
+      }
+      const monster = c.monster ? monsterByName(c.monster) : null;
+      if (monster) {
+        return { side: "monster", ac: monster.ac, monster: monster, saves: monsterSaves(monster), actions: monsterActions(monster) };
+      }
+      return { side: "other", ac: c.ac || 10, saves: {}, actions: [] };
+    }
+
+    function targetInfo(c) {
+      const info = combatInfo(c);
+      return { id: c.id, name: c.name, ac: info.ac, saves: info.saves };
+    }
+
+    // Tell the Battle Map a monster's new HP (the map page listens on the same channel).
+    function syncMapHp(c) {
+      if (c && c.mapTokenId && typeof mapChannel !== "undefined" && mapChannel) {
+        mapChannel.postMessage({ type: "setHp", tokenId: c.mapTokenId, hp: c.hp });
+      }
+    }
+
+    function healthWords(c) {
+      if (c.hp <= 0) return "Down";
+      if (c.hp * 2 <= c.maxHp) return "Bloodied";
+      if (c.hp < c.maxHp) return "Hurt";
+      return "Unhurt";
+    }
+
+    // Small helper: an element with a class and some text.
+    function makeEl(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+
+    function renderTurnCards() {
+      const bar = document.getElementById("turnBar");
+      bar.classList.toggle("hidden", combatants.length === 0);
+      if (combatants.length === 0) {
+        panelActorId = null;
+        return;
+      }
+      if (panelActorId === null || !findCombatant(panelActorId)) panelActorId = currentId || combatants[0].id;
+      document.getElementById("turnRound").textContent = currentId === null
+        ? "⚔️ Everyone is in order: press Next turn to start"
+        : "⚔️ Round " + round;
+
+      const row = document.getElementById("turnCards");
+      row.innerHTML = "";
+      for (const c of combatants) {
+        const info = combatInfo(c);
+        const card = makeEl("button", "turn-card side-" + info.side);
+        if (c.id === currentId) card.classList.add("now");
+        if (c.id === panelActorId) card.classList.add("picked");
+        if (c.hp <= 0) card.classList.add("down");
+
+        card.append(makeEl("span", "turn-init", String(c.initiative)));
+        card.append(makeEl("strong", "turn-name", (c.secret ? "🙈 " : "") + c.name));
+        const bar = makeEl("span", "turn-hpbar");
+        const fill = makeEl("span", "turn-hpfill");
+        fill.style.width = Math.max(0, Math.min(1, c.hp / Math.max(c.maxHp, 1))) * 100 + "%";
+        bar.append(fill);
+        card.append(bar);
+        card.append(makeEl("span", "turn-line", "❤️ " + c.hp + "/" + c.maxHp + "  🛡️ AC " + info.ac));
+        let extra = "";
+        if (info.monster) extra = "CR " + info.monster.cr + " · " + info.actions.length + " attack" + (info.actions.length === 1 ? "" : "s");
+        if (info.profile) {
+          const slots = info.profile.slots.map(function (left, i) { return left ? (i + 1) + ":" + left : ""; }).filter(Boolean);
+          if (info.profile.pact && info.profile.pact.left) slots.push("pact " + info.profile.pact.left);
+          extra = slots.length ? "🔮 slots " + slots.join(" ") : info.actions.length + " actions";
+        }
+        if (c.acted && c.id === currentId) extra = "✅ acted · " + extra;
+        if (extra) card.append(makeEl("span", "turn-line hint", extra));
+        card.addEventListener("click", function () {
+          panelActorId = c.id;
+          panelActionKey = null;
+          panelTargets = [];
+          lastResult = "";
+          renderTurnCards();
+        });
+        row.append(card);
+      }
+      renderActionPanel();
+    }
+
+    function renderActionPanel() {
+      const panel = document.getElementById("actionPanel");
+      panel.innerHTML = "";
+      const actor = findCombatant(panelActorId);
+      if (!actor) return;
+      const info = combatInfo(actor);
+
+      const head = makeEl("p", "action-head");
+      head.append(makeEl("strong", "", (actor.id === currentId ? "▶ " : "") + actor.name + ": "));
+      head.append(document.createTextNode(info.actions.length
+        ? "pick an attack or spell, then the target."
+        : "no attacks or spells known. Use Damage / Heal in the Party & Initiative drawer."));
+      panel.append(head);
+
+      const chips = makeEl("div", "action-chips");
+      for (const action of info.actions) {
+        const chip = makeEl("button", "small-button" + (action.key === panelActionKey ? " picked" : ""), action.label);
+        chip.addEventListener("click", function () {
+          panelActionKey = action.key;
+          panelSlot = "";
+          // A sensible first target: yourself or an ally for healing, the first standing enemy otherwise
+          const onSelf = action.kind === "spell" && (action.spell.heal || isSelfSpell(action.spell));
+          const pick = combatants.find(function (t) {
+            if (onSelf) return t.id === actor.id;
+            return t.id !== actor.id && t.hp > 0 && Boolean(t.partyId) !== Boolean(actor.partyId);
+          });
+          panelTargets = pick ? [pick.id] : [];
+          lastResult = "";
+          renderActionPanel();
+        });
+        chips.append(chip);
+      }
+      panel.append(chips);
+
+      const action = info.actions.find(function (a) { return a.key === panelActionKey; });
+      if (action) {
+        const controls = makeEl("div", "action-controls");
+
+        // Spell slot (levelled spells only)
+        let slotLevel = 0;
+        if (action.kind === "spell" && action.spell.level > 0) {
+          const choices = profileSlotChoices(info.profile, action.spell);
+          if (!choices.length) {
+            controls.append(makeEl("span", "chat-error", "No spell slots left for this spell."));
+          } else {
+            const select = makeEl("select");
+            for (const choice of choices) {
+              select.append(new Option((choice.kind === "pact" ? "Pact slot, level " : "Level ") + choice.level + " slot (" + choice.left + " left)",
+                                       choice.kind + ":" + choice.level));
+            }
+            if (!choices.some(function (ch) { return ch.kind + ":" + ch.level === panelSlot; })) panelSlot = select.options[0].value;
+            select.value = panelSlot;
+            select.addEventListener("change", function () { panelSlot = select.value; renderActionPanel(); });
+            controls.append(select);
+            slotLevel = Number(panelSlot.split(":")[1]);
+          }
+        }
+
+        // Targets: tick up to the most this action allows
+        const max = maxTargets(action, info.profile, slotLevel);
+        controls.append(makeEl("span", "hint", max > 1 ? "Targets (up to " + max + "):" : "Target:"));
+        for (const t of combatants) {
+          const label = makeEl("label", "target-chip");
+          const box = makeEl("input");
+          box.type = "checkbox";
+          box.checked = panelTargets.includes(t.id);
+          box.addEventListener("change", function () {
+            if (box.checked) {
+              panelTargets.push(t.id);
+              while (panelTargets.length > max) panelTargets.shift();   // only the newest ones
+            } else {
+              panelTargets = panelTargets.filter(function (id) { return id !== t.id; });
+            }
+            renderActionPanel();
+          });
+          label.append(box, document.createTextNode(" " + t.name + (t.hp <= 0 ? " (down)" : "")));
+          controls.append(label);
+        }
+
+        const mode = makeEl("select");
+        mode.append(new Option("Normal roll", "normal"), new Option("Advantage", "advantage"), new Option("Disadvantage", "disadvantage"));
+        mode.value = panelMode;
+        mode.addEventListener("change", function () { panelMode = mode.value; });
+        controls.append(mode);
+
+        const go = makeEl("button", "small-button roll-it", "🎲 Roll it");
+        go.disabled = panelTargets.length === 0 || (action.kind === "spell" && action.spell.level > 0 && !panelSlot);
+        go.addEventListener("click", function () { gmDoAction(actor, info, action); });
+        controls.append(go);
+        panel.append(controls);
+      }
+
+      if (lastResult) panel.append(makeEl("pre", "action-result", lastResult));
+    }
+
+    // The GM rolls an action for anyone (a monster, or a hero whose player is at the table).
+    function gmDoAction(actor, info, action) {
+      let slot = null;
+      if (action.kind === "spell" && action.spell.level > 0) {
+        const [kind, level] = panelSlot.split(":");
+        slot = profileSlotChoices(info.profile, action.spell).find(function (ch) {
+          return ch.kind === kind && ch.level === Number(level);
+        });
+        if (!slot) return;
+      }
+      const targets = panelTargets.map(findCombatant).filter(Boolean).map(targetInfo);
+      const result = resolveAction(actor.name, action, targets, { mode: panelMode, slotLevel: slot ? slot.level : 0, profile: info.profile });
+      if (slot && actor.partyId) spendSlotFor(findPartyMember(actor.partyId), slot, true);
+      applyResult(actor, result);
+    }
+
+    // Spend a hero's spell slot: on their saved character (made in this browser),
+    // or on the copy of a live player's profile (and tell their device to mark it too).
+    function spendSlotFor(member, slot, tellPlayer) {
+      if (!member) return;
+      if (member.characterId) {
+        const list = loadCharacters();
+        const saved = list.find(function (ch) { return ch.id === member.characterId; });
+        if (saved && spendSpellSlot(saved, slot.kind, slot.level)) saveCharacters(list);
+        return;
+      }
+      if (member.combat) {
+        if (slot.kind === "pact" && member.combat.pact) member.combat.pact.left = Math.max(member.combat.pact.left - 1, 0);
+        else member.combat.slots[slot.level - 1] = Math.max((member.combat.slots[slot.level - 1] || 0) - 1, 0);
+        saveParty();
+      }
+      const connection = member.remoteKey ? liveConns.get(member.remoteKey) : null;
+      if (tellPlayer && connection && connection.open) connection.send({ type: "slotUsed", kind: slot.kind, level: slot.level });
+    }
+
+    // Take the HP off (or put it back), everywhere: the cards, the party list, the map.
+    function applyResult(actor, result) {
+      for (const change of result.changes) {
+        const target = findCombatant(change.id);
+        if (!target) continue;
+        target.hp = clampHp(target.hp + change.amount, target.maxHp);
+        if (target.partyId) setPartyHp(target.partyId, target.hp);
+        syncMapHp(target);
+      }
+      actor.acted = true;
+      lastResult = result.lines.join("\n");
+      for (const line of result.lines) {
+        talk("⚔️ " + line);
+        // Players see the results too (but never what a hidden monster did)
+        if (actor.secret) continue;
+        for (const connection of liveConns.values()) {
+          if (connection.open) connection.send({ type: "log", text: "⚔️ " + line });
+        }
+      }
+      render();
+    }
+
+    // Each live player gets the turn order (no hidden monsters; monsters' HP only as words)
+    // and whether it's their turn to act.
+    function sendTurnInfo() {
+      const order = combatants.filter(function (c) { return !c.secret; }).map(function (c) {
+        const side = c.partyId ? "hero" : (c.monster ? "monster" : "other");
+        const entry = { id: c.id, name: c.name, side: side, init: c.initiative, current: c.id === currentId };
+        if (side === "hero") {
+          entry.hp = c.hp;
+          entry.maxHp = c.maxHp;
+        } else {
+          entry.status = healthWords(c);
+        }
+        return entry;
+      });
+      for (const member of party) {
+        if (!member.remoteKey) continue;
+        const connection = liveConns.get(member.remoteKey);
+        if (!connection || !connection.open) continue;
+        const mine = combatants.find(function (c) { return c.partyId === member.id; });
+        const message = {
+          type: "turn", round: round, started: currentId !== null, order: order,
+          yourTurn: Boolean(mine) && mine.id === currentId && !mine.acted && mine.hp > 0
+        };
+        const text = JSON.stringify(message);
+        if (lastTurnSent.get(member.remoteKey) === text) continue;   // nothing new to say
+        lastTurnSent.set(member.remoteKey, text);
+        connection.send(message);
+      }
+    }
+
+    // A player chose their own attack or spell. Check it's plausible, then the GM's
+    // device rolls the dice (so nobody can fake a roll).
+    function handlePlayerAction(conn, member, data) {
+      const reply = function (ok, text, spent) {
+        conn.send({ type: "actionResult", ok: ok, text: text, spent: spent || null });
+      };
+      const me = combatants.find(function (c) { return c.partyId === member.id; });
+      if (!me || currentId !== me.id) return reply(false, "It isn't your turn yet.");
+      if (me.acted) return reply(false, "You've already acted this turn.");
+      if (me.hp <= 0) return reply(false, "You're down, so you can't act.");
+      const profile = profileOfMember(member);
+      if (!profile) return reply(false, "Your GM doesn't have your sheet yet. Press \"Send my updated sheet\".");
+
+      const action = heroActions(profile).find(function (a) { return a.key === data.action; });
+      if (!action) return reply(false, "That isn't one of your attacks or spells.");
+      let slot = null;
+      if (action.kind === "spell" && action.spell.level > 0) {
+        slot = profileSlotChoices(profile, action.spell).find(function (ch) {
+          return ch.kind === data.slotKind && ch.level === Number(data.slotLevel);
+        });
+        if (!slot) return reply(false, "You don't have a spell slot for that.");
+      }
+      const max = maxTargets(action, profile, slot ? slot.level : 0);
+      const ids = [];
+      for (const id of (Array.isArray(data.targets) ? data.targets : [])) {
+        const n = Number(id);
+        if (!ids.includes(n)) ids.push(n);
+      }
+      const targets = ids.slice(0, max).map(findCombatant).filter(function (t) { return t && !t.secret; });
+      if (!targets.length) return reply(false, "Pick a target first.");
+
+      const result = resolveAction(member.name, action, targets.map(targetInfo), { mode: "normal", slotLevel: slot ? slot.level : 0, profile: profile });
+      if (slot) spendSlotFor(member, slot, false);   // their device marks it when it gets the reply
+      applyResult(me, result);
+      reply(true, result.lines.join("\n"), slot ? { kind: slot.kind, level: slot.level } : null);
     }
 
     render();   // draw the empty tracker when the page first loads
@@ -697,7 +1063,8 @@
           const monster = MONSTERS.find(function (m) { return m.n === token.monster; });
           const bonus = monster ? monster.init : 0;
           const d20 = rollOneDie(20);
-          combatants.push({ id: nextId, mapTokenId: token.id, name: token.name,
+          combatants.push({ id: nextId, mapTokenId: token.id, name: token.name, monster: token.monster,
+                            secret: Boolean(token.hidden),   // hidden on the map = hidden from players here too
                             initiative: d20 + bonus, hp: token.hp, maxHp: token.maxHp });
           nextId++;
           rolls.push(token.name + " " + (d20 + bonus));
@@ -813,6 +1180,8 @@
       document.getElementById("importStatus").textContent = "";
     }
     renderParty();
+    combatUiReady = true;   // the turn cards can draw now (they need the party and live game)
+    render();
 
     // =====================================================================
     // CONDITIONS QUICK REFERENCE (paraphrased from the SRD 5.2.1)
@@ -1073,6 +1442,8 @@
         dropVoicePlayer(key);
       } else if (data.type === "mapmove") {
         handleMapMove(key, member, data);
+      } else if (data.type === "action") {
+        handlePlayerAction(conn, member, data);
       }
     }
 
@@ -1084,6 +1455,7 @@
       member.hp = clampHp(member.hp, character.maxHp);
       member.passive = character.passive;
       member.init = character.init;
+      member.combat = character.combat;   // their attacks, spells and slots (checked by cleanCombatProfile)
       member.summary = "Lv " + character.level + " " + character.species + " " + character.className;
       member.item = character.item;
 

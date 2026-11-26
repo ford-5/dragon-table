@@ -122,6 +122,95 @@
     return button;
   }
 
+  // =====================================================================
+  // A PATIENT LISTENER
+  // Browsers stop listening at the first little pause, which cuts people off
+  // mid-sentence. This one keeps going until you've been quiet for a while:
+  //   quietMs:     how long a silence ends it (4 seconds)
+  //   firstWordMs: how long to wait for you to START talking (8 seconds)
+  // If the browser stops early by itself, we quietly start it again and keep
+  // everything heard so far.
+  //   onText(words)  is called with everything heard so far, while you talk
+  //   onEnd(reason)  is called once at the end: "quiet", "stopped", or an error name
+  // Returns { stop() } so a button can end it early.
+  // =====================================================================
+  function patientListen(options) {
+    const Recognition = recognitionClass();
+    const quietMs = options.quietMs || 4000;
+    const firstWordMs = options.firstWordMs || 8000;
+    let heardFinal = "";      // the words the browser is sure about
+    let wanted = true;        // false once we've decided to finish
+    let endReason = "";
+    let current = null;       // the browser's listener right now
+    let restarts = 0;
+    let quietTimer = null;
+
+    const joinWords = function (a, b) {
+      a = a.trim();
+      b = b.trim();
+      return a && b ? a + " " + b : a + b;
+    };
+    const waitThenFinish = function (ms) {
+      clearTimeout(quietTimer);
+      quietTimer = setTimeout(function () { finish("quiet"); }, ms);
+    };
+    const finish = function (reason) {
+      if (!wanted) return;
+      wanted = false;
+      endReason = reason;
+      clearTimeout(quietTimer);
+      if (current) {
+        try { current.stop(); } catch (error) { /* already stopped */ }
+      } else {
+        options.onEnd(endReason);
+      }
+    };
+
+    const startOne = function () {
+      const listener = new Recognition();
+      current = listener;
+      listener.lang = navigator.language || "en-US";
+      listener.interimResults = true;   // show words while you're still talking
+      listener.continuous = true;       // don't stop at the first pause
+      listener.onresult = function (event) {
+        let notSureYet = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const result = event.results[i];
+          if (result.isFinal) heardFinal = joinWords(heardFinal, result[0].transcript);
+          else notSureYet = joinWords(notSureYet, result[0].transcript);
+        }
+        options.onText(joinWords(heardFinal, notSureYet));
+        waitThenFinish(quietMs);   // you're talking: start the quiet countdown again
+      };
+      listener.onerror = function (event) {
+        // "no-speech" and "aborted" just mean a pause: keep listening.
+        if (event.error === "no-speech" || event.error === "aborted") return;
+        wanted = false;
+        endReason = event.error;
+      };
+      listener.onend = function () {
+        current = null;
+        if (wanted && restarts < 30) {
+          restarts++;
+          try {
+            startOne();   // the browser stopped by itself: carry on listening
+            return;
+          } catch (error) {
+            endReason = "stopped";
+          }
+        }
+        wanted = false;
+        clearTimeout(quietTimer);
+        options.onEnd(endReason || "stopped");
+      };
+      listener.start();
+    };
+
+    waitThenFinish(firstWordMs);
+    startOne();
+    return { stop: function () { finish("stopped"); } };
+  }
+
   // A 🎤 button for a text box: press, speak, and the words appear in the box.
   // "parent" (optional): where to put the button. Otherwise it goes right after the box.
   function micButton(input, parent) {
@@ -138,9 +227,13 @@
     status.className = "hint mic-status";
     status.setAttribute("aria-live", "polite");
 
-    const done = function (message) {
-      recognizer = null;
-      currentMic = null;
+    // handle = the listener that finished. Only clear the shared "who's listening"
+    // if it's still this one (another 🎤 may have taken over in the meantime).
+    const done = function (message, handle) {
+      if (!handle || recognizer === handle) {
+        recognizer = null;
+        currentMic = null;
+      }
       button.textContent = "🎤";
       status.textContent = message || "";
     };
@@ -155,35 +248,26 @@
       stop();                              // and stop any reading, so the mic doesn't hear it
 
       const before = input.value.trim() ? input.value.trim() + " " : "";   // keep what's already typed
-      const listener = new Recognition();
-      listener.lang = navigator.language || "en-US";
-      listener.interimResults = true;   // show words while you're still talking
-      listener.continuous = false;      // stop after you pause
-      listener.onresult = function (event) {
-        let heard = "";
-        for (const result of event.results) heard += result[0].transcript;
-        input.value = before + heard;
-        input.dispatchEvent(new Event("input", { bubbles: true }));   // so searches and saves see it
-      };
-      listener.onerror = function (event) {
-        const messages = {
-          "not-allowed": "The microphone is blocked. Allow it in your browser's address bar.",
-          "service-not-allowed": "The microphone is blocked. Allow it in your browser's address bar.",
-          "no-speech": "I didn't hear anything.",
-          "audio-capture": "No microphone was found.",
-          "network": "Voice typing needs an internet connection."
-        };
-        done(messages[event.error] || "Voice typing stopped.");
-      };
-      listener.onend = function () {
-        if (currentMic === button) done(status.textContent === "Listening…" ? "" : status.textContent);
-      };
+      currentMic = button;
+      button.textContent = "⏹";
+      status.textContent = "Listening… (stops after a few quiet seconds)";
+      let handle = null;
       try {
-        recognizer = listener;
-        currentMic = button;
-        listener.start();
-        button.textContent = "⏹";
-        status.textContent = "Listening…";
+        handle = recognizer = patientListen({
+          onText: function (heard) {
+            input.value = before + heard;
+            input.dispatchEvent(new Event("input", { bubbles: true }));   // so searches and saves see it
+          },
+          onEnd: function (reason) {
+            const messages = {
+              "not-allowed": "The microphone is blocked. Allow it in your browser's address bar.",
+              "service-not-allowed": "The microphone is blocked. Allow it in your browser's address bar.",
+              "audio-capture": "No microphone was found.",
+              "network": "Voice typing needs an internet connection."
+            };
+            done(messages[reason] || (input.value.trim() === before.trim() ? "I didn't hear anything." : ""), handle);
+          }
+        });
       } catch (error) {
         done("Couldn't start voice typing.");
       }
@@ -205,6 +289,7 @@
     stop: stop,
     speakButton: speakButton,
     micButton: micButton,
-    textOf: textOf
+    textOf: textOf,
+    patientListen: patientListen
   };
 })();

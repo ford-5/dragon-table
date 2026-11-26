@@ -2190,3 +2190,157 @@ details.by-hand > summary {
 .update-note button {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
 }
+
+/* =====================================================================
+   TURN CARDS (GM Screen top row, and the player's turn order)
+   ===================================================================== */
+.turn-bar {
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  border: 2px solid #9b7fd1;
+  border-radius: 10px;
+  background-color: #1f1729;
+  text-align: left;
+}
+
+.turn-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.turn-head .small-button {
+  margin: 0;
+  padding: 3px 9px;
+  font-size: 13px;
+}
+
+/* One row of cards; slide sideways when there are many */
+.turn-cards {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 6px 0;
+}
+
+.turn-card {
+  position: relative;
+  flex: 0 0 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 6px 8px;
+  font-family: inherit;
+  font-size: 12px;
+  text-align: left;
+  color: #f3e6c8;
+  background-color: #3a281c;
+  border: 2px solid #5a4630;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.turn-card.side-hero { border-color: #c9a227; }
+.turn-card.side-monster { background-color: #3b1d1d; border-color: #a04545; }
+.turn-card.now { box-shadow: 0 0 0 3px #9b7fd1; }               /* whose turn it is */
+.turn-card.picked { background-color: #34244a; }                 /* the card whose actions are showing */
+.turn-card.down { opacity: 0.45; }
+
+.turn-init {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-weight: bold;
+  color: #c9a227;
+}
+
+.turn-name {
+  font-size: 13px;
+  padding-right: 22px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.turn-line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.turn-hpbar {
+  height: 5px;
+  border-radius: 3px;
+  background-color: #2a1f16;
+  overflow: hidden;
+}
+
+.turn-hpfill {
+  display: block;
+  height: 100%;
+  background-color: #4caf50;
+}
+
+/* The player's turn order: a little smaller, not clickable */
+.player-turns .turn-card {
+  flex-basis: 120px;
+  cursor: default;
+}
+
+/* What the chosen creature can do */
+.action-panel {
+  max-height: 190px;
+  overflow-y: auto;
+  font-size: 13px;
+}
+
+.action-head {
+  margin: 2px 0 4px;
+}
+
+.action-chips .small-button,
+.action-controls .small-button {
+  margin: 2px;
+  padding: 3px 8px;
+  font-size: 12px;
+}
+
+.action-chips .small-button.picked {
+  background-color: #9b7fd1;
+  color: #1a1424;
+}
+
+.action-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-top: 4px;
+}
+
+.action-controls select {
+  font-size: 13px;
+}
+
+.target-chip {
+  white-space: nowrap;
+}
+
+.action-controls .roll-it {
+  background-color: #7a2a2a;
+  font-weight: bold;
+}
+
+.action-result {
+  margin: 6px 0 0;
+  padding: 6px 8px;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 12px;
+  text-align: left;
+  background-color: #1a1424;
+  border-radius: 6px;
+}

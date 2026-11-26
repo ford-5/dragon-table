@@ -79,6 +79,20 @@
       <p class="hint">Voice goes straight between your browsers. Nothing is recorded.</p>
     </div>
 
+    <!-- Combat: appears when the GM starts a fight -->
+    <div id="combatBox" class="voice-box hidden">
+      <h3 class="section-label" id="combatTitle">⚔️ Turn order</h3>
+      <div id="turnOrder" class="turn-cards player-turns"></div>
+      <div id="myTurn" class="hidden">
+        <p><strong>🎯 It's your turn!</strong> Pick what you do and who you aim at. Your GM's screen rolls the dice.</p>
+        <select id="actionPick" aria-label="Your attack or spell"></select>
+        <select id="slotPick" class="hidden" aria-label="Spell slot"></select>
+        <div id="targetPick" class="action-controls"></div>
+        <button id="actBtn">⚔️ Do it</button>
+      </div>
+      <pre id="myResult" class="action-result hidden"></pre>
+    </div>
+
     <label class="hint"><input type="checkbox" id="readFeed"> 🔊 Read the GM's messages aloud</label>
     <div id="feed" class="chat-log short-log" aria-live="polite"></div>
 
@@ -140,6 +154,7 @@
   <script src="rules.js"></script>
   <script src="spells.js"></script>
   <script src="play.js"></script>
+  <script src="combat.js"></script>
   <script src="music.js"></script>
   <script src="voice.js"></script>
 
@@ -358,9 +373,174 @@
         dmVoiceOn = data.on === true;
         if (!dmVoiceOn) leaveVoice(true);
         renderVoice();
+      } else if (data.type === "turn" && joined) {
+        handleTurn(data);
+      } else if (data.type === "log" && joined) {
+        addToFeed(cleanText(data.text, 300));
+      } else if (data.type === "actionResult" && joined) {
+        handleActionResult(data);
+      } else if (data.type === "slotUsed" && joined) {
+        markSlotUsed(data);
       } else if (data.type === "closed") {
         handleConnectionLost();
       }
+    }
+
+    // =====================================================================
+    // COMBAT: the turn order, and choosing your own attack or spell
+    // The GM's device checks the choice and rolls the dice (combat.js has the rules).
+    // =====================================================================
+    let combat = null;          // the latest turn order from the GM
+    let waitingForGm = false;   // sent an action, waiting for the result
+
+    function handleTurn(data) {
+      const order = [];
+      for (const raw of (Array.isArray(data.order) ? data.order : []).slice(0, 40)) {
+        if (!raw || typeof raw !== "object" || !["hero", "monster", "other"].includes(raw.side)) continue;
+        const entry = { id: cleanNumber(raw.id, 0, 100000, 0), name: cleanText(raw.name, 40), side: raw.side,
+                        init: cleanNumber(raw.init, -10, 50, 0), current: raw.current === true };
+        if (raw.side === "hero") {
+          entry.maxHp = cleanNumber(raw.maxHp, 1, 999, 1);
+          entry.hp = cleanNumber(raw.hp, 0, entry.maxHp, entry.maxHp);
+        } else {
+          entry.status = MAP_STATUSES.includes(raw.status) ? raw.status : "Unhurt";
+        }
+        order.push(entry);
+      }
+      combat = { round: cleanNumber(data.round, 0, 999, 0), started: data.started === true, order: order, yourTurn: data.yourTurn === true };
+      if (!combat.yourTurn) waitingForGm = false;
+      renderCombat();
+    }
+
+    function renderCombat() {
+      const box = el("combatBox");
+      box.classList.toggle("hidden", !combat || combat.order.length === 0);
+      if (!combat || combat.order.length === 0) return;
+      el("combatTitle").textContent = combat.started ? "⚔️ Round " + combat.round + ": turn order" : "⚔️ A fight is starting!";
+
+      const row = el("turnOrder");
+      row.innerHTML = "";
+      for (const entry of combat.order) {
+        const card = document.createElement("div");
+        card.className = "turn-card side-" + entry.side + (entry.current ? " now" : "") +
+          ((entry.side === "hero" ? entry.hp <= 0 : entry.status === "Down") ? " down" : "");
+        const name = document.createElement("strong");
+        name.className = "turn-name";
+        name.textContent = entry.name;
+        const line = document.createElement("span");
+        line.className = "turn-line";
+        line.textContent = "🎲 " + entry.init + "  " + (entry.side === "hero" ? "❤️ " + entry.hp + "/" + entry.maxHp : entry.status);
+        card.append(name, line);
+        row.append(card);
+      }
+
+      const mine = el("myTurn");
+      mine.classList.toggle("hidden", !combat.yourTurn || waitingForGm);
+      if (combat.yourTurn && !waitingForGm) fillMyActions();
+    }
+
+    // My attacks and spells, worked out from my own sheet by the rules.
+    function myProfile() {
+      const hero = selectedHero();
+      return hero ? makeCombatProfile(hero) : null;
+    }
+
+    function fillMyActions() {
+      const profile = myProfile();
+      const actions = heroActions(profile);
+      const pick = el("actionPick");
+      const old = pick.value;
+      pick.innerHTML = "";
+      for (const action of actions) pick.append(new Option(action.label, action.key));
+      if (actions.some(function (a) { return a.key === old; })) pick.value = old;
+      fillSlotsAndTargets();
+    }
+
+    function chosenAction() {
+      return heroActions(myProfile()).find(function (a) { return a.key === el("actionPick").value; }) || null;
+    }
+
+    function fillSlotsAndTargets() {
+      const action = chosenAction();
+      const profile = myProfile();
+      const slotPick = el("slotPick");
+      slotPick.innerHTML = "";
+      let slotLevel = 0;
+      const needsSlot = action && action.kind === "spell" && action.spell.level > 0;
+      if (needsSlot) {
+        for (const choice of profileSlotChoices(profile, action.spell)) {
+          slotPick.append(new Option((choice.kind === "pact" ? "Pact slot, level " : "Level ") + choice.level + " slot (" + choice.left + " left)",
+                                     choice.kind + ":" + choice.level));
+        }
+        if (!slotPick.options.length) slotPick.append(new Option("No spell slots left for this", ""));
+        slotLevel = Number((slotPick.value || "0:0").split(":")[1]);
+      }
+      slotPick.classList.toggle("hidden", !needsSlot);
+
+      const max = action ? maxTargets(action, profile, slotLevel) : 1;
+      const box = el("targetPick");
+      box.innerHTML = "";
+      box.append(document.createTextNode(max > 1 ? "Targets (up to " + max + "): " : "Target: "));
+      const healing = action && action.kind === "spell" && action.spell.heal;
+      let first = true;
+      for (const entry of combat.order) {
+        const label = document.createElement("label");
+        label.className = "target-chip";
+        const tick = document.createElement("input");
+        tick.type = "checkbox";
+        tick.value = entry.id;
+        // Start with one sensible target ticked: an ally to heal, or the first enemy
+        if (first && (healing ? entry.side === "hero" : entry.side !== "hero") && entry.status !== "Down") {
+          tick.checked = true;
+          first = false;
+        }
+        tick.addEventListener("change", function () {
+          const ticked = box.querySelectorAll("input:checked");
+          if (ticked.length > max) tick.checked = false;   // no more than the spell allows
+        });
+        label.append(tick, document.createTextNode(" " + entry.name));
+        box.append(label);
+      }
+      el("actBtn").disabled = !action || (needsSlot && !slotPick.value);
+    }
+
+    function doMyAction() {
+      const action = chosenAction();
+      if (!action || !combat || !combat.yourTurn) return;
+      const [slotKind, slotLevel] = (el("slotPick").value || ":").split(":");
+      const targets = Array.from(el("targetPick").querySelectorAll("input:checked")).map(function (t) { return Number(t.value); });
+      if (!targets.length) {
+        showMyResult("Pick a target first.");
+        return;
+      }
+      send({ type: "action", action: action.key, slotKind: slotKind, slotLevel: Number(slotLevel) || 0, targets: targets });
+      waitingForGm = true;
+      showMyResult("⏳ Sent! Your GM's screen is rolling the dice…");
+      renderCombat();
+    }
+
+    function showMyResult(text) {
+      const result = el("myResult");
+      result.textContent = text;
+      result.classList.toggle("hidden", !text);
+    }
+
+    function handleActionResult(data) {
+      waitingForGm = false;
+      showMyResult((data.ok === true ? "" : "⚠️ ") + cleanText(data.text, 1500));
+      if (data.ok === true && data.spent) markSlotUsed(data.spent);
+      renderCombat();
+    }
+
+    // The GM's screen spent one of my spell slots: mark it on my sheet too, and send the GM my sheet.
+    function markSlotUsed(slot) {
+      const kind = slot && slot.kind === "pact" ? "pact" : "slot";
+      const level = cleanNumber(slot && slot.level, 1, 9, 1);
+      const list = loadCharacters();
+      const hero = list.find(function (h) { return h.id === Number(el("heroSelect").value); });
+      if (!hero || !spendSpellSlot(hero, kind, level)) return;
+      saveCharacters(list);
+      send({ type: "update", character: makeSharedCharacter(hero) });
     }
 
     function enterTable(gameName, hp, maxHp) {
@@ -818,6 +998,9 @@
       tableMusic.setVolume(Number(el("musicVol").value) / 100);
     });
     el("sayBtn").addEventListener("click", say);
+    el("actBtn").addEventListener("click", doMyAction);
+    el("actionPick").addEventListener("change", fillSlotsAndTargets);
+    el("slotPick").addEventListener("change", fillSlotsAndTargets);
     Voice.micButton(el("sayText"));   // a microphone: say something to the GM
     try {
       el("readFeed").checked = localStorage.getItem("liveAutoRead") === "yes";

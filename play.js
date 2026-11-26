@@ -385,6 +385,8 @@ function makeSharedCharacter(c) {
     ac: getAc(c),
     passive: getPassivePerception(c),
     init: getModifier(getAbilityScore(c, "dex")),   // initiative bonus, so the GM can roll for them
+    // Attacks, spells and slots for the turn cards (combat.js, on pages that load it)
+    combat: typeof makeCombatProfile === "function" ? makeCombatProfile(c) : null,
     item: item ? {
       name: item.name, type: item.type, rarity: item.rarity, attunement: item.attunement,
       appearance: item.appearance, powers: item.powers
@@ -428,6 +430,7 @@ function cleanSharedCharacter(raw) {
     ac: cleanNumber(raw.ac, 0, 99, 10),
     passive: cleanNumber(raw.passive, 0, 99, 10),
     init: cleanNumber(raw.init, -5, 15, 0),
+    combat: typeof cleanCombatProfile === "function" ? cleanCombatProfile(raw.combat) : null,
     item: item && item.name ? item : null
   };
 }

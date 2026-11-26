@@ -1974,3 +1974,38 @@ body.gm-screen {
 .map-fog.gm-fog {
   background-color: rgba(8, 6, 16, 0.72);
 }
+
+/* "Add by hand" forms tucked away in the GM Screen's Party & Initiative drawer */
+details.by-hand {
+  margin: 8px 0;
+  text-align: left;
+}
+
+details.by-hand > summary {
+  cursor: pointer;
+}
+
+/* Pre-made maps on the Battle Map page: a grid of cards */
+.premade-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.premade-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  text-align: left;
+  font-family: inherit;
+  color: #f3e6c8;
+  background-color: #3a281c;
+  border: 2px solid #c9a227;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.premade-card:hover {
+  background-color: #5a1f1f;
+}

@@ -384,6 +384,7 @@ function makeSharedCharacter(c) {
     maxHp: getMaxHp(c),
     ac: getAc(c),
     passive: getPassivePerception(c),
+    init: getModifier(getAbilityScore(c, "dex")),   // initiative bonus, so the GM can roll for them
     item: item ? {
       name: item.name, type: item.type, rarity: item.rarity, attunement: item.attunement,
       appearance: item.appearance, powers: item.powers
@@ -426,6 +427,7 @@ function cleanSharedCharacter(raw) {
     hp: cleanNumber(raw.hp, 0, maxHp, maxHp),
     ac: cleanNumber(raw.ac, 0, 99, 10),
     passive: cleanNumber(raw.passive, 0, 99, 10),
+    init: cleanNumber(raw.init, -5, 15, 0),
     item: item && item.name ? item : null
   };
 }

@@ -105,44 +105,47 @@
         </div>
       </details>
 
-      <!-- THE PARTY -->
-      <details class="panel drawer">
-        <summary>🧑‍🤝‍🧑 The Party</summary>
-        <p class="hint">Your players at a glance. Saved in this browser.</p>
+      <!-- THE PARTY + INITIATIVE: one drawer, because a fight is mostly the party
+           plus some monsters, taking turns -->
+      <details class="panel drawer" open>
+        <summary>⚔️ Party &amp; Initiative</summary>
 
-        <button class="small-button" onclick="importCharacters()">📥 Import from saved characters</button>
+        <h3 class="section-label">🧑‍🤝‍🧑 The Party</h3>
+        <p class="hint">Filled in from the heroes saved in this browser and from players who join your live game.</p>
+        <button class="small-button" onclick="importCharacters()">📥 Refresh from saved characters</button>
         <button class="small-button" onclick="setStage('characters')">🧙 See full sheets in the middle</button>
         <p id="importStatus" class="hint"></p>
-
-        <div class="settings add-form">
-          <input id="partyName" type="text" placeholder="Player name">
-          <input id="partyAc" type="number" placeholder="AC">
-          <input id="partyHp" type="number" placeholder="Max HP">
-          <button class="small-button" onclick="addPartyMember()">Add</button>
-        </div>
-
         <ul id="party" class="combatant-list"></ul>
-      </details>
+        <details class="by-hand">
+          <summary class="hint">➕ Add a player by hand</summary>
+          <div class="settings add-form">
+            <input id="partyName" type="text" placeholder="Player name">
+            <input id="partyAc" type="number" placeholder="AC">
+            <input id="partyHp" type="number" placeholder="Max HP">
+            <button class="small-button" onclick="addPartyMember()">Add</button>
+          </div>
+        </details>
 
-      <!-- INITIATIVE TRACKER -->
-      <details class="panel drawer">
-        <summary>⚔️ Initiative Tracker</summary>
-
-        <!-- The form for adding a creature or player to the fight -->
-        <div class="settings add-form">
-          <input id="combatantName" type="text" placeholder="Name">
-          <input id="combatantInit" type="number" placeholder="Init">
-          <button class="small-button" onclick="rollInitiative()" title="Roll a d20 for initiative">🎲</button>
-          <input id="combatantHp" type="number" placeholder="HP">
-          <button class="small-button" onclick="addCombatant()">Add</button>
-        </div>
+        <h3 class="section-label">⚔️ Initiative</h3>
+        <button onclick="startFight()">⚔️ Roll initiative for everyone</button>
+        <label class="hint"><input type="checkbox" id="fightMapMonsters" checked> Also add the monsters on the Battle Map</label>
+        <p id="fightStatus" class="hint">Rolls a d20 + initiative bonus for every hero (and monster), puts them in order and starts round 1.</p>
 
         <p id="roundInfo"></p>
         <ul id="combatants"></ul>
 
         <button onclick="nextTurn()">Next turn ▶</button>
-        <br>
         <button class="small-button" onclick="endCombat()">End combat</button>
+        <details class="by-hand">
+          <summary class="hint">➕ Add a creature by hand</summary>
+          <div class="settings add-form">
+            <input id="combatantName" type="text" placeholder="Name">
+            <input id="combatantInit" type="number" placeholder="Init">
+            <button class="small-button" onclick="rollInitiative()" title="Roll a d20 for initiative">🎲</button>
+            <input id="combatantHp" type="number" placeholder="HP">
+            <button class="small-button" onclick="addCombatant()">Add</button>
+          </div>
+        </details>
       </details>
     </aside>
 
@@ -272,6 +275,7 @@
   <!-- Shared dice helpers (rollOneDie). Must load BEFORE the script below. -->
   <script src="dice.js"></script>
   <script src="rules.js"></script>
+  <script src="monsters.js"></script>
   <script src="play.js"></script>
   <script src="music.js"></script>
   <script src="voice.js"></script>
@@ -572,6 +576,7 @@
           existing.maxHp = maxHp;
           existing.hp = clampHp(existing.hp, maxHp);
           existing.passive = getPassivePerception(c);
+          existing.init = getModifier(getAbilityScore(c, "dex"));
           existing.summary = describeSavedCharacter(c);
           existing.item = c.specialItem || null;
           updated++;
@@ -584,6 +589,7 @@
             hp: clampHp(c.hp, maxHp),
             maxHp: maxHp,
             passive: getPassivePerception(c),
+            init: getModifier(getAbilityScore(c, "dex")),   // initiative bonus
             summary: describeSavedCharacter(c),
             item: c.specialItem || null   // the player's special item, so the GM can see it
           });
@@ -652,8 +658,10 @@
         return;
       }
 
-      // prompt() pops up a box asking the GM to type something.
-      const answer = prompt("What did " + member.name + " roll for initiative?");
+      // prompt() pops up a box asking the GM to type something. The second part fills the box
+      // with an automatic roll, so the GM can just press OK (or type the player's own roll).
+      const rolled = rollOneDie(20) + (member.init || 0);
+      const answer = prompt("Initiative for " + member.name + " (rolled for you; type the player's own roll if they rolled):", rolled);
       if (answer === null) return;   // the GM clicked Cancel
 
       combatants.push({
@@ -668,6 +676,59 @@
       render();
     }
 
+    // ⚔️ Roll initiative for everyone: every hero who is still standing, plus (if ticked)
+    // the monsters on the Battle Map, each rolls d20 + their initiative bonus.
+    function startFight() {
+      const rolls = [];
+      for (const member of party) {
+        if (member.hp <= 0) continue;
+        if (combatants.some(function (c) { return c.partyId === member.id; })) continue;   // already fighting
+        const bonus = member.init || 0;
+        const d20 = rollOneDie(20);
+        combatants.push({ id: nextId, partyId: member.id, name: member.name,
+                          initiative: d20 + bonus, hp: member.hp, maxHp: member.maxHp });
+        nextId++;
+        rolls.push(member.name + " " + (d20 + bonus));
+      }
+
+      if (document.getElementById("fightMapMonsters").checked) {
+        for (const token of mapMonsters()) {
+          if (combatants.some(function (c) { return c.mapTokenId === token.id; })) continue;
+          const monster = MONSTERS.find(function (m) { return m.n === token.monster; });
+          const bonus = monster ? monster.init : 0;
+          const d20 = rollOneDie(20);
+          combatants.push({ id: nextId, mapTokenId: token.id, name: token.name,
+                            initiative: d20 + bonus, hp: token.hp, maxHp: token.maxHp });
+          nextId++;
+          rolls.push(token.name + " " + (d20 + bonus));
+        }
+      }
+
+      const status = document.getElementById("fightStatus");
+      if (rolls.length === 0) {
+        status.textContent = party.length === 0
+          ? "No heroes yet: make some on the Characters page, or open a live game so players can join."
+          : "Everyone is already in the fight.";
+        return;
+      }
+      status.textContent = "🎲 Rolled: " + rolls.join(", ") + ".";
+      render();                              // puts them in order, highest first
+      if (currentId === null) nextTurn();    // and starts round 1
+    }
+
+    // The monsters standing on the Battle Map (saved by map.html in this browser).
+    function mapMonsters() {
+      try {
+        const saved = JSON.parse(localStorage.getItem("battleMap") || "null");
+        if (!saved || !Array.isArray(saved.tokens)) return [];
+        return saved.tokens.filter(function (t) {
+          return t && t.side === "monster" && t.hp > 0 && typeof t.name === "string";
+        });
+      } catch (error) {
+        return [];
+      }
+    }
+
     function renderParty() {
       const list = document.getElementById("party");
       list.innerHTML = "";
@@ -675,7 +736,7 @@
       if (party.length === 0) {
         const empty = document.createElement("li");
         empty.className = "hint";
-        empty.textContent = "No players yet. Add your party above.";
+        empty.textContent = "No heroes yet. Make some on the Characters page, or open a live game so players can join.";
         list.append(empty);
         return;
       }
@@ -745,6 +806,12 @@
       }
     }
 
+    // Fill the party in by itself every time the page opens: new saved heroes are added,
+    // ones already there are refreshed (AC, max HP, initiative bonus) and keep their tracked HP.
+    if (loadCharacters().length > 0) {
+      importCharacters();
+      document.getElementById("importStatus").textContent = "";
+    }
     renderParty();
 
     // =====================================================================
@@ -1016,6 +1083,7 @@
       member.maxHp = character.maxHp;
       member.hp = clampHp(member.hp, character.maxHp);
       member.passive = character.passive;
+      member.init = character.init;
       member.summary = "Lv " + character.level + " " + character.species + " " + character.className;
       member.item = character.item;
 

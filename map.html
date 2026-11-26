@@ -59,6 +59,13 @@
     <button class="small-button" id="closeTokenBtn">Done</button>
   </div>
 
+  <!-- ===== Ready-made maps (from maps.js) ===== -->
+  <div class="panel">
+    <h2>📦 Pre-made maps &amp; dungeons</h2>
+    <p class="hint">Pick one to load it, with its monsters and your heroes at the start. You can change anything afterwards. Loading replaces the map you have now.</p>
+    <div id="premadeList" class="premade-list"></div>
+  </div>
+
   <!-- ===== Adding things ===== -->
   <div class="panel">
     <h2>➕ Add to the map</h2>
@@ -119,6 +126,7 @@
   <script src="rules.js"></script>
   <script src="spells.js"></script>
   <script src="monsters.js"></script>
+  <script src="maps.js"></script>
   <script src="voice.js"></script>
   <script>
     // =====================================================================
@@ -908,6 +916,101 @@
       saveMap();
       render();
     });
+
+    // =====================================================================
+    // PRE-MADE MAPS (the list lives in maps.js)
+    // =====================================================================
+    // The letters in each row turn into terrain, monsters and the heroes' start.
+    const MAP_LETTERS = { "#": "wall", "T": "tree", ":": "rubble", "~": "water" };
+
+    function loadPremade(preset) {
+      if (map.tokens.length > 0 || Object.keys(map.terrain).length > 0) {
+        if (!confirm("Load \"" + preset.name.replace(/^\S+\s/, "") + "\"? This replaces the map you have now.")) return;
+      }
+      const fresh = newMap();
+      fresh.cell = map.cell;   // keep the zoom the GM likes
+      fresh.cols = preset.rows[0].length;
+      fresh.rows = preset.rows.length;
+      fresh.ground = preset.ground;
+      map = fresh;
+
+      let start = null;
+      const monsterSpots = [];
+      preset.rows.forEach(function (row, y) {
+        for (let x = 0; x < row.length; x++) {
+          const letter = row[x];
+          if (MAP_LETTERS[letter]) map.terrain[x + "," + y] = MAP_LETTERS[letter];
+          else if (letter === "S") { if (!start) start = { x: x, y: y }; }
+          else if (preset.monsters[letter]) monsterSpots.push({ name: preset.monsters[letter], x: x, y: y });
+        }
+      });
+      start = start || { x: 1, y: 1 };
+
+      // Monsters, numbered like the "Add" button does: Goblin Warrior 1, 2, 3...
+      const counts = {};
+      for (const spot of monsterSpots) {
+        const monster = MONSTERS.find(function (m) { return m.n === spot.name; });
+        if (!monster) continue;
+        counts[monster.n] = (counts[monster.n] || 0) + 1;
+        addToken({
+          side: "monster", monster: monster.n, name: monster.n + " " + counts[monster.n],
+          size: SIZE_SQUARES[monster.size] || 1, hp: monster.hp, maxHp: monster.hp, ac: monster.ac,
+          speed: parseInt(monster.speed, 10) || 30
+        }, spot.x, spot.y);
+      }
+
+      // The heroes this GM knows about, gathered at the start
+      for (const hero of knownHeroes()) {
+        addToken({ side: "hero", name: hero.name, size: 1, hp: hero.hp, maxHp: hero.maxHp, ac: hero.ac, speed: hero.speed },
+                 start.x, start.y);
+      }
+
+      // A dungeon starts dark, except right around the heroes (3 squares each way)
+      if (preset.fog) {
+        for (let x = 0; x < map.cols; x++) {
+          for (let y = 0; y < map.rows; y++) {
+            if (Math.abs(x - start.x) > 3 || Math.abs(y - start.y) > 3) map.fog[x + "," + y] = 1;
+          }
+        }
+      }
+
+      el("colsBox").value = map.cols;
+      el("rowsBox").value = map.rows;
+      el("groundBox").value = map.ground;
+      saveMap();
+      setMode(preset.fog ? "reveal" : "move");
+      showStatus("Loaded " + preset.name + ". " + (preset.fog
+        ? "It's in fog: use 🔦 Reveal as the heroes explore."
+        : "Drag tokens to move them."));
+    }
+
+    function renderPremadeList() {
+      const list = el("premadeList");
+      for (const preset of PREMADE_MAPS) {
+        const card = document.createElement("button");
+        card.className = "premade-card";
+        const title = document.createElement("strong");
+        title.textContent = preset.name;
+        const about = document.createElement("span");
+        about.className = "hint";
+        about.textContent = preset.about;
+        const level = document.createElement("span");
+        level.className = "hint";
+        // Count the monsters in the drawing, e.g. "4 Goblin Warrior, 1 Goblin Boss"
+        const count = {};
+        for (const row of preset.rows) {
+          for (const letter of row) {
+            const name = preset.monsters[letter];
+            if (name) count[name] = (count[name] || 0) + 1;
+          }
+        }
+        level.textContent = preset.level + " · " + Object.keys(count).map(function (n) { return count[n] + " " + n; }).join(", ");
+        card.append(title, about, level);
+        card.addEventListener("click", function () { loadPremade(preset); });
+        list.append(card);
+      }
+    }
+    renderPremadeList();
 
     // Fog of war for the whole map at once
     el("fogAllBtn").addEventListener("click", function () {

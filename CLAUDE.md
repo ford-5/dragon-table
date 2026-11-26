@@ -45,13 +45,13 @@ Pages should **calculate** from the rules (modifiers, proficiency, HP, AC, saves
 - `index.html` start screen (a 3 × 3 "table" box: GM in the middle, 8 pages around it; install box, share + support links); `player.html` AI-or-live choice
 - `ai-dm.html` AI Game Master (5 setup steps, chat, ready-roll button, music, redo, voice); `join.html` live games for players (waiting room, table feed, voice chat, music, shared map)
 - `character.html` roster, creator (guide levels, multiclass), sheet (weapons & armor, spells, special item, minis/print links); `sheet.html` printable sheet + share links; `mini.html` Mini Maker (3D-print STL)
-- `dm-start.html` GM choice; `dm-learn.html` GM course; `dm.html` GM Screen (one screen: side drawers + middle stage showing the map, adventure, Library, Battle Simulator, Characters, GM course or shop; live game, voice, music, party, initiative, notes, books); `battle.html` Battle Simulator; `map.html` Battle Map; `adventure.html` starter adventure "The Sunken Bell"
+- `dm-start.html` GM choice; `dm-learn.html` GM course; `dm.html` GM Screen (one screen: side drawers + middle stage showing the map, adventure, Library, Battle Simulator, Characters, GM course or shop; live game, voice, music, party + initiative in one auto-filled drawer, notes, books); `battle.html` Battle Simulator; `map.html` Battle Map; `adventure.html` starter adventure "The Sunken Bell"
 - `library.html` free SRD Library; `equipment.html` shop (3D-printed gear, Google Form orders); `support.html` tips, share, waiting list; `policies.html` privacy + shop policies; `dice.html` old dice roller (no longer linked)
 
 **Shared scripts** (load order on a page: `dice.js`, `rules.js`, `spells.js`, `monsters.js`, `play.js`, `music.js`, `voice.js`, then the page script, then `pwa.js` and `feedback.js` last)
 - `rules.js` ALL game rules and data (classes, species, items, weapons, armor, spellcasting tables, conditions, XP budgets) and every rule calculation; `spells.js` 339 SRD spells; `monsters.js` 288 SRD monsters
 - `play.js` roll helpers (pass/fail), the sheet text for the AI, live-game data cleaners (`clean*`), share-link helpers; `dice.js` dice math; `music.js` generated music + `createMusicController`; `voice.js` 🔊/🎤 helper (`window.Voice`)
-- `mini3d.js` 3D shapes + STL export; `equipment.js` shop products + order form settings; `monetize.js` tip links + waiting-list form; `feedback.js` the 💬 link on every page; `pwa.js` + `sw.js` install and offline support
+- `maps.js` pre-made maps & dungeons drawn as letter rows; `mini3d.js` 3D shapes + STL export; `equipment.js` shop products + order form settings; `monetize.js` tip links + waiting-list form; `feedback.js` the 💬 link on every page; `pwa.js` + `sw.js` install and offline support
 - `server.rb` the Ruby helper server (serves the pages, hosts the AI endpoint, holds the API key); `style.css` all styles; `manifest.webmanifest`, `icons/`, `sitemap.xml`, `robots.txt`
 - `docs/FEATURES.md` detailed notes per file/feature; `docs/LIMITS_AND_TESTING.md` known limits, how we test, roadmap
 

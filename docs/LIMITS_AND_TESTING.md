@@ -1,0 +1,41 @@
+# Dragon Table: known limits, testing notes and roadmap
+
+Moved out of `CLAUDE.md` on 2026-11-26. Nothing was removed. Be honest about these limits when talking to the user.
+
+## Known limits (be honest about these)
+- **Only a few options per list so far.** SRD 5.2.1 has 12 classes and 9 species (all included), but only 4 backgrounds (Acolyte, Criminal, Sage, Soldier). Spells, equipment, subclasses, class features beyond level 1, and feats are not built yet; features are listed by name only.
+- **Rules data was proofread on 2026-11-21** against the official SRD 5.2.1 PDF (https://media.dndbeyond.com/compendium-images/srd/5.2/SRD_CC_v5.2.1.pdf): all 12 classes (hit die, saves, skills, level 1 features, Unarmored Defense), 9 species (size, speed, traits), 4 backgrounds, Standard Array, level 1 HP, HP per level and the proficiency bonus table match. Fixed then: Dragonborn *Draconic Flight* and Goliath *Large Form* are level 5 traits, and background tool proficiencies were added.
+- **Special item effects are partly automatic.** 7 of the 19 SRD items have an `effects` entry in `MAGIC_ITEMS` that the sheet applies: Cloak of Protection (+1 AC, +1 all saves), Shield +1 (+1 AC), Gauntlets of Ogre Power (Str at least 19), Headband of Intellect (Int at least 19), Cloak of Elvenkind (Stealth rolls get Advantage automatically; cancels Disadvantage), Slippers of Spider Climbing (climb speed), Boots of Striding and Springing (speed at least 30). Items that need attunement have an "Attuned" checkbox (on by default); unattuned items apply nothing (SRD rule). Use `getAbilityScore`, `getAc`, `getSpeed`, `getSaveBonus`, `itemGivesAdvantage` (in `rules.js`) instead of reading `character.abilities` / `character.ac` directly, so item effects are never skipped. `character.ac` is the AC from armor ("base"); the total is `getAc(character)`, and the DM import uses the total.
+- **Everything else about items is text only.** The other 12 items' powers (spells, charges, healing, the +1 weapon bonus, and so on) are described but not applied; attunement is not limited to a number of items; custom items have no automatic effects. Items are normally awarded by the DM; the app lets players pick freely. The 19 listed items were summarized from the SRD 5.2.1 "Magic Items A–Z" chapter; more can be added to `MAGIC_ITEMS`.
+- **Rules the app doesn't apply yet:** multiclass spell slots and the starting proficiencies a second class grants (see above); Rogue *Expertise* (doubles proficiency on two skills); Elf *Keen Senses* is handled but other species/class features are listed by name only, with no automatic effect; class features above level 1 are not listed.
+- **AC** is worked out from the armor and Shield chosen in Weapons & Armor (older characters keep a typed AC until armor is picked).
+- **No real privacy for the DM page**: "DM only" is just a separate page. Real privacy would need logins.
+- **Saved data lives in one browser.** The DM's "Import from saved characters" only finds characters saved in the same browser. Live games send the needed details over the internet (PeerJS) instead.
+- **Opening files from Finder (`file://`)**: some browsers keep separate `localStorage` per file, which would stop pages sharing characters. Use `ruby server.rb` and http://localhost:8787 so all pages share storage. The AI Dungeon Master requires the helper server.
+- **Live games**: the connection is direct browser-to-browser (encrypted), but a free public PeerJS matchmaking service (0.peerjs.com) sees game codes and connection metadata, and its availability isn't guaranteed. Players need to open the app on their own device: same Wi-Fi via `ruby server.rb --share`, or put the app online later (GitHub Pages). Closing the DM's page ends the game; players reconnect with the code. PeerJS itself throws a harmless console `TypeError` if a peer sends `null`. The PeerJS script is pinned by version but has no integrity (SRI) hash.
+- **AI Dungeon Master**: uses real money on the user's API key; only works on the computer running the helper; the AI tracks HP in the story only (the sheet isn't updated automatically); only the last 40 messages are sent. Costs/behavior were tested against a FAKE Claude server (request shape, errors, refusal, security checks), not the live API, because no key was available to the assistant. The first real run should be watched (model `claude-opus-5-5`, beta header `server-side-fallback-2026-07-01`; if the API rejects either, set `AI_DM_NO_FALLBACKS=1` or `AI_DM_MODEL=...`).
+
+## Testing
+- Claude's browser preview can't serve the project folder directly (macOS blocks Ruby from reading `~/Documents` there). Copy the files to the scratchpad and run `server.rb` from the copy; a preview config with just `{ "name", "port", "url" }` attaches to an already-running server.
+- To test the AI without a key: run a fake Messages API that records requests (the `AI_DM_UPSTREAM` env var points `server.rb` at it) and start the helper with a dummy `ANTHROPIC_API_KEY`.
+- Live games can be tested with two browser tabs on http://localhost:8787 (one DM, one player); they share `localStorage`, so use a different `cachedClientId` in one tab to simulate a second player.
+- Everything was tested that way, with rule calculations checked by hand. Voice chat can be tested without microphones by replacing `navigator.mediaDevices.getUserMedia` in each tab with an `OfflineAudioContext`-free `AudioContext` oscillator → `MediaStreamDestination` stream, then measuring RMS with an `AnalyserNode` on each side. There's no Node on this Mac: run JavaScript checks in the browser pane.
+- The browser pane can reach the real PeerJS cloud, so DM-and-player tests with two tabs use the real matchmaking service (use a fixed code by calling `startPeer("ZZZZZZ", 0)` in the DM tab).
+
+## Roadmap
+1. [x] Dice roller — d4, d6, d8, d10, d12, d20
+2. [x] Dice roller upgrades — modifiers (d20+5), multiple dice (3d6), roll history, styling
+3. [x] Initiative tracker — add creatures, sort by initiative, track HP
+4. [x] Character sheet — ability scores with auto-calculated modifiers, saved in the browser
+5. [x] Tidy up — files split, Git set up (2026-11-23)
+6. [x] Publish online (GitHub Pages) — live 2026-11-23; maybe React later
+7. [x] Based on real D&D — character creator by the SRD rules, multiple characters, DM party import, advantage/disadvantage
+9. [x] Start flow (Player/DM → AI or Live DM), AI Dungeon Master (helper server + Claude API), live games (DM requests players, PeerJS)
+10. [x] Help levels (Beginner/Intermediate/Advanced), AI campaign setup + special item, two classes, waiting room for live players, DM course, Battle Simulator with SRD monsters, live voice chat (2026-11-23)
+8. [ ] Next ideas: more backgrounds, spells, equipment and armor, class features by level, special-ability simulation in battles, live DM voice for 3+ players tested with real people
+
+## Online (live since 2026-11-23)
+- **Live site:** https://ford-5.github.io/dragon-table/ — GitHub Pages from the `main` branch, folder `/`. Repo: https://github.com/ford-5/dragon-table (public). Every push to `main` updates the site within a minute or two.
+- The app was renamed **Dragon Table** (no "D&D" in visible text, for trademark reasons; links that name the D&D Beyond store stay), and all visible text says **Game Master / GM** instead of Dungeon Master / DM (also a trademark; the SRD itself says Game Master). Keep using GM in new text. File names (`dm.html`, `ai-dm.html`, `dm-start.html`, `dm-learn.html`), code names and saved-data keys (`"dmNotes"`, etc.) deliberately still say dm, so links and saved data keep working. The rest of this guide may still say "DM" when describing older features.
+- Git: repo-local identity `ford-5` with GitHub's noreply email (the real email is never used). The GitHub CLI is at `~/tools/gh/bin/gh` (official release, checksum-verified; not on the PATH), signed in as `ford-5` via the device-code flow, and it is the Git credential helper for this repo. To publish: `git add -A && git commit -m "..." && git push`.
+- Checked online: all pages load, the AI page explains it only runs locally, and a DM and a player connected through the live site (invite link `…/join.html?code=…`).

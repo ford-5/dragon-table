@@ -415,6 +415,63 @@ const CLASS_TRAINING = {
 // The six scores everyone can use instead of rolling.
 const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8];
 
+// Where each class wants its scores, best first. The class's Primary Ability
+// always comes first, then usually Constitution (more HP). This is our own
+// suggestion for beginners; players can still move any number by hand.
+const ABILITY_ORDER_BY_CLASS = {
+  Barbarian: ["str", "con", "dex", "wis", "cha", "int"],
+  Bard:      ["cha", "dex", "con", "wis", "int", "str"],
+  Cleric:    ["wis", "con", "str", "cha", "int", "dex"],
+  Druid:     ["wis", "con", "dex", "int", "cha", "str"],
+  Fighter:   ["str", "con", "dex", "wis", "cha", "int"],
+  Monk:      ["dex", "wis", "con", "str", "int", "cha"],
+  Paladin:   ["str", "cha", "con", "wis", "dex", "int"],
+  Ranger:    ["dex", "wis", "con", "str", "int", "cha"],
+  Rogue:     ["dex", "con", "int", "wis", "cha", "str"],
+  Sorcerer:  ["cha", "con", "dex", "wis", "int", "str"],
+  Warlock:   ["cha", "con", "dex", "wis", "int", "str"],
+  Wizard:    ["int", "con", "dex", "wis", "cha", "str"]
+};
+
+// The best order for a hero. With a second class, that class's Primary
+// Ability moves up right after the first class's, because multiclassing
+// needs 13 or more in both.
+function getAbilityOrder(firstClass, secondClass) {
+  const order = (firstClass && ABILITY_ORDER_BY_CLASS[firstClass.name] ||
+                 ["str", "dex", "con", "int", "wis", "cha"]).slice();
+  if (!secondClass) return order;
+
+  let mustBeHigh = [];
+  if (firstClass) mustBeHigh = firstClass.primaryAnyOne ? [order[0]] : firstClass.primary.slice();
+  // Fighter needs only ONE of Str/Dex, so their first choice is enough.
+  const secondNeeds = secondClass.primaryAnyOne ? [secondClass.primary[0]] : secondClass.primary;
+  for (const key of secondNeeds) {
+    if (!mustBeHigh.includes(key)) mustBeHigh.push(key);
+  }
+  const rest = order.filter(function (key) { return !mustBeHigh.includes(key); });
+  return mustBeHigh.concat(rest);
+}
+
+// Pair the numbers with the order: the biggest number goes to the most
+// important ability. Returns { str: positionInList, dex: ..., ... }.
+function placeScores(numbers, order) {
+  const positions = numbers.map(function (number, index) { return index; });
+  positions.sort(function (a, b) { return numbers[b] - numbers[a]; });   // biggest first
+  const assignments = {};
+  order.forEach(function (key, rank) {
+    assignments[key] = positions[rank];
+  });
+  return assignments;
+}
+
+// The background's +2 and +1 go to its two abilities that matter most.
+function pickBackgroundBonus(backgroundAbilities, order) {
+  const ranked = backgroundAbilities.slice().sort(function (a, b) {
+    return order.indexOf(a) - order.indexOf(b);
+  });
+  return { plusTwo: ranked[0], plusOne: ranked[1] };
+}
+
 // Point Cost method (SRD "Ability Score Point Costs"): every ability starts at 8
 // and you have 27 points to spend. Scores can only be 8 to 15 this way.
 const POINT_BUY_BUDGET = 27;

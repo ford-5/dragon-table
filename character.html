@@ -86,7 +86,8 @@
 
     <div class="panel creator-step" data-step="scores">
       <h2>5. Ability scores</h2>
-      <p class="hint">Pick a method, then assign each number to an ability. Each number can be used once.</p>
+      <p class="hint">Pick a method. The numbers are placed for you where your class needs them most; you can still swap any of them. Each number can be used once.</p>
+      <button class="small-button" onclick="autoPlaceScores()">✨ Place them for me</button>
       <button class="small-button" onclick="useStandardArray()">Use the Standard Array</button>
       <button class="small-button" onclick="rollScores()">🎲 Roll 4d6, drop the lowest</button>
       <button class="small-button" onclick="usePointCost()">🧮 Point Cost (27 points)</button>
@@ -516,8 +517,7 @@
     function usePointCost() {
       draft.method = "pointbuy";
       draft.pointBuy = startingPointBuy();
-      buildAssignSelects();
-      updateCreator();
+      autoPlaceScores();
     }
 
     // Change one ability by +1 or -1, as long as the rules and the budget allow it.
@@ -580,13 +580,32 @@
       return box;
     }
 
+    // ✨ Put the numbers where the chosen class needs them (rules.js decides the order),
+    // and the background's +2 / +1 on its two most useful abilities.
+    function autoPlaceScores() {
+      const order = getAbilityOrder(chosenClass(), chosenSecondClass());
+      if (draft.method === "pointbuy") {
+        // The Standard Array costs exactly 27 points, so it's a good way to spend them.
+        const placed = placeScores(STANDARD_ARRAY, order);
+        for (const key in placed) draft.pointBuy[key] = STANDARD_ARRAY[placed[key]];
+      } else {
+        draft.assignments = placeScores(draft.pool, order);
+      }
+      const background = chosenBackground();
+      if (background) {
+        const bonus = pickBackgroundBonus(background.abilities, order);
+        document.getElementById("plusTwo").value = bonus.plusTwo;
+        document.getElementById("plusOne").value = bonus.plusOne;
+      }
+      buildAssignSelects();
+      updateCreator();
+    }
+
     function useStandardArray() {
       draft.method = "pool";
       draft.pool = STANDARD_ARRAY.slice();
       draft.poolLabel = "Standard Array: 15, 14, 13, 12, 10, 8";
-      draft.assignments = { str: 0, dex: 1, con: 2, int: 3, wis: 4, cha: 5 };
-      buildAssignSelects();
-      updateCreator();
+      autoPlaceScores();
     }
 
     function rollScores() {
@@ -606,9 +625,7 @@
       draft.poolLabel = "Rolled: " + results.map(function (r) {
         return r.total + " [" + r.dice.join(",") + "]";
       }).join("  ");
-      draft.assignments = { str: 0, dex: 1, con: 2, int: 3, wis: 4, cha: 5 };
-      buildAssignSelects();
-      updateCreator();
+      autoPlaceScores();
     }
 
     // One dropdown per ability, listing the six numbers in the pool.
@@ -1008,16 +1025,16 @@
 
       document.getElementById("newClass").addEventListener("change", function () {
         draft.chosenSkills.class = [];   // new class, new skill list
-        updateCreator();
+        autoPlaceScores();               // new class, new best spots for the numbers
       });
 
       fillSelect(document.getElementById("newSecondClass"), CLASSES, "— Choose a second class —");
       const startLevel = document.getElementById("newStartLevel");
       for (let n = 2; n <= 20; n++) startLevel.append(new Option("Level " + n, String(n)));
-      document.getElementById("useSecondClass").addEventListener("change", updateCreator);
+      document.getElementById("useSecondClass").addEventListener("change", autoPlaceScores);
       document.getElementById("newSecondClass").addEventListener("change", function () {
         draft.chosenSkills.multiclass = [];
-        updateCreator();
+        autoPlaceScores();
       });
       startLevel.addEventListener("change", function () {
         fillSecondLevels();
@@ -1037,7 +1054,7 @@
           });
         }
         buildBonusPickers();
-        updateCreator();
+        autoPlaceScores();
       });
       for (const radio of document.querySelectorAll('input[name="bonusMode"]')) {
         radio.addEventListener("change", updateCreator);

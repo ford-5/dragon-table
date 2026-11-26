@@ -156,6 +156,7 @@
         <button class="small-button" data-stage="battle">⚔️ Battle Simulator</button>
         <button class="small-button" data-stage="characters">🧙 Characters</button>
         <button class="small-button" data-stage="learn">🎓 Learn</button>
+        <button class="small-button" data-stage="shop">🛒 Equipment</button>
         <button class="small-button" data-stage="none">🙈 Hide</button>
       </div>
       <!-- Each page gets its own frame, made the first time it's shown and then kept,
@@ -167,6 +168,7 @@
         <div class="stage-pane hidden" id="stage-battle"></div>
         <div class="stage-pane hidden" id="stage-characters"></div>
         <div class="stage-pane hidden" id="stage-learn"></div>
+        <div class="stage-pane hidden" id="stage-shop"></div>
         <div class="stage-pane stage-empty hidden" id="stage-none"></div>
       </div>
     </main>
@@ -1237,10 +1239,12 @@
       library: "library.html?embed=1",
       battle: "battle.html?embed=1",
       characters: "character.html?embed=1",
-      learn: "dm-learn.html?embed=1"
+      learn: "dm-learn.html?embed=1",
+      shop: "equipment.html?embed=1"
     };
     const STAGE_TITLES = { map: "Battle map", adventure: "Starter adventure", library: "Library",
-                           battle: "Battle Simulator", characters: "Characters", learn: "Learn to be a GM" };
+                           battle: "Battle Simulator", characters: "Characters", learn: "Learn to be a GM",
+                           shop: "Equipment shop" };
     let stageNow = "map";
 
     // libraryTab (optional) opens one Library tab, e.g. "monsters".

@@ -1853,3 +1853,110 @@ body.gm-screen {
     height: calc(100vh - 360px);
   }
 }
+
+/* =====================================================================
+   START PAGE: a table seen from above (index.html)
+   3 columns × 3 rows; the Game Master is the middle square.
+   ===================================================================== */
+.table-box {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  max-width: 760px;
+  margin: 0 auto 28px;
+  padding: 14px;
+  border: 4px solid #6b4a2b;            /* the table's wooden edge */
+  border-radius: 24px;
+  background-color: #4a3222;
+}
+
+.table-seat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 150px;
+  padding: 12px 8px;
+  color: #f3e6c8;
+  text-decoration: none;
+  border: 2px solid #c9a227;
+  border-radius: 14px;
+  background-color: #5a1f1f;
+  font-size: 17px;
+}
+
+.table-seat:hover {
+  background-color: #7a2a2a;
+}
+
+.seat-icon {
+  font-size: 38px;
+}
+
+/* The Game Master: the purple middle seat */
+.table-seat.table-gm {
+  background-color: #34244a;
+  border: 3px solid #9b7fd1;
+  font-size: 20px;
+  box-shadow: 0 0 18px rgba(155, 127, 209, 0.5);
+}
+
+.table-seat.table-gm:hover {
+  background-color: #463163;
+}
+
+.table-seat.table-gm .seat-icon {
+  font-size: 54px;
+}
+
+.table-seat.shop-choice {
+  background-color: #1f3a2a;
+  border-color: #6fbf73;
+}
+
+.table-seat.shop-choice:hover {
+  background-color: #2a4d38;
+}
+
+/* On a phone the squares are small: keep the icon and name, drop the extra line */
+@media (max-width: 560px) {
+  .table-box {
+    gap: 6px;
+    padding: 8px;
+    border-radius: 16px;
+  }
+
+  .table-seat {
+    min-height: 104px;
+    padding: 8px 4px;
+    font-size: 13px;
+    border-radius: 10px;
+  }
+
+  .table-seat .hint {
+    display: none;
+  }
+
+  .seat-icon {
+    font-size: 28px;
+  }
+
+  .table-seat.table-gm {
+    font-size: 14px;
+  }
+
+  .table-seat.table-gm .seat-icon {
+    font-size: 40px;
+  }
+}
+
+/* The Library square keeps the Library's blue */
+.table-seat.library-choice {
+  background-color: #1f3550;
+  border-color: #6fa8dc;
+}
+
+.table-seat.library-choice:hover {
+  background-color: #2a4770;
+}

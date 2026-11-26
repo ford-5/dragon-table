@@ -13,7 +13,7 @@
 // ⚠️ When you add a new page or file to the app, add it to APP_FILES below too,
 //    and change CACHE_NAME (v1 → v2) so phones fetch the new list.
 // =====================================================================
-const CACHE_NAME = "dragon-table-v10";
+const CACHE_NAME = "dragon-table-v11";
 
 const APP_FILES = [
   "./",

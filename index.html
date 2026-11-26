@@ -34,30 +34,57 @@
   <h1>🐉 Dragon Table</h1>
   <p class="lead">Who's sitting down at the table?</p>
 
-  <!-- Step 1: are you a player or the Game Master, or here to shop? -->
-  <div class="choice-stack">
-    <a class="big-choice" href="player.html">
-      <span class="big-choice-icon">🧙</span>
-      <strong>I'm a Player</strong>
-      <span class="hint">Build a character and play an adventure</span>
-    </a>
-
-    <a class="big-choice dm-choice" href="dm-start.html">
-      <span class="big-choice-icon">🛡️</span>
-      <strong>I'm the Game Master</strong>
-      <span class="hint">Learn the job, or run a game with the rulebooks, battles and live voice chat</span>
-    </a>
-
-    <a class="big-choice library-choice" href="library.html">
-      <span class="big-choice-icon">📚</span>
+  <!-- The start page is a TABLE seen from above: the Game Master sits in the
+       middle and everything else is around them. It's a 3 × 3 CSS grid (see
+       .table-box in style.css), so it stays a box on a phone too. -->
+  <div class="table-box">
+    <a class="table-seat library-choice" href="library.html">
+      <span class="seat-icon">📚</span>
       <strong>Library</strong>
-      <span class="hint">Read the rules, 339 spells and 288 monsters, free</span>
+      <span class="hint">Rules, 339 spells, 288 monsters</span>
+    </a>
+    <a class="table-seat" href="player.html">
+      <span class="seat-icon">🧙</span>
+      <strong>I'm a Player</strong>
+      <span class="hint">Play an adventure</span>
+    </a>
+    <a class="table-seat" href="character.html">
+      <span class="seat-icon">📜</span>
+      <strong>Characters</strong>
+      <span class="hint">Make and keep your heroes</span>
     </a>
 
-    <a class="big-choice shop-choice" href="equipment.html">
-      <span class="big-choice-icon">🛒</span>
+    <a class="table-seat" href="adventure.html">
+      <span class="seat-icon">🔔</span>
+      <strong>Starter adventure</strong>
+      <span class="hint">"The Sunken Bell"</span>
+    </a>
+    <!-- The middle seat: bigger and purple, like the GM Screen -->
+    <a class="table-seat table-gm" href="dm-start.html">
+      <span class="seat-icon">🛡️</span>
+      <strong>I'm the Game Master</strong>
+      <span class="hint">Learn the job, or run a game</span>
+    </a>
+    <a class="table-seat" href="map.html">
+      <span class="seat-icon">🗺️</span>
+      <strong>Battle Map</strong>
+      <span class="hint">A grid for every fight</span>
+    </a>
+
+    <a class="table-seat" href="battle.html">
+      <span class="seat-icon">⚔️</span>
+      <strong>Battle Simulator</strong>
+      <span class="hint">Try a fight by the rules</span>
+    </a>
+    <a class="table-seat shop-choice" href="equipment.html">
+      <span class="seat-icon">🛒</span>
       <strong>Equipment</strong>
-      <span class="hint">3D-printed terrain, obstacles, miniatures, tokens and dice for your table</span>
+      <span class="hint">3D-printed gear for your table</span>
+    </a>
+    <a class="table-seat" href="dm-learn.html">
+      <span class="seat-icon">🎓</span>
+      <strong>Learn to be a GM</strong>
+      <span class="hint">8 short lessons</span>
     </a>
   </div>
 

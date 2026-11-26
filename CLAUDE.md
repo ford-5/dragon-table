@@ -42,7 +42,7 @@ Pages should **calculate** from the rules (modifiers, proficiency, HP, AC, saves
 
 ## Where things are (one line each; full details in `docs/FEATURES.md`: search it for the file name)
 **Pages**
-- `index.html` start screen (Player / GM / Library / Equipment, install box, share + support links); `player.html` AI-or-live choice
+- `index.html` start screen (a 3 × 3 "table" box: GM in the middle, 8 pages around it; install box, share + support links); `player.html` AI-or-live choice
 - `ai-dm.html` AI Game Master (5 setup steps, chat, ready-roll button, music, redo, voice); `join.html` live games for players (waiting room, table feed, voice chat, music, shared map)
 - `character.html` roster, creator (guide levels, multiclass), sheet (weapons & armor, spells, special item, minis/print links); `sheet.html` printable sheet + share links; `mini.html` Mini Maker (3D-print STL)
 - `dm-start.html` GM choice; `dm-learn.html` GM course; `dm.html` GM Screen (one screen: side drawers + middle stage showing the map, adventure, Library, Battle Simulator, Characters, GM course or shop; live game, voice, music, party, initiative, notes, books); `battle.html` Battle Simulator; `map.html` Battle Map; `adventure.html` starter adventure "The Sunken Bell"

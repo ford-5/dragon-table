@@ -2177,3 +2177,16 @@ details.by-hand > summary {
 .premade-card:hover {
   background-color: #5a1f1f;
 }
+
+/* "A new version is ready" note (pwa.js), floating at the top of the screen */
+.update-note {
+  position: fixed;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+}
+
+.update-note button {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}

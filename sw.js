@@ -5,6 +5,9 @@
 //
 // How it answers each request for one of our files:
 //   1. Ask the internet for the newest version (so updates arrive right away).
+//      "no-cache" makes the browser check with the website every time instead of
+//      using its own short-term memory (GitHub lets browsers keep files 10 minutes,
+//      which made fresh updates look like they hadn't happened).
 //   2. If that works, save a copy and use it.
 //   3. If there's no internet (or it takes more than 4 seconds), use the saved copy.
 // The AI Game Master (api/...), live games and the order forms always need the
@@ -13,7 +16,7 @@
 // ⚠️ When you add a new page or file to the app, add it to APP_FILES below too,
 //    and change CACHE_NAME (v1 → v2) so phones fetch the new list.
 // =====================================================================
-const CACHE_NAME = "dragon-table-v14";
+const CACHE_NAME = "dragon-table-v15";
 
 const APP_FILES = [
   "./",
@@ -29,7 +32,10 @@ const APP_FILES = [
 self.addEventListener("install", function (event) {
   event.waitUntil(
     caches.open(CACHE_NAME).then(function (cache) {
-      return cache.addAll(APP_FILES);
+      // cache: "reload" = download each file fresh, never from the browser's memory
+      return cache.addAll(APP_FILES.map(function (file) {
+        return new Request(file, { cache: "reload" });
+      }));
     }).then(function () {
       return self.skipWaiting();   // start working straight away
     })
@@ -61,7 +67,8 @@ self.addEventListener("fetch", function (event) {
 });
 
 function networkFirst(request) {
-  const fromNetwork = fetch(request).then(function (response) {
+  // A page load can't be copied with new settings, so we ask for its address instead.
+  const fromNetwork = fetch(request.url, { cache: "no-cache", credentials: "same-origin" }).then(function (response) {
     if (response.ok) {
       const copy = response.clone();
       caches.open(CACHE_NAME).then(function (cache) {

@@ -6,8 +6,25 @@
 (function () {
   // Service workers only run on https:// (or localhost), not on files opened from Finder.
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+    // Was an older helper already running this page? Then a "controllerchange" later
+    // means a NEW version just arrived.
+    const hadHelper = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.register("sw.js").catch(function () {
       // Couldn't start the offline helper: the app still works online.
+    });
+    navigator.serviceWorker.addEventListener("controllerchange", function () {
+      // Only the main page shows it (not the pages inside the GM Screen's middle).
+      if (!hadHelper || window.parent !== window || document.getElementById("updateNote")) return;
+      // We don't reload by ourselves: that would end a live game on the GM Screen.
+      const note = document.createElement("div");
+      note.id = "updateNote";
+      note.className = "update-note";
+      const button = document.createElement("button");
+      button.className = "small-button";
+      button.textContent = "🔄 A new version of Dragon Table is ready: tap to update";
+      button.addEventListener("click", function () { location.reload(); });
+      note.append(button);
+      document.body.append(note);
     });
   }
 

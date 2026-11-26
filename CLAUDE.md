@@ -19,9 +19,9 @@ The person building it is a beginner who is learning to code through this projec
 - Two additions, both approved by the user: **PeerJS 1.5.4** (MIT, loaded from unpkg, pinned) for live games, and a small **Ruby helper server** (`server.rb`, Ruby ships with macOS) that holds the Anthropic API key for the AI Dungeon Master.
 - Later (only when ready): Git, then possibly React.
 
-## The double-click launcher (made 2026-11-25)
-- `~/Applications/Dragon Table.app` (with a shortcut `~/Desktop/Dragon Table`): a small macOS app that opens Terminal and runs `Contents/Resources/run.command`, which starts `ruby server.rb` (port 8787) from a **snapshot copy of the published site** inside the app (`Contents/Resources/site`, taken with `git archive HEAD`, so it needs no access to ~/Documents), then opens http://localhost:8787. If the port is already in use it just opens the browser. It asks in Terminal for an Anthropic key (typed hidden, kept only in that window's memory, NEVER written to a file); pressing Enter skips the AI. The icon is the d20 made into `icon.icns`.
-- It is a SNAPSHOT: after we publish new features, rebuild it (rsync/`git archive` into the app's `site` folder, copy to ~/Applications). The build lived in the scratchpad (not in the project). Not tested: double-clicking it from Finder (the pieces were tested separately so as not to open windows on the user's screen).
+## The Dragon Table app on the Dock/Desktop
+- As of 2026-11-26, `~/Applications/Dragon Table.app` (shortcut `~/Desktop/Dragon Table`) is a **Safari web app** ("Add to Dock") of the LIVE site, not the old Ruby-launcher snapshot from 2026-11-25. It updates with the live site; no rebuild needed. (No local AI from it: the AI Game Master still needs `ruby server.rb` with the user's key typed in Terminal.)
+- Updates reaching users: `sw.js` asks the website with `cache: "no-cache"` (GitHub Pages lets browsers keep files 10 min, which made updates look missing) and installs with `cache: "reload"`; `pwa.js` shows a "🔄 A new version is ready" button when a new helper takes over (never reloads by itself, so a live game isn't cut off). Always bump `CACHE_NAME` when publishing.
 
 ## Running the app
 - Just the pages (no AI): open `index.html` from Finder, or `ruby server.rb` and go to http://localhost:8787 (recommended: all pages then share saved data).

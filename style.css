@@ -1744,24 +1744,46 @@ body.embedded h1#pageTitle {
 /* =====================================================================
    GM SCREEN: one screen in three parts (dm.html)
    Phone: the middle (stage) comes first, then the side drawers below it.
-   Wide screen: left side | middle | right side, each scrolling on its own.
+   Computer (1000px and wider): EXACTLY one screen tall, no page scrolling.
+   Left side | middle | right side, and each side scrolls on its own.
    ===================================================================== */
 body.gm-screen {
-  padding: 12px 12px 24px;
+  padding: 8px 10px 16px;
 }
 
-.gm-header h1 {
-  margin: 4px 0;
+/* The slim bar on top */
+.gm-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 12px;
+  margin-bottom: 8px;
 }
 
-.gm-header p {
-  margin: 0 0 12px;
+.gm-topbar h1 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.gm-topbar .top-nav {
+  margin: 0;
+  gap: 4px;
+}
+
+.gm-topbar .top-nav a {
+  padding: 3px 9px;
+  font-size: 13px;
+}
+
+.gm-topbar .back-link {
+  font-size: 13px;
 }
 
 .gm-layout {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .gm-stage {
@@ -1769,31 +1791,99 @@ body.gm-screen {
   min-width: 0;
 }
 
+/* Everything inside the GM Screen is a bit smaller, so more fits */
+.gm-screen .drawer {
+  font-size: 14px;
+}
+
+.gm-screen .drawer button {
+  font-size: 14px;
+  padding: 6px 10px;
+  margin: 3px;
+}
+
+.gm-screen .drawer .small-button {
+  font-size: 13px;
+  padding: 4px 8px;
+}
+
+.gm-screen .drawer .hint {
+  font-size: 12px;
+}
+
+.gm-screen .drawer p {
+  margin: 6px 0;
+}
+
+.gm-screen .drawer .section-label {
+  margin: 10px 0 4px;
+  font-size: 15px;
+}
+
+.gm-screen .drawer input,
+.gm-screen .drawer textarea {
+  font-size: 14px;
+}
+
+.gm-screen .game-code {
+  font-size: 28px;
+}
+
+.gm-screen .big-result {
+  font-size: 32px;
+  margin: 6px 0;
+}
+
+/* Party and initiative rows: smaller, so a whole party fits */
+.gm-screen .combatant {
+  padding: 4px 2px;
+  gap: 2px;
+}
+
+.gm-screen .combatant-info {
+  font-size: 13px;
+  min-width: 150px;
+}
+
+.gm-screen .combatant input {
+  width: 42px;
+  font-size: 13px;
+  padding: 2px;
+}
+
 /* A side "drawer": a panel you open and close by clicking its title */
 .panel.drawer {
   max-width: none;
-  margin: 0 0 10px;
-  padding: 0 14px;
+  margin: 0 0 8px;
+  padding: 0 10px;
 }
 
 .panel.drawer[open] {
-  padding-bottom: 14px;
+  padding-bottom: 10px;
 }
 
 .drawer > summary {
   cursor: pointer;
   font-weight: bold;
-  font-size: 1.1em;
-  padding: 12px 0;
+  font-size: 15px;
+  padding: 8px 0;
   text-align: left;
 }
 
+/* The buttons above the middle: one row (slide sideways if they don't fit) */
 .stage-tabs {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: wrap;              /* a narrow screen gets a second row instead of hiding buttons */
   justify-content: center;
-  gap: 6px;
-  margin-bottom: 8px;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.stage-tabs button.small-button {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 4px 9px;
+  font-size: 13px;
 }
 
 .stage-tabs button.active {
@@ -1812,10 +1902,11 @@ body.gm-screen {
 
 /* When the middle is empty, table talk + voice fill it */
 .stage-empty {
-  padding: 16px;
+  padding: 12px;
   border: 2px solid #9b7fd1;
   border-radius: 10px;
   background-color: #261c33;
+  overflow-y: auto;
 }
 
 .stage-empty .short-log {
@@ -1823,35 +1914,112 @@ body.gm-screen {
 }
 
 @media (min-width: 1000px) {
+  /* The whole page is one screen: a column of [top bar] + [three parts] */
+  body.gm-screen {
+    height: 100vh;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 6px 10px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
   .gm-layout {
+    flex: 1;
+    min-height: 0;              /* lets the three parts shrink to fit instead of growing */
     display: grid;
-    grid-template-columns: 300px minmax(0, 1fr) 300px;
-    align-items: start;
+    grid-template-columns: 270px minmax(0, 1fr) 270px;
+    gap: 8px;
+  }
+
+  .gm-side {
+    min-height: 0;
+    overflow-y: auto;           /* each side scrolls on its own */
   }
 
   .gm-stage {
     order: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
   }
 
-  /* Sticky: once you scroll past the title, all three parts stay on screen */
-  .gm-side,
-  .gm-stage {
-    position: sticky;
-    top: 8px;
-  }
-
-  .gm-side {
-    max-height: calc(100vh - 16px);
-    overflow-y: auto;
+  #stagePanes,
+  .stage-pane:not(.hidden) {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
   }
 
   .stage-frame {
-    height: calc(100vh - 70px);
+    flex: 1;
+    height: auto;
   }
 
   .stage-empty .short-log {
-    height: calc(100vh - 360px);
+    height: auto;
+    flex: 1;
+    min-height: 120px;
   }
+
+  #stage-none #tableBlock,
+  #stage-none #tableOpen:not(.hidden) {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* The feedback link floats in a corner instead of making the page taller */
+  body.gm-screen > .feedback-link {
+    position: fixed;
+    right: 10px;
+    bottom: 2px;
+    margin: 0;
+    font-size: 11px;
+  }
+}
+
+/* ---------- Pages shown INSIDE the GM Screen's middle (?embed=1): compact ---------- */
+body.embedded {
+  padding: 6px 8px 16px;
+  font-size: 15px;
+}
+
+body.embedded > p.hint {
+  display: none;                /* the page's long introduction: the GM Screen already explains it */
+}
+
+body.embedded .panel {
+  max-width: none;
+  padding: 10px 12px;
+  margin: 0 auto 10px;
+}
+
+body.embedded h2 {
+  font-size: 18px;
+  margin: 4px 0 8px;
+}
+
+body.embedded button {
+  font-size: 15px;
+  padding: 6px 12px;
+  margin: 3px;
+}
+
+body.embedded .small-button {
+  font-size: 13px;
+  padding: 4px 8px;
+}
+
+body.embedded .hint {
+  font-size: 12px;
+}
+
+body.embedded .map-tools p {
+  margin: 4px 0;
 }
 
 /* =====================================================================

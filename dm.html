@@ -18,19 +18,19 @@
 
 <!-- class="dm" switches on the purple GM theme from style.css -->
 <body class="dm gm-screen">
-  <nav class="top-nav">
-    <a href="index.html">🏠 Home</a>
-    <a href="library.html">📚 Library</a>
-    <a href="character.html">🧙 Characters</a>
-    <a href="dm.html" class="active">🛡️ GM Screen</a>
-    <a href="equipment.html">🛒 Equipment</a>
-    <a href="battle.html">⚔️ Battle</a>
-    <a href="map.html">🗺️ Map</a>
-  </nav>
-
-  <header class="gm-header">
+  <!-- One slim bar on top: title, menu and Back, so the rest of the screen is for the game -->
+  <header class="gm-topbar">
     <h1>🛡️ GM Screen</h1>
-    <p><a href="dm-start.html" class="back-link">← Back</a></p>
+    <nav class="top-nav">
+      <a href="index.html">🏠 Home</a>
+      <a href="library.html">📚 Library</a>
+      <a href="character.html">🧙 Characters</a>
+      <a href="dm.html" class="active">🛡️ GM Screen</a>
+      <a href="equipment.html">🛒 Equipment</a>
+      <a href="battle.html">⚔️ Battle</a>
+      <a href="map.html">🗺️ Map</a>
+    </nav>
+    <a href="dm-start.html" class="back-link">← Back</a>
   </header>
 
   <!-- ONE screen in three parts: tools on the LEFT and RIGHT sides, and the
@@ -153,14 +153,14 @@
     <main class="gm-stage">
       <!-- One button per thing that can fill the middle. setStage() does the work. -->
       <div class="stage-tabs" id="stageTabs">
-        <button class="small-button" data-stage="map">🗺️ Battle map</button>
-        <button class="small-button" data-stage="adventure">📜 Starter adventure</button>
-        <button class="small-button" data-stage="library">📚 Library</button>
-        <button class="small-button" data-stage="battle">⚔️ Battle Simulator</button>
-        <button class="small-button" data-stage="characters">🧙 Characters</button>
-        <button class="small-button" data-stage="learn">🎓 Learn</button>
-        <button class="small-button" data-stage="shop">🛒 Equipment</button>
-        <button class="small-button" data-stage="none">🙈 Hide</button>
+        <button class="small-button" data-stage="map" title="Battle map">🗺️ Map</button>
+        <button class="small-button" data-stage="adventure" title="Starter adventure">📜 Adventure</button>
+        <button class="small-button" data-stage="library" title="Library">📚 Library</button>
+        <button class="small-button" data-stage="battle" title="Battle Simulator">⚔️ Simulator</button>
+        <button class="small-button" data-stage="characters" title="Characters">🧙 Heroes</button>
+        <button class="small-button" data-stage="learn" title="Learn to be a GM">🎓 Learn</button>
+        <button class="small-button" data-stage="shop" title="Equipment shop">🛒 Shop</button>
+        <button class="small-button" data-stage="none" title="Show table talk and voice here">🙈 Hide</button>
       </div>
       <!-- Each page gets its own frame, made the first time it's shown and then kept,
            so switching back doesn't lose your place. -->

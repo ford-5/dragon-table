@@ -3,11 +3,11 @@
 // Needs PeerJS (already loaded by those pages).
 //
 // How it works, simply:
-//   - The AM's screen keeps the list of PEOPLE at the table: the AM and every accepted
+//   - The GM's screen keeps the list of PEOPLE at the table: the GM and every accepted
 //     player, with their PeerJS address and whether their camera is on.
 //   - Everyone whose camera is on "calls" everyone else with their picture (video only;
 //     sound stays in voice chat). The others answer and show the picture in a tile.
-//   - A call is only answered if it comes from someone on the AM's list, and only for
+//   - A call is only answered if it comes from someone on the GM's list, and only for
 //     video. Nothing is recorded: pictures go straight between the browsers.
 // Every camera sends to everyone, so the picture gets smaller as the table grows
 // (adjustQuality). Works well up to about 8 people.
@@ -18,7 +18,7 @@ function createVideoChat(options) {
   let people = [];                 // [{ id, name, cam }]
   const outgoing = new Map();      // their id -> the call carrying MY picture to them
   const incoming = new Map();      // their id -> { call, tile }
-  const waiting = [];              // calls that arrived before the AM's list told us who they are
+  const waiting = [];              // calls that arrived before the GM's list told us who they are
   const retries = new Map();       // their id -> how many times we tried to reach them
 
   function myId() {
@@ -138,7 +138,7 @@ function createVideoChat(options) {
   return {
     isOn: function () { return Boolean(localStream); },
 
-    // The AM's list of who's at the table changed.
+    // The GM's list of who's at the table changed.
     setPeople: function (list) {
       people = list;
       const ids = people.map(function (p) { return p.id; });
@@ -195,7 +195,7 @@ function createVideoChat(options) {
       if (people.some(function (p) { return p.id === call.peer && p.cam; })) {
         answerCall(call);
       } else if (waiting.length < 12) {
-        // Not on our list YET: the AM's list may still be on its way. Wait up to 5 seconds.
+        // Not on our list YET: the GM's list may still be on its way. Wait up to 5 seconds.
         const item = { call: call, timer: null };
         item.timer = setTimeout(function () {
           const i = waiting.indexOf(item);

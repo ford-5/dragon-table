@@ -13,9 +13,9 @@
       // Couldn't start the offline helper: the app still works online.
     });
     navigator.serviceWorker.addEventListener("controllerchange", function () {
-      // Only the main page shows it (not the pages inside the AM Screen's middle).
+      // Only the main page shows it (not the pages inside the GM Screen's middle).
       if (!hadHelper || window.parent !== window || document.getElementById("updateNote")) return;
-      // We don't reload by ourselves: that would end a live game on the AM Screen.
+      // We don't reload by ourselves: that would end a live game on the GM Screen.
       const note = document.createElement("div");
       note.id = "updateNote";
       note.className = "update-note";

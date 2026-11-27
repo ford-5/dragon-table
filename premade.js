@@ -1,5 +1,5 @@
 // =====================================================================
-// PRE-MADE HEROES AND BATTLES (the Create page, the Battle Simulator, the AM Screen)
+// PRE-MADE HEROES AND BATTLES (the Create page, the Battle Simulator, the GM Screen)
 // Needs rules.js (and spells.js for heroes with spells, monsters.js for battles).
 // The heroes and battles are original to Dragon Table; the rules, monsters,
 // weapons and spells come from the SRD 5.2.1.
@@ -118,7 +118,7 @@ const PREMADE_BATTLES = [
     monsters: [{ n: "Troll", count: 1 }, { n: "Ogre", count: 2 }] }
 ];
 
-// Battles the AM saved in the Battle Simulator (localStorage "savedBattles").
+// Battles the GM saved in the Battle Simulator (localStorage "savedBattles").
 function loadSavedBattles() {
   try {
     const list = JSON.parse(localStorage.getItem("savedBattles") || "[]");

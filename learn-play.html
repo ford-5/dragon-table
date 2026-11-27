@@ -19,13 +19,13 @@
     <a href="index.html">🏠 Home</a>
     <a href="library.html">📚 Library</a>
     <a href="character.html">🧙 Characters</a>
-    <a href="dm.html">🛡️ AM Screen</a>
+    <a href="dm.html">🛡️ GM Screen</a>
     <a href="equipment.html">🛒 Equipment</a>
   </nav>
 
   <h1>🎓 Learn to Play</h1>
   <p class="hint">Nine hands-on lessons for new players. Each one builds on the last: finish a lesson's practice to unlock the next. The last lesson is a real (gentle) dungeon.</p>
-  <p class="hint">Want to run games instead? <a href="dm-learn.html">🛡️ Learn to be an App Master</a></p>
+  <p class="hint">Want to run games instead? <a href="dm-learn.html">🛡️ Learn to be a Game Master</a></p>
 
   <div class="panel">
     <h2>Practice with...</h2>
@@ -215,7 +215,7 @@
       return box;
     }
 
-    // Lesson 2: the AM asks for a check; pick the skill, then roll with the hero's real bonus.
+    // Lesson 2: the GM asks for a check; pick the skill, then roll with the hero's real bonus.
     const CHECK_REQUESTS = [
       { say: "\"Climb the slippery castle wall. It's a DC 12 check.\"", skill: "Athletics", dc: 12, options: ["Athletics", "Stealth", "History", "Persuasion"] },
       { say: "\"Sneak past the sleeping guard dog. DC 13.\"", skill: "Stealth", dc: 13, options: ["Insight", "Stealth", "Medicine", "Athletics"] },
@@ -225,11 +225,11 @@
     function checkPractice(complete) {
       const box = make("div", "tutor-box");
       const h = hero();
-      box.append(make("strong", "", "🎲 Practice: your AM asks " + h.name + " for three checks. Pick the right skill, then roll."));
+      box.append(make("strong", "", "🎲 Practice: your GM asks " + h.name + " for three checks. Pick the right skill, then roll."));
       const finished = new Set();
       CHECK_REQUESTS.forEach(function (req, i) {
         const block = make("div", "quiz-question");
-        block.append(make("p", "", (i + 1) + ". The AM says: " + req.say));
+        block.append(make("p", "", (i + 1) + ". The GM says: " + req.say));
         const answers = make("div", "ability-buttons");
         const result = make("p", "quiz-feedback");
         for (const name of req.options) {
@@ -249,7 +249,7 @@
             const total = die + bonus;
             result.textContent = "🎲 You rolled " + die + " " + formatBonus(bonus) + " (" + abilityName(skill.ability) + " modifier" +
               (trained ? " + proficiency, because " + h.name + " is trained in " + name : "") + ") = " + total + " against DC " + req.dc + ": " +
-              (total >= req.dc ? "✅ success!" : "❌ not this time. The AM tells you what happens next.");
+              (total >= req.dc ? "✅ success!" : "❌ not this time. The GM tells you what happens next.");
             finished.add(i);
             if (finished.size === CHECK_REQUESTS.length) complete();
           });
@@ -447,14 +447,14 @@
         id: "checks", title: "2. Rolling a check",
         recap: "Lesson 1: each ability has a modifier, the number you add to rolls.",
         text: [
-          "When you try something risky, the AM asks for a check. You roll a twenty-sided die (a d20) and add a bonus. If the total meets or beats the Difficulty Class (DC), you succeed.",
+          "When you try something risky, the GM asks for a check. You roll a twenty-sided die (a d20) and add a bonus. If the total meets or beats the Difficulty Class (DC), you succeed.",
           "Most checks use a skill: Stealth, Athletics, Perception and so on. Each skill belongs to one ability (Stealth is Dexterity). If your hero is trained in that skill, you also add your proficiency bonus (+2 at level 1).",
-          "The AM tells you which skill to use, or you can ask: \"Can I use Athletics to climb it?\""
+          "The GM tells you which skill to use, or you can ask: \"Can I use Athletics to climb it?\""
         ],
         talk: [
-          ["AM", "The wall is slick with rain. Climbing it is an Athletics check."],
+          ["GM", "The wall is slick with rain. Climbing it is an Athletics check."],
           ["Player", "I rolled 11, plus 5 for Athletics: 16!"],
-          ["AM", "That beats it. You haul yourself over the top, soaked but safe."]
+          ["GM", "That beats it. You haul yourself over the top, soaked but safe."]
         ],
         practice: checkPractice,
         goal: "Pick the right skill and roll all three checks."
@@ -480,9 +480,9 @@
         id: "talk", title: "4. Talking and exploring",
         recap: "Lessons 2 and 3: when something is uncertain, you roll a check, sometimes with Advantage or Disadvantage.",
         text: [
-          "Most of the game is a conversation. The AM describes the world; you say what your hero does. You can try anything a person could try.",
+          "Most of the game is a conversation. The GM describes the world; you say what your hero does. You can try anything a person could try.",
           "Be specific: say what you do and how. \"I search the desk\" is good; \"I pull out every drawer and feel underneath for a hidden switch\" is even better, and good ideas can make checks easier or unnecessary.",
-          "Ask questions! \"What does the old man look like?\" \"Can I hear anything behind the door?\" The AM loves to describe things."
+          "Ask questions! \"What does the old man look like?\" \"Can I hear anything behind the door?\" The GM loves to describe things."
         ],
         talk: [
           ["Vague", "\"I look around.\""],
@@ -490,16 +490,16 @@
         ],
         quiz: [
           { q: "Which is the clearest thing to say?", choices: [
-            { t: "\"I do something.\"", ok: false, why: "The AM can't tell what your hero tries." },
-            { t: "\"I sneak up to the door and listen for voices.\"", ok: true, why: "Clear: what you do and how. The AM knows exactly what to describe (or which check to ask for)." }
+            { t: "\"I do something.\"", ok: false, why: "The GM can't tell what your hero tries." },
+            { t: "\"I sneak up to the door and listen for voices.\"", ok: true, why: "Clear: what you do and how. The GM knows exactly what to describe (or which check to ask for)." }
           ] },
           { q: "Can your hero try something that isn't on the character sheet, like swinging from a chandelier?", choices: [
-            { t: "Yes! You can try anything. The AM may ask for a check.", ok: true, why: "Exactly. The sheet shows what you're good at, not all you're allowed to do." },
+            { t: "Yes! You can try anything. The GM may ask for a check.", ok: true, why: "Exactly. The sheet shows what you're good at, not all you're allowed to do." },
             { t: "No, only the things on the sheet.", ok: false, why: "Imagination is the point of the game. Try it!" }
           ] },
           { q: "You don't know what's in the room. What should you do?", choices: [
-            { t: "Ask the AM what you see, hear or smell.", ok: true, why: "Yes. Asking questions is a big part of exploring." },
-            { t: "Guess and hope.", ok: false, why: "Just ask. The AM is happy to describe." }
+            { t: "Ask the GM what you see, hear or smell.", ok: true, why: "Yes. Asking questions is a big part of exploring." },
+            { t: "Guess and hope.", ok: false, why: "Just ask. The GM is happy to describe." }
           ] }
         ],
         goal: "Answer all three questions."

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Solo Adventures</title>
-  <meta name="description" content="Take your hero into a dungeon alone: monsters fight back by the rules, no App Master or AI needed.">
+  <meta name="description" content="Take your hero into a dungeon alone: monsters fight back by the rules, no Game Master or AI needed.">
   <link rel="stylesheet" href="style.css">
   <!-- App icon, colors, and the file that makes Dragon Table installable -->
   <link rel="manifest" href="manifest.webmanifest">
@@ -19,12 +19,12 @@
     <a href="index.html">🏠 Home</a>
     <a href="library.html">📚 Library</a>
     <a href="character.html">🧙 Characters</a>
-    <a href="dm.html">🛡️ AM Screen</a>
+    <a href="dm.html">🛡️ GM Screen</a>
     <a href="equipment.html">🛒 Equipment</a>
   </nav>
 
   <h1>🗡️ Solo Adventures</h1>
-  <p class="hint">Take your hero into a dungeon on your own. The monsters fight back by the rules: no App Master and no AI needed. Great for practice!</p>
+  <p class="hint">Take your hero into a dungeon on your own. The monsters fight back by the rules: no Game Master and no AI needed. Great for practice!</p>
 
   <!-- ===================== SETUP ===================== -->
   <!-- A saved adventure to carry on with (saved automatically as you play) -->
@@ -65,7 +65,7 @@
 
   <!-- ===================== PLAYING ===================== -->
   <div class="hidden" id="playArea">
-    <!-- Like the AM Screen: books down both edges; in the middle the cards (HP and AC, in
+    <!-- Like the GM Screen: books down both edges; in the middle the cards (HP and AC, in
          initiative order), the map, and what happened underneath (automatic damage) -->
     <div class="player-layout">
       <nav class="book-edge" id="leftBooks" aria-label="Books"></nav>
@@ -137,7 +137,7 @@
     //   - A monster that can SEE you (close, nothing in the way) wakes up: combat starts.
     //   - Combat: everyone rolls initiative. On your turn you move (up to your Speed)
     //     and take ONE action: an attack or a spell. Then the monsters take theirs.
-    // The dice and damage use the same rules as the AM Screen (combat.js).
+    // The dice and damage use the same rules as the GM Screen (combat.js).
     // =====================================================================
     const el = function (id) { return document.getElementById(id); };
     const SIGHT = 8;        // how many squares away a monster notices you
@@ -220,7 +220,7 @@
       const tutorial = { name: TUTORIAL_MAP.name, tutorial: true, fog: true, group: "solo",
                          about: "Start here! A short, gentle dungeon. A coach explains every step as you play.",
                          build: function () { return parsePremade(TUTORIAL_MAP); } };
-      // group: "solo" = made for one hero; "party" = made for 3–5 heroes (very hard alone); "mine" = the AM's own maps
+      // group: "solo" = made for one hero; "party" = made for 3–5 heroes (very hard alone); "mine" = the GM's own maps
       const forOne = SOLO_MAPS.map(function (p) {
         return { name: p.name, about: p.about + " " + p.level + ".", fog: p.fog, group: "solo", minLevel: p.minLevel, maxLevel: p.maxLevel,
                  build: function () { return parsePremade(p); } };
@@ -229,7 +229,7 @@
         return { name: p.name, about: p.about + " " + p.level + ".", fog: p.fog, group: "party", build: function () { return parsePremade(p); } };
       });
       const list = [tutorial].concat(forOne, forParty);
-      // The AM's own saved maps (Battle Map page) that allow solo play and have monsters
+      // The GM's own saved maps (Battle Map page) that allow solo play and have monsters
       let saved = [];
       try { saved = JSON.parse(localStorage.getItem("savedMaps") || "[]"); } catch (error) { saved = []; }
       for (const entry of Array.isArray(saved) ? saved : []) {
@@ -258,7 +258,7 @@
       box.innerHTML = "";
       const headings = {
         solo: ["⭐ Made for one hero", "Fair fights for a single hero of level 1 to 10, one room at a time, with healing potions to find. Pick one marked ✅ for your hero."],
-        party: ["👥 Made for a party", "Built for 3–5 heroes. Very hard alone: try them with a strong hero, or with friends on the AM Screen."],
+        party: ["👥 Made for a party", "Built for 3–5 heroes. Very hard alone: try them with a strong hero, or with friends on the GM Screen."],
         mine: ["🗺️ Your own maps", "Maps you saved on the Battle Map page."]
       };
       let lastGroup = "";

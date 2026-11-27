@@ -136,9 +136,9 @@ function findMusicTag(text) {
   return MUSIC_TAG_MOODS.includes(mood) ? mood : null;
 }
 
-// What roll does the App Master want? Returns null, or one of:
+// What roll does the Game Master want? Returns null, or one of:
 //   { type: "check", entry, index, mode, label }        a roll from the sheet (the bonus comes from the sheet)
-//   { type: "dice", count, sides, modifier, mode, label } dice the AM wrote out (attacks, damage)
+//   { type: "dice", count, sides, modifier, mode, label } dice the GM wrote out (attacks, damage)
 function findRollRequest(text, character) {
   const tag = String(text).match(/\[ROLL\s*:\s*([^\]]+)\]/i);
   if (tag) return parseRollRequest(tag[1], character);
@@ -148,7 +148,7 @@ function findRollRequest(text, character) {
 function parseRollRequest(raw, character) {
   let words = String(raw).trim().toLowerCase();
 
-  // The App Master may name the number to beat: "Perception DC 15" or "Longsword attack vs AC 14".
+  // The Game Master may name the number to beat: "Perception DC 15" or "Longsword attack vs AC 14".
   let target = 0;
   const targetMatch = words.match(/\s*(?:\bvs\.?\s*)?\b(?:dc|ac)\s*(\d{1,2})\b/);
   if (targetMatch) {
@@ -226,7 +226,7 @@ function describeRollRequest(request) {
 }
 
 // Roll whatever was requested. "fallbackTarget" is the number to beat typed by the player,
-// used when the App Master didn't name one. Returns { text, total, success }.
+// used when the Game Master didn't name one. Returns { text, total, success }.
 function rollRequest(character, request, fallbackTarget) {
   if (request.type === "check") return rollCharacterCheck(character, request.entry, request.mode, request.target || fallbackTarget);
 
@@ -252,7 +252,7 @@ function rollRequest(character, request, fallbackTarget) {
 }
 
 // ---------------------------------------------------------------------
-// THE CHARACTER SHEET AS TEXT (sent to the AI App Master)
+// THE CHARACTER SHEET AS TEXT (sent to the AI Game Master)
 // ---------------------------------------------------------------------
 function makeSheetText(c) {
   const species = findByName(SPECIES, c.species);
@@ -298,7 +298,7 @@ function makeSheetText(c) {
     if (slotText.length) lines.push("Spell slots left: " + slotText.join(", "));
   }
 
-  // Weapons and armor, so the App Master uses the real numbers.
+  // Weapons and armor, so the Game Master uses the real numbers.
   const armor = wornArmor(c);
   if (usesArmorRules(c)) lines.push("Armor: " + (armor ? armor.name : "none") + (c.shield ? " and a Shield" : ""));
   lines.push("Attacks: " + getAttacks(c).map(function (a) {
@@ -321,10 +321,10 @@ function makeSheetText(c) {
 }
 
 // ---------------------------------------------------------------------
-// LIVE GAMES: identity, game codes, and what a player shares with an AM
+// LIVE GAMES: identity, game codes, and what a player shares with a GM
 // ---------------------------------------------------------------------
 
-// Every browser gets a random id, so an AM can recognise a returning player.
+// Every browser gets a random id, so a GM can recognise a returning player.
 // (It's random and unguessable, but it is not a password.)
 let cachedClientId = null;
 function getClientId() {
@@ -370,7 +370,7 @@ function peerIdFromCode(code) {
   return PEER_PREFIX + normalizeCode(code);
 }
 
-// The small summary of a character that a player sends to the AM.
+// The small summary of a character that a player sends to the GM.
 // Deliberately leaves out inventory notes and the player's real name.
 function makeSharedCharacter(c) {
   const item = c.specialItem;
@@ -384,7 +384,7 @@ function makeSharedCharacter(c) {
     maxHp: getMaxHp(c),
     ac: getAc(c),
     passive: getPassivePerception(c),
-    init: getModifier(getAbilityScore(c, "dex")),   // initiative bonus, so the AM can roll for them
+    init: getModifier(getAbilityScore(c, "dex")),   // initiative bonus, so the GM can roll for them
     // Attacks, spells and slots for the turn cards (combat.js, on pages that load it)
     combat: typeof makeCombatProfile === "function" ? makeCombatProfile(c) : null,
     item: item ? {
@@ -436,13 +436,13 @@ function cleanSharedCharacter(raw) {
 }
 
 // ---------------------------------------------------------------------
-// THE SHARED BATTLE MAP (what the AM shows players)
+// THE SHARED BATTLE MAP (what the GM shows players)
 // ---------------------------------------------------------------------
 const MAP_TERRAIN_KEYS = ["wall", "tree", "rubble", "water"];
 const MAP_GROUNDS = ["stone", "grass", "sand", "wood"];
 const MAP_STATUSES = ["Unhurt", "Hurt", "Bloodied", "Down"];
 
-// Check the map the AM sent: the right shape, sensible sizes, only known kinds of terrain.
+// Check the map the GM sent: the right shape, sensible sizes, only known kinds of terrain.
 // Returns a clean copy, or null if it isn't a map.
 function cleanMapSnapshot(raw) {
   if (!raw || typeof raw !== "object") return null;

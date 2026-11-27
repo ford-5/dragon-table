@@ -18,7 +18,7 @@ const SUPPORT_LINKS = [
 ];
 const SUPPORT_HOSTS = ["ko-fi.com", "buymeacoffee.com", "www.buymeacoffee.com", "patreon.com", "www.patreon.com", "github.com"];
 
-// ---------- A waiting list for the online AI App Master ----------
+// ---------- A waiting list for the online AI Game Master ----------
 // A Google Form (like your order and feedback forms) with an "Email" question.
 // Paste the form's link ending in /viewform. Until then, the waiting-list buttons stay hidden.
 const WAITLIST_FORM = { url: "https://docs.google.com/forms/d/e/1FAIpQLSf10BAbxo-Zt17fRj-TksSyw5LRCSIWpsYdFnaxO-SMoOIyoA/viewform" };

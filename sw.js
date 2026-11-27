@@ -10,13 +10,13 @@
 //      which made fresh updates look like they hadn't happened).
 //   2. If that works, save a copy and use it.
 //   3. If there's no internet (or it takes more than 4 seconds), use the saved copy.
-// The AI App Master (api/...), live games and the order forms always need the
+// The AI Game Master (api/...), live games and the order forms always need the
 // internet, so they're never answered from the copy.
 //
 // ⚠️ When you add a new page or file to the app, add it to APP_FILES below too,
 //    and change CACHE_NAME (v1 → v2) so phones fetch the new list.
 // =====================================================================
-const CACHE_NAME = "dragon-table-v30";
+const CACHE_NAME = "dragon-table-v31";
 
 const APP_FILES = [
   "./",

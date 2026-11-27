@@ -1,5 +1,5 @@
 // =====================================================================
-// BOOKS ON THE EDGES (the player's screen and Solo Adventures; the AM Screen has its own).
+// BOOKS ON THE EDGES (the player's screen and Solo Adventures; the GM Screen has its own).
 // Puts book spines in two edge columns. Clicking one opens the book (book.html) over the
 // page; its "📚 Put it back" button closes it again.
 //   addBookEdges(leftElement, rightElement, [left book keys], [right book keys])

@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AM Screen</title>
+  <title>GM Screen</title>
 
   <!-- Same shared styles as the player page -->
-  <meta name="description" content="The App Master screen: invite players, track initiative and HP, and keep the rules handy.">
+  <meta name="description" content="The Game Master screen: invite players, track initiative and HP, and keep the rules handy.">
   <link rel="stylesheet" href="style.css">
   <!-- App icon, colors, and the file that makes Dragon Table installable -->
   <link rel="manifest" href="manifest.webmanifest">
@@ -16,16 +16,16 @@
   <meta name="apple-mobile-web-app-title" content="Dragon Table">
 </head>
 
-<!-- class="dm" switches on the purple AM theme from style.css -->
+<!-- class="dm" switches on the purple GM theme from style.css -->
 <body class="dm gm-screen">
   <!-- One slim bar on top: title, menu and Back, so the rest of the screen is for the game -->
   <header class="gm-topbar">
-    <h1>🛡️ AM Screen</h1>
+    <h1>🛡️ GM Screen</h1>
     <nav class="top-nav">
       <a href="index.html">🏠 Home</a>
       <a href="library.html">📚 Library</a>
       <a href="character.html">🧙 Characters</a>
-      <a href="dm.html" class="active">🛡️ AM Screen</a>
+      <a href="dm.html" class="active">🛡️ GM Screen</a>
       <a href="equipment.html">🛒 Equipment</a>
       <a href="battle.html">⚔️ Battle</a>
       <a href="map.html">🗺️ Map</a>
@@ -66,6 +66,7 @@
             <p class="hint" id="reopenText"></p>
             <button onclick="reopenGame()">🔁 Reopen with the same code</button>
           </div>
+          <label class="sheet-field">Your name at the table <input id="gmName" type="text" class="wide-input" maxlength="40" value="AM (App Master)"></label>
           <label class="sheet-field">Game name (optional) <input id="gameName" type="text" class="wide-input" maxlength="40" placeholder="e.g. The Hollow Crown"></label>
           <button onclick="openGame()">🚪 Open a new game</button>
         </div>
@@ -217,7 +218,7 @@
         <button class="small-button" data-stage="adventure" title="Starter adventure">📜 Adventure</button>
         <button class="small-button" data-stage="battle" title="Battle Simulator">⚔️ Simulator</button>
         <button class="small-button" data-stage="characters" title="Characters">🧙 Heroes</button>
-        <button class="small-button" data-stage="learn" title="Learn to be an AM">🎓 Learn</button>
+        <button class="small-button" data-stage="learn" title="Learn to be a GM">🎓 Learn</button>
         <button class="small-button" data-stage="shop" title="Equipment shop">🛒 Shop</button>
         <button class="small-button" data-stage="none" title="Show table talk and voice here">🙈 Hide</button>
       </div>
@@ -306,7 +307,7 @@
 <button class="book-spine" data-book="gear" style="background-color:#5a4630" title="Weapons and armor">📒 Weapons &amp; Armor</button>
 <button class="book-spine" data-book="heroes" style="background-color:#34244a" title="Classes, features by level, species and backgrounds">📓 Classes</button>
 <button class="book-spine" data-stage-book="adventure" style="background-color:#6b2f4a" title="The free starter adventure">🔔 Sunken Bell</button>
-<button class="book-spine" data-stage-book="learn" style="background-color:#2f4a5e" title="Learn to be an App Master">🎓 AM Guide</button>
+<button class="book-spine" data-stage-book="learn" style="background-color:#2f4a5e" title="Learn to be a Game Master">🎓 GM Guide</button>
 <a class="book-spine" href="https://www.dndbeyond.com/srd" target="_blank" rel="noopener" style="background-color:#444" title="The full free rules (SRD 5.2.1), in a new tab">📄 Full SRD</a>
     </nav>
   </div>
@@ -321,7 +322,7 @@
   <script src="music.js"></script>
   <script src="voice.js"></script>
 
-  <!-- PeerJS (MIT license, version pinned) connects the AM's browser straight to the players' browsers. -->
+  <!-- PeerJS (MIT license, version pinned) connects the GM's browser straight to the players' browsers. -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="video.js"></script>
 
@@ -536,7 +537,7 @@
     // =====================================================================
     // TURN CARDS AND ACTIONS (the row across the top of the screen)
     // The rules for attacks and spells live in combat.js. This part shows the
-    // cards, lets the AM pick an action and targets, and applies the damage.
+    // cards, lets the GM pick an action and targets, and applies the damage.
     // =====================================================================
     let combatUiReady = false;   // true once the whole page (party, live game) has loaded
     let panelActorId = null;     // whose card is open
@@ -706,7 +707,7 @@
       }
       talk(kind === "long" ? "🌙 Long rest: everyone is back to full HP and spell slots." : "☕ Short rest: short-rest features and Pact Magic slots are back. Spend Hit Dice on your sheet to heal.");
       for (const connection of liveConns.values()) {
-        if (connection.open) connection.send({ type: "announce", text: kind === "long" ? "🌙 Long rest! You're back to full HP and spell slots." : "☕ Short rest! Short-rest features are back." });
+        if (connection.open) connection.send({ type: "announce", from: gmName(), text: kind === "long" ? "🌙 Long rest! You're back to full HP and spell slots." : "☕ Short rest! Short-rest features are back." });
       }
       render();
     }
@@ -862,7 +863,7 @@
       if (lastResult) panel.append(makeEl("pre", "action-result", lastResult));
     }
 
-    // The AM rolls an action for anyone (a monster, or a hero whose player is at the table).
+    // The GM rolls an action for anyone (a monster, or a hero whose player is at the table).
     // The spell slot an action needs: a spell's chosen slot, or (for a smite) the lowest one.
     function slotFor(action, profile, slotKind, slotLevel) {
       if (action.kind === "spell" && action.spell.level > 0) {
@@ -969,7 +970,7 @@
       }
     }
 
-    // A player chose their own attack or spell. Check it's plausible, then the AM's
+    // A player chose their own attack or spell. Check it's plausible, then the GM's
     // device rolls the dice (so nobody can fake a roll).
     function handlePlayerAction(conn, member, data) {
       const reply = function (ok, text, spent) {
@@ -979,7 +980,7 @@
       if (!me || currentId !== me.id) return reply(false, "It isn't your turn yet.");
       if (me.hp <= 0) return reply(false, "You're down, so you can't act.");
       const profile = profileOfMember(member);
-      if (!profile) return reply(false, "Your AM doesn't have your sheet yet. Press \"Send my updated sheet\".");
+      if (!profile) return reply(false, "Your GM doesn't have your sheet yet. Press \"Send my updated sheet\".");
       if (!me.state) me.state = newFeatureState(profile);
 
       // Only actions they really have AND still have uses of (heroActions leaves out used-up features)
@@ -1004,7 +1005,7 @@
       const slotUsed = slot && (!action.rider || result.riderUsed);
       if (slotUsed) spendSlotFor(member, slot, false);   // their device marks it when it gets the reply
       markTurnUsed(me, result);
-      // Show it on the AM's screen straight away: the player's card opens with the roll and the result
+      // Show it on the GM's screen straight away: the player's card opens with the roll and the result
       panelActorId = me.id;
       panelActionKey = null;
       const bar = document.getElementById("turnBar");
@@ -1132,7 +1133,7 @@
             passive: getPassivePerception(c),
             init: getModifier(getAbilityScore(c, "dex")),   // initiative bonus
             summary: describeSavedCharacter(c),
-            item: c.specialItem || null   // the player's special item, so the AM can see it
+            item: c.specialItem || null   // the player's special item, so the GM can see it
           });
           nextPartyId++;
           added++;
@@ -1199,11 +1200,11 @@
         return;
       }
 
-      // prompt() pops up a box asking the AM to type something. The second part fills the box
-      // with an automatic roll, so the AM can just press OK (or type the player's own roll).
+      // prompt() pops up a box asking the GM to type something. The second part fills the box
+      // with an automatic roll, so the GM can just press OK (or type the player's own roll).
       const rolled = rollOneDie(20) + (member.init || 0);
       const answer = prompt("Initiative for " + member.name + " (rolled for you; type the player's own roll if they rolled):", rolled);
-      if (answer === null) return;   // the AM clicked Cancel
+      if (answer === null) return;   // the GM clicked Cancel
 
       combatants.push({
         id: nextId,
@@ -1388,15 +1389,15 @@
     buildConditions();
 
     // =====================================================================
-    // LIVE GAME — players ask to join, the AM accepts or declines
+    // LIVE GAME — players ask to join, the GM accepts or declines
     // =====================================================================
-    // PeerJS connects the AM's browser straight to each player's browser (encrypted).
+    // PeerJS connects the GM's browser straight to each player's browser (encrypted).
     // A free public "matchmaking" service only introduces them to each other.
     // Nothing is stored online: when you close this page, the game is over.
     //
     // Messages that travel between the browsers are small objects with a "type":
-    //   player -> AM:  request, update, roll, say
-    //   AM -> player:  waiting, accepted, declined, announce, hp, closed
+    //   player -> GM:  request, update, roll, say
+    //   GM -> player:  waiting, accepted, declined, announce, hp, closed
 
     let peer = null;            // our PeerJS connection to the matchmaking service
     let gameCode = "";          // e.g. "K7M4QX"
@@ -1452,7 +1453,7 @@
 
       peer.on("connection", handleIncoming);
       peer.on("call", function (call) {
-        if (!video.handleCall(call)) call.close();   // the AM only takes video calls (voice calls go out from here)
+        if (!video.handleCall(call)) call.close();   // the GM only takes video calls (voice calls go out from here)
       });
 
       peer.on("error", function (error) {
@@ -1518,17 +1519,33 @@
         joinPage.search = "?code=" + gameCode;
         inviteLink = joinPage.href;
         note.textContent = "Send your players this invite link: " + inviteLink +
-          " (or they choose Player → Live App Master and type the code).";
+          " (or they choose Player → Live Game Master and type the code).";
       } else {
         inviteLink = "";
-        note.textContent = "Players need to open this app on their own device and choose Player → Live App Master, then type the code. " +
+        note.textContent = "Players need to open this app on their own device and choose Player → Live Game Master, then type the code. " +
           "To let players on your Wi-Fi open it, start the helper with:  ruby server.rb --share";
       }
       document.getElementById("copyInviteBtn").classList.toggle("hidden", !inviteLink);
     }
 
     // =====================================================================
-    // VIDEO CHAT (video.js). The AM's screen keeps the list of who's at the table and
+    // YOUR NAME AT THE TABLE: what players see next to your messages and on your video.
+    // Saved in this browser (localStorage "gmName"); "AM (App Master)" unless you change it.
+    // =====================================================================
+    function gmName() {
+      const box = document.getElementById("gmName");
+      return (box && box.value.trim()) || "AM (App Master)";
+    }
+    {
+      const box = document.getElementById("gmName");
+      try { const saved = localStorage.getItem("gmName"); if (saved) box.value = saved; } catch (error) { /* keep the default */ }
+      box.addEventListener("input", function () {
+        try { localStorage.setItem("gmName", box.value.trim()); } catch (error) { /* fine */ }
+      });
+    }
+
+    // =====================================================================
+    // VIDEO CHAT (video.js). The GM's screen keeps the list of who's at the table and
     // whose camera is on, and sends it to every accepted player.
     // =====================================================================
     const videoCams = new Set();   // keys of players whose camera is on
@@ -1540,7 +1557,7 @@
 
     function videoPeople() {
       const list = [];
-      if (peer && peer.id) list.push({ id: peer.id, name: "AM", cam: video.isOn() });
+      if (peer && peer.id) list.push({ id: peer.id, name: gmName(), cam: video.isOn() });
       for (const [key, connection] of liveConns) {
         if (!connection.open) continue;
         const member = party.find(function (m) { return m.remoteKey === key; });
@@ -1570,7 +1587,7 @@
 
     function renderVideoControls() {
       document.getElementById("videoBtn").textContent = video.isOn() ? "📷 Turn off my camera" : "📹 Turn on my camera";
-      const others = videoPeople().filter(function (p) { return p.cam && p.name !== "AM"; }).map(function (p) { return p.name; });
+      const others = videoPeople().filter(function (p) { return p.cam && !(peer && p.id === peer.id); }).map(function (p) { return p.name; });
       document.getElementById("videoStatus").textContent = (video.isOn() ? "🟢 Your camera is on. " : "") +
         (others.length ? "Cameras on: " + others.join(", ") + "." : "No player cameras on yet.") + " Press 🙈 Hide above the middle to see faces big.";
     }
@@ -1578,7 +1595,7 @@
     // =====================================================================
     // SAVING THE SESSION
     // Party, notes and the battle map already save themselves. This saves the rest:
-    // the fight (turn cards) and the live game's code and name, so the AM can close
+    // the fight (turn cards) and the live game's code and name, so the GM can close
     // the app and carry on later. Saved in localStorage key "dmSession".
     // =====================================================================
     function rememberSession() {
@@ -1632,7 +1649,7 @@
       if (hadGame) {
         rememberSession();
         for (const connection of liveConns.values()) {
-          if (connection.open) connection.send({ type: "announce", text: "💾 The AM saved the game and is taking a break. When they reopen it, press Leave game, then join again with the same code: " + gameCode + "." });
+          if (connection.open) connection.send({ type: "announce", from: gmName(), text: "💾 The GM saved the game and is taking a break. When they reopen it, press Leave game, then join again with the same code: " + gameCode + "." });
         }
       }
       const code = gameCode;
@@ -1755,7 +1772,7 @@
         const character = cleanSharedCharacter(data.character);   // from play.js
         if (!character || !character.key) return;
 
-        // A player the AM already accepted (same unguessable key) can come straight back in.
+        // A player the GM already accepted (same unguessable key) can come straight back in.
         const known = party.find(function (m) {
           return m.remoteKey === character.key;
         });
@@ -1769,7 +1786,7 @@
           return r.character.key === character.key;
         });
         if (!alreadyWaiting && pendingRequests.length >= 12) {
-          conn.send({ type: "declined", reason: "The AM has too many requests waiting." });
+          conn.send({ type: "declined", reason: "The GM has too many requests waiting." });
           return;
         }
 
@@ -1818,7 +1835,7 @@
       }
     }
 
-    // Copy a shared character's details onto a party member. The AM's tracked HP is kept.
+    // Copy a shared character's details onto a party member. The GM's tracked HP is kept.
     function applyCharacterToMember(member, character) {
       member.name = character.name;
       member.ac = character.ac;
@@ -1890,7 +1907,7 @@
         return r.character.key !== character.key;
       });
 
-      conn.send({ type: "accepted", game: openGameName, hp: member.hp, maxHp: member.maxHp });
+      conn.send({ type: "accepted", game: openGameName, gm: gmName(), hp: member.hp, maxHp: member.maxHp });
       if (voice.on) conn.send({ type: "voice", on: true });   // voice chat is already running
       if (mapShare.on) sendMapTo(character.key, conn);          // the map is already being shown
       if (tableMusic.on) conn.send({ type: "music", on: true, mood: tableMusic.mood });   // so is the music
@@ -1904,7 +1921,7 @@
     }
 
     function declinePlayer(request) {
-      if (request.conn.open) request.conn.send({ type: "declined", reason: "The AM declined your request." });
+      if (request.conn.open) request.conn.send({ type: "declined", reason: "The GM declined your request." });
       pendingRequests = pendingRequests.filter(function (r) {
         return r !== request;
       });
@@ -2016,7 +2033,7 @@
       renderMapControls();
     }
 
-    // A player dragged their own hero. WHO they are comes from their connection (the AM's
+    // A player dragged their own hero. WHO they are comes from their connection (the GM's
     // own party list), never from the message. Only whole-number squares are passed on.
     function handleMapMove(key, member, data) {
       if (!mapShare.on || !mapShare.moves || !mapChannel) return;
@@ -2048,7 +2065,7 @@
     // The middle shows ONE thing at a time: the battle map, the starter adventure,
     // the Library, or nothing ("none"), which shows table talk + voice there instead.
     // An <iframe> is a window that shows another page inside this one. "?embed=1" tells
-    // that page to hide its own menus, because the AM Screen already has them.
+    // that page to hide its own menus, because the GM Screen already has them.
     const STAGE_PAGES = {
       map: "map.html?embed=1",
       adventure: "adventure.html?embed=1",
@@ -2060,7 +2077,7 @@
       book: "book.html?embed=1"
     };
     const STAGE_TITLES = { map: "Battle map", adventure: "Starter adventure", library: "Library",
-                           battle: "Battle Simulator", characters: "Characters", learn: "Learn to be an AM", book: "Book",
+                           battle: "Battle Simulator", characters: "Characters", learn: "Learn to be a GM", book: "Book",
                            shop: "Equipment shop" };
     let stageNow = "map";
 
@@ -2176,10 +2193,10 @@
 
 
     // ---------- Music for the table ----------
-    // The AM picks a mood; every player's own device makes the music (nothing is streamed).
+    // The GM picks a mood; every player's own device makes the music (nothing is streamed).
     // Only a tiny message goes out: { type: "music", on, mood }.
     const tableMusic = { on: false, mood: "calm" };
-    const gmMusic = createMusicController();   // from music.js: plays on THIS device, if the AM wants
+    const gmMusic = createMusicController();   // from music.js: plays on THIS device, if the GM wants
 
     function sendMusicToAll() {
       for (const connection of liveConns.values()) {
@@ -2232,12 +2249,12 @@
     }
 
     // ---------- Voice chat ----------
-    // Everyone calls the AM (a "star"). The AM's browser mixes the sound so each player
-    // hears the AM AND the other players, but not themselves.
-    //   microphone → AM's mixer → one output stream per player (everyone except that player)
+    // Everyone calls the GM (a "star"). The GM's browser mixes the sound so each player
+    // hears the GM AND the other players, but not themselves.
+    //   microphone → GM's mixer → one output stream per player (everyone except that player)
     const voice = {
       on: false,
-      stream: null,      // the AM's microphone
+      stream: null,      // the GM's microphone
       ctx: null,         // the Web Audio mixer
       mic: null,         // the microphone as a mixer input
       players: new Map() // player key -> { call, dest, source, audio }
@@ -2268,7 +2285,7 @@
       dropVoicePlayer(key);   // a fresh call replaces any old one
 
       const dest = voice.ctx.createMediaStreamDestination();
-      voice.mic.connect(dest);                       // they hear the AM
+      voice.mic.connect(dest);                       // they hear the GM
       for (const other of voice.players.values()) {  // ...and everyone already in voice
         if (other.source) other.source.connect(dest);
       }
@@ -2284,7 +2301,7 @@
         entry.audio.srcObject = remote;
         entry.audio.muted = true;
         entry.source = voice.ctx.createMediaStreamSource(remote);
-        entry.source.connect(voice.ctx.destination);   // the AM hears them
+        entry.source.connect(voice.ctx.destination);   // the GM hears them
         for (const [otherKey, other] of voice.players) {
           if (otherKey !== key) entry.source.connect(other.dest);   // the other players hear them
         }
@@ -2387,7 +2404,7 @@
       const text = box.value.trim();
       if (text === "") return;
       for (const connection of liveConns.values()) {
-        if (connection.open) connection.send({ type: "announce", text: text });
+        if (connection.open) connection.send({ type: "announce", from: gmName(), text: text });
       }
       talk("📢 You: " + text);
       box.value = "";

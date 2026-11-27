@@ -181,7 +181,7 @@ const BACKGROUNDS = [
 //     weaponBonus: 1                    +N to attack and damage with the weapon marked as magic
 //     archery: 2                        proficiency with Longbow and Shortbow, +N damage with them
 //   Items with no "effects" are described in words only (spells, charges, and
-//   so on are for the player and AM to run at the table).
+//   so on are for the player and GM to run at the table).
 const MAGIC_ITEMS = [
   { name: "Weapon, +1", type: "Weapon", rarity: "Uncommon", attunement: "", effects: { weaponBonus: 1 },
     powers: "A magic weapon of any simple or martial kind. You get +1 to attack rolls and +1 to damage rolls made with it." },
@@ -224,7 +224,7 @@ const MAGIC_ITEMS = [
 ];
 
 // Make the object saved as character.specialItem (used by the character sheet
-// and the AI App Master's setup, so both save items the same way).
+// and the AI Game Master's setup, so both save items the same way).
 function makeSrdItem(itemName, appearance) {
   const chosen = findByName(MAGIC_ITEMS, itemName);
   if (!chosen) return null;
@@ -489,7 +489,7 @@ function getPointCost(scores) {
 }
 
 // ---------- Conditions (paraphrased from the SRD 5.2.1 "Rules Glossary") ----------
-// "Rules in brief": a quick refresher in our own words (Library and the AM Screen's books).
+// "Rules in brief": a quick refresher in our own words (Library and the GM Screen's books).
 const RULES_BRIEF = [
   { title: "How a turn works", lines: [
     "Fights are played in rounds of about 6 seconds. At the start, everyone rolls Initiative (a Dexterity check) to set the turn order.",
@@ -1594,14 +1594,14 @@ function getSaveBonus(character, abilityKey) {
   return bonus;
 }
 
-// Passive Perception: 10 + your Perception bonus. The AM uses it to see
+// Passive Perception: 10 + your Perception bonus. The GM uses it to see
 // whether you notice hidden things without rolling.
 function getPassivePerception(character) {
   return 10 + getSkillBonus(character, findByName(SKILLS, "Perception"));
 }
 
 // =====================================================================
-// SAVED CHARACTERS (shared by the character page and the AM page)
+// SAVED CHARACTERS (shared by the character page and the GM page)
 // =====================================================================
 function loadCharacters() {
   try {

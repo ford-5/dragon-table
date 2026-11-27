@@ -113,8 +113,31 @@
       <div id="skillChoices"></div>
     </div>
 
+    <div class="panel creator-step" data-step="item">
+      <h2>7. A special item (optional)</h2>
+      <div class="item-mode-buttons">
+        <label><input type="radio" name="newItemMode" value="none" checked> No item for now</label>
+        <label><input type="radio" name="newItemMode" value="list"> 📜 A magic item from the rules</label>
+        <label><input type="radio" name="newItemMode" value="custom"> 🖋️ One I make up</label>
+      </div>
+      <div id="newItemList" class="hidden">
+        <label class="sheet-field">Pick a magic item <select id="newItemSelect"></select></label>
+        <div id="newItemInfo" class="info-box"></div>
+      </div>
+      <div id="newItemCustom" class="hidden">
+        <label class="sheet-field">Name <input id="newItemName" type="text" maxlength="60" placeholder="e.g. Emberfang, the Last Ember"></label>
+        <label class="sheet-field">Kind of item <select id="newItemType"></select></label>
+        <label class="sheet-field">What can it do? <textarea id="newItemPowers" class="notes-box short-notes" maxlength="400" placeholder="Once per day, it can set its blade alight for one minute..."></textarea></label>
+        <p class="hint">A made-up item's real powers are for the player and the GM to agree on, so it stays fair for the whole party.</p>
+      </div>
+      <label class="sheet-field hidden" id="newItemLookRow">What does it look like? (optional)
+        <textarea id="newItemLook" class="notes-box short-notes" maxlength="400" placeholder="Pitted black iron with a thin vein of glowing orange running through it..."></textarea>
+      </label>
+      <p class="hint">You can also add or change it later on the character sheet.</p>
+    </div>
+
     <div class="panel creator-step" data-step="review">
-      <h2>7. Review</h2>
+      <h2>8. Review</h2>
       <div id="review"></div>
       <ul id="createProblems" class="problem-list"></ul>
       <button onclick="createCharacter()">✅ Create character</button>
@@ -466,6 +489,7 @@
         chosenSkills: { class: [], species: [], multiclass: [] }
       };
       document.getElementById("newName").value = "";
+      resetNewItem();
       document.getElementById("newPlayer").value = "";
       document.getElementById("newClass").value = "";
       document.getElementById("newSpecies").value = "";
@@ -833,6 +857,8 @@
       character.armor = "none";      // AC is worked out from armor (see Weapons & Armor on the sheet)
       character.shield = false;
       character.weapons = [];
+      const item = draftItem();
+      if (item) character.specialItem = item;   // the magic item's bonuses count from the start
       character.ac = getUnarmoredAc(character);
       character.hp = getMaxHp(character);
       return character;
@@ -845,6 +871,8 @@
       if (step === "class" && !chosenClass())         problems.push("Choose a class.");
       if (step === "species" && !chosenSpecies())     problems.push("Choose a species.");
       if (step === "background" && !chosenBackground()) problems.push("Choose a background.");
+      if (step === "item" && newItemMode() === "list" && !document.getElementById("newItemSelect").value) problems.push("Pick a magic item (or choose \"No item for now\").");
+      if (step === "item" && newItemMode() === "custom" && !document.getElementById("newItemName").value.trim()) problems.push("Give your item a name (or choose \"No item for now\").");
 
       if (step === "class2" && wantsSecondClass() && !chosenSecondClass()) {
         problems.push("Choose your second class (or untick \"two classes\").");
@@ -878,6 +906,55 @@
     }
 
     // Every step's problems together. Empty list = ready to create.
+    // ---------- Special item ----------
+    function newItemMode() {
+      const picked = document.querySelector('input[name="newItemMode"]:checked');
+      return picked ? picked.value : "none";
+    }
+
+    function draftItem() {
+      const look = document.getElementById("newItemLook").value.trim();
+      if (newItemMode() === "list") {
+        const name = document.getElementById("newItemSelect").value;
+        return name ? makeSrdItem(name, look) : null;   // from rules.js
+      }
+      if (newItemMode() === "custom") {
+        const name = document.getElementById("newItemName").value.trim();
+        return name ? makeCustomItem(name, document.getElementById("newItemType").value, document.getElementById("newItemPowers").value.trim(), look) : null;
+      }
+      return null;
+    }
+
+    function showNewItemBoxes() {
+      const mode = newItemMode();
+      document.getElementById("newItemList").classList.toggle("hidden", mode !== "list");
+      document.getElementById("newItemCustom").classList.toggle("hidden", mode !== "custom");
+      document.getElementById("newItemLookRow").classList.toggle("hidden", mode === "none");
+      const item = findByName(MAGIC_ITEMS, document.getElementById("newItemSelect").value);
+      document.getElementById("newItemInfo").textContent = item ? describeItem(item) + " — " + item.powers : "Pick an item to read what it does.";
+    }
+
+    function connectNewItem() {
+      const select = document.getElementById("newItemSelect");
+      select.append(new Option("— Choose an item —", ""));
+      for (const item of MAGIC_ITEMS) select.append(new Option(item.name + " (" + item.rarity + ")", item.name));
+      const types = document.getElementById("newItemType");
+      for (const type of ITEM_TYPES) types.append(new Option(type, type));
+      types.value = "Wondrous item";
+      for (const radio of document.querySelectorAll('input[name="newItemMode"]')) radio.addEventListener("change", function () { showNewItemBoxes(); updateCreator(); });
+      for (const id of ["newItemSelect", "newItemName", "newItemType", "newItemPowers", "newItemLook"]) {
+        document.getElementById(id).addEventListener(id === "newItemSelect" || id === "newItemType" ? "change" : "input", function () { showNewItemBoxes(); renderReview(); renderGuide(); });
+      }
+      showNewItemBoxes();
+    }
+
+    function resetNewItem() {
+      document.querySelector('input[name="newItemMode"][value="none"]').checked = true;
+      for (const id of ["newItemSelect", "newItemName", "newItemPowers", "newItemLook"]) document.getElementById(id).value = "";
+      document.getElementById("newItemType").value = "Wondrous item";
+      showNewItemBoxes();
+    }
+
     function getCreatorProblems() {
       let problems = [];
       for (const step of CREATOR_STEPS) {
@@ -961,12 +1038,13 @@
         const lines = [
           (c.name || "Your character") + " — Level " + c.level + " " + c.species + " " + classSummary(c) +
             (c.background ? " (" + c.background + ")" : ""),
-          "❤️ Max HP " + getMaxHp(c) + "   🛡️ AC " + c.ac + " (no armor)   👟 Speed " + chosenSpecies().speed + " ft",
+          "❤️ Max HP " + getMaxHp(c) + "   🛡️ AC " + getAc(c) + " (no armor" + (getAc(c) > c.ac ? ", with your item" : "") + ")   👟 Speed " + chosenSpecies().speed + " ft",
           "Initiative " + formatBonus(getModifier(c.abilities.dex)) +
             "   Proficiency " + formatBonus(getProficiencyBonus(c.level)) + "   Passive Perception " + getPassivePerception(c) +
             "   Hit Dice " + getHitDiceText(c),
           "Saving throws: " + chosenClass().saves.map(abilityName).join(", "),
-          "Skills: " + (c.proficientSkills.join(", ") || "none yet")
+          "Skills: " + (c.proficientSkills.join(", ") || "none yet"),
+          "Special item: " + (c.specialItem ? c.specialItem.name + (c.specialItem.rarity ? " (" + c.specialItem.rarity + ")" : " (made up)") : "none")
         ];
         for (const line of lines) {
           const p = document.createElement("p");
@@ -2205,7 +2283,7 @@
     //   beginner:     one step at a time, with a friendly lesson on each step
     //   intermediate: every step on one page, with a one-line tip on each
     //   advanced:     every step, no tips (the same as opening the page normally)
-    const CREATOR_STEPS = ["name", "class", "class2", "species", "background", "scores", "skills", "review"];
+    const CREATOR_STEPS = ["name", "class", "class2", "species", "background", "scores", "skills", "item", "review"];
 
     const CREATOR_TIPS = {
       name: {
@@ -2235,6 +2313,10 @@
       skills: {
         long: "Skills are things your hero is trained at, like Stealth or Persuasion. When you try one in the game, you roll a d20 and add the skill's bonus. Trained skills add your proficiency bonus (+2 at level 1), so pick ones that fit your hero's story.",
         short: "Trained skills add your proficiency bonus."
+      },
+      item: {
+        long: "Many heroes carry something special: a magic cloak, a lucky ring, or a sword with a name. Pick a magic item from the rules (its powers go straight onto your sheet), invent your own with your GM, or skip it for now.",
+        short: "Optional: a magic item from the rules, or your own."
       },
       review: {
         long: "Here's your hero! Look it over. Hit Points (HP) are how much damage you can take, and Armor Class (AC) is how hard you are to hit. You can still change things later on the character sheet. When you're happy, press Create.",
@@ -2330,6 +2412,7 @@
     // Microphones: speak notes and item descriptions instead of typing.
     for (const id of ["sheetInventory", "itemAppearance", "itemPowers"]) Voice.micButton(document.getElementById(id));
     fillItemSelects();
+    connectNewItem();
     document.getElementById("itemSelect").addEventListener("change", showSelectedItemInfo);
     startGuide();
     // Sent here to make a hero (from the AI Game Master's setup)? Go straight to the creator.

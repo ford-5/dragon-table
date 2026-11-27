@@ -155,6 +155,7 @@
         card.append(make("span", "hint", def.about));
         const spells = hero.spellbook ? Object.values(hero.spellbook).reduce(function (n, b) { return n + b.cantrips.length + b.prepared.length; }, 0) : 0;
         card.append(make("span", "hint", "❤️ " + hero.hp + " HP · 🛡️ AC " + hero.ac + " · 🗡️ " + hero.weapons.join(", ") + (spells ? " · ✨ " + spells + " spells" : "")));
+        if (hero.specialItem) card.append(make("span", "hint", "💎 " + hero.specialItem.name));
         const status = make("span", "hint");
         const add = make("button", "small-button", "➕ Add to my characters");
         add.addEventListener("click", function () {

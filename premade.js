@@ -10,29 +10,41 @@
 // + background bonus), trained skills, armor, weapons and starter spells, all by the rules.
 const PREMADE_HEROES = [
   { key: "brakka", name: "Brakka Stonefist", className: "Barbarian", species: "Goliath", background: "Soldier",
-    armor: "none", shield: false, weapons: ["Greataxe", "Handaxe"], about: "A mountain warrior who shouts at thunderstorms." },
+    armor: "none", shield: false, weapons: ["Greataxe", "Handaxe"], item: "Gauntlets of Ogre Power", look: "Huge iron gloves dented from a hundred arm-wrestling matches.",
+    about: "A mountain warrior who shouts at thunderstorms." },
   { key: "lyra", name: "Lyra Songwhistle", className: "Bard", species: "Halfling", background: "Criminal",
-    armor: "Leather Armor", shield: false, weapons: ["Rapier", "Dagger"], about: "A traveling singer who knows everybody's secrets." },
+    armor: "Leather Armor", shield: false, weapons: ["Rapier", "Dagger"], item: "Hat of Disguise", look: "A floppy green hat with a feather that changes color with her mood.",
+    about: "A traveling singer who knows everybody's secrets." },
   { key: "tam", name: "Brother Tam", className: "Cleric", species: "Dwarf", background: "Acolyte",
-    armor: "Scale Mail", shield: true, weapons: ["Mace"], about: "A cheerful healer who hums hymns in battle." },
+    armor: "Scale Mail", shield: true, weapons: ["Mace"], item: "Periapt of Health", look: "A small silver charm shaped like a loaf of bread.",
+    about: "A cheerful healer who hums hymns in battle." },
   { key: "willow", name: "Willow Fernsong", className: "Druid", species: "Elf", background: "Sage",
-    armor: "Leather Armor", shield: true, weapons: ["Quarterstaff", "Sickle"], about: "Talks to trees, and the trees talk back." },
+    armor: "Leather Armor", shield: true, weapons: ["Quarterstaff", "Sickle"], item: "Staff of the Python", look: "A twisted vine staff with a snake's head carved at the top.",
+    about: "Talks to trees, and the trees talk back." },
   { key: "rowan", name: "Sir Rowan", className: "Fighter", species: "Human", background: "Soldier",
-    armor: "Chain Mail", shield: true, weapons: ["Longsword", "Javelin"], about: "A loyal knight with a terrible sense of direction." },
+    armor: "Chain Mail", shield: true, weapons: ["Longsword", "Javelin"], item: "Shield, +1", look: "A blue shield with a silver tree, polished every single morning.",
+    about: "A loyal knight with a terrible sense of direction." },
   { key: "kai", name: "Kai Swiftwind", className: "Monk", species: "Human", background: "Acolyte",
-    armor: "none", shield: false, weapons: ["Spear", "Dagger"], about: "Runs everywhere, even when there's no hurry." },
+    armor: "none", shield: false, weapons: ["Spear", "Dagger"], item: "Boots of Striding and Springing", look: "Light grey boots with tiny wings stitched on the heels.",
+    about: "Runs everywhere, even when there's no hurry." },
   { key: "elsa", name: "Dame Elsa Brightscale", className: "Paladin", species: "Dragonborn", background: "Acolyte",
-    armor: "Chain Mail", shield: true, weapons: ["Longsword", "Javelin"], about: "Swore an oath to protect the weak, and takes it very seriously." },
+    armor: "Chain Mail", shield: true, weapons: ["Longsword", "Javelin"], item: "Cloak of Protection", look: "A white cloak with a golden scale pattern along the hem.",
+    about: "Swore an oath to protect the weak, and takes it very seriously." },
   { key: "fen", name: "Fen Hollowbrook", className: "Ranger", species: "Elf", background: "Soldier",
-    armor: "Studded Leather Armor", shield: false, weapons: ["Longbow", "Shortsword"], about: "A quiet tracker who never misses a footprint." },
+    armor: "Studded Leather Armor", shield: false, weapons: ["Longbow", "Shortsword"], item: "Bracers of Archery", look: "Leather bracers with leaves pressed into them.",
+    about: "A quiet tracker who never misses a footprint." },
   { key: "nim", name: "Nim Quickfingers", className: "Rogue", species: "Halfling", background: "Criminal",
-    armor: "Leather Armor", shield: false, weapons: ["Rapier", "Shortbow", "Dagger"], about: "Small, quick, and always \"just borrowing\" things." },
+    armor: "Leather Armor", shield: false, weapons: ["Rapier", "Shortbow", "Dagger"], item: "Cloak of Elvenkind", look: "A patched grey cloak that seems to blur at the edges.",
+    about: "Small, quick, and always \"just borrowing\" things." },
   { key: "ember", name: "Ember", className: "Sorcerer", species: "Tiefling", background: "Sage",
-    armor: "none", shield: false, weapons: ["Dagger"], about: "Born with fire in her blood, and a temper to match." },
+    armor: "none", shield: false, weapons: ["Dagger"], item: "Pearl of Power", look: "A pearl that glows like a coal when she's angry.",
+    about: "Born with fire in her blood, and a temper to match." },
   { key: "vex", name: "Vex Ashgrove", className: "Warlock", species: "Tiefling", background: "Criminal",
-    armor: "Leather Armor", shield: false, weapons: ["Dagger"], about: "Made a deal with something strange, and doesn't talk about it." },
+    armor: "Leather Armor", shield: false, weapons: ["Dagger"], item: "Eyes of Charming", look: "Purple glass lenses that make his eyes look like a cat's.",
+    about: "Made a deal with something strange, and doesn't talk about it." },
   { key: "mira", name: "Mira Inkwell", className: "Wizard", species: "Elf", background: "Sage",
-    armor: "none", shield: false, weapons: ["Dagger", "Quarterstaff"], about: "Carries more books than clothes." }
+    armor: "none", shield: false, weapons: ["Dagger", "Quarterstaff"], item: "Headband of Intellect", look: "A copper headband engraved with tiny runes and one ink stain.",
+    about: "Carries more books than clothes." }
 ];
 
 // Make a real character from a pre-made hero. id: the new character's id.
@@ -74,6 +86,11 @@ function buildPremadeHero(def, level, id) {
     }
     if (!c.spellbook) c.spellbook = {};
     c.spellbook[entry.name] = book;
+  }
+  // Their special item, from the rules (its bonuses count on the sheet)
+  if (def.item) {
+    const item = makeSrdItem(def.item, def.look || "");
+    if (item) c.specialItem = item;
   }
   c.ac = getAc(c);
   c.hp = getMaxHp(c);

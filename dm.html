@@ -104,6 +104,13 @@
           <div id="tableBlock">
             <p id="tableClosed" class="hint">Open a game (📣 Game &amp; players) to talk with your players here.</p>
             <div id="tableOpen" class="hidden">
+              <h3 class="section-label">📹 Video (see faces)</h3>
+              <div id="videoControls">
+                <button id="videoBtn" onclick="toggleGmCamera()">📹 Turn on my camera</button>
+                <p id="videoStatus" class="hint">Everyone at the table can turn their camera on. Pictures go straight between browsers and aren't recorded. Press 🙈 Hide above the middle to see faces big.</p>
+                <div id="videoGrid" class="video-grid"></div>
+              </div>
+
               <h3 class="section-label">🎙️ Voice chat</h3>
               <div id="voiceControls">
                 <button id="voiceStartBtn" onclick="startVoice()">🎙️ Start voice chat</button>
@@ -285,6 +292,7 @@
 
   <!-- PeerJS (MIT license, version pinned) connects the GM's browser straight to the players' browsers. -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="video.js"></script>
 
   <script>
     // =====================================================================
@@ -1317,6 +1325,9 @@
       });
 
       peer.on("connection", handleIncoming);
+      peer.on("call", function (call) {
+        if (!video.handleCall(call)) call.close();   // the GM only takes video calls (voice calls go out from here)
+      });
 
       peer.on("error", function (error) {
         // Someone else already holds that code (very unlikely): try a different one.
@@ -1388,6 +1399,54 @@
           "To let players on your Wi-Fi open it, start the helper with:  ruby server.rb --share";
       }
       document.getElementById("copyInviteBtn").classList.toggle("hidden", !inviteLink);
+    }
+
+    // =====================================================================
+    // VIDEO CHAT (video.js). The GM's screen keeps the list of who's at the table and
+    // whose camera is on, and sends it to every accepted player.
+    // =====================================================================
+    const videoCams = new Set();   // keys of players whose camera is on
+    const video = createVideoChat({
+      getPeer: function () { return peer; },
+      grid: document.getElementById("videoGrid"),
+      onChange: renderVideoControls
+    });
+
+    function videoPeople() {
+      const list = [];
+      if (peer && peer.id) list.push({ id: peer.id, name: "GM", cam: video.isOn() });
+      for (const [key, connection] of liveConns) {
+        if (!connection.open) continue;
+        const member = party.find(function (m) { return m.remoteKey === key; });
+        if (member) list.push({ id: connection.peer, name: member.name, cam: videoCams.has(key) });
+      }
+      return list;
+    }
+
+    function sendVideoPeople() {
+      const list = videoPeople();
+      video.setPeople(list);
+      for (const connection of liveConns.values()) {
+        if (connection.open) connection.send({ type: "video-people", people: list });
+      }
+    }
+
+    async function toggleGmCamera() {
+      if (!gameCode) return;
+      if (video.isOn()) {
+        video.stopCamera();
+      } else if (!(await video.startCamera())) {
+        document.getElementById("videoStatus").textContent = "⚠️ Couldn't use your camera. Allow it for this page in your browser, then try again.";
+        return;
+      }
+      sendVideoPeople();
+    }
+
+    function renderVideoControls() {
+      document.getElementById("videoBtn").textContent = video.isOn() ? "📷 Turn off my camera" : "📹 Turn on my camera";
+      const others = videoPeople().filter(function (p) { return p.cam && p.name !== "GM"; }).map(function (p) { return p.name; });
+      document.getElementById("videoStatus").textContent = (video.isOn() ? "🟢 Your camera is on. " : "") +
+        (others.length ? "Cameras on: " + others.join(", ") + "." : "No player cameras on yet.") + " Press 🙈 Hide above the middle to see faces big.";
     }
 
     // =====================================================================
@@ -1497,6 +1556,8 @@
 
     function closeGame() {
       stopVoice();
+      video.closeAll();
+      videoCams.clear();
       mapShare.on = false;
       mapShare.moves = false;
       renderMapControls();
@@ -1624,6 +1685,10 @@
         handleMapMove(key, member, data);
       } else if (data.type === "action") {
         handlePlayerAction(conn, member, data);
+      } else if (data.type === "video-on" || data.type === "video-off") {
+        if (data.type === "video-on") videoCams.add(key); else videoCams.delete(key);
+        talk(data.type === "video-on" ? "📹 " + member.name + " turned their camera on." : "📹 " + member.name + " turned their camera off.");
+        sendVideoPeople();
       }
     }
 
@@ -1663,8 +1728,10 @@
         });
         dropVoicePlayer(key);
         liveConns.delete(key);
+        videoCams.delete(key);
         if (member) talk("👋 " + member.name + " disconnected.");
         renderParty();
+        sendVideoPeople();
       }
     }
 
@@ -1702,6 +1769,7 @@
       if (mapShare.on) sendMapTo(character.key, conn);          // the map is already being shown
       if (tableMusic.on) conn.send({ type: "music", on: true, mood: tableMusic.mood });   // so is the music
       lastTurnSent.delete(character.key);   // a fight is going on: send them the turn order (see render)
+      setTimeout(sendVideoPeople, 300);       // who's at the table, for video
       talk("✅ " + member.name + " joined the game.");
       saveParty();
       renderParty();

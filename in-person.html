@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meet in Person</title>
+  <meta name="description" content="Playing at a real table: plan game nights, print character sheets, and keep the battle map and rule books handy.">
+  <link rel="stylesheet" href="style.css">
+  <!-- App icon, colors, and the file that makes Dragon Table installable -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#2b1d14">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <meta name="apple-mobile-web-app-title" content="Dragon Table">
+</head>
+
+<body>
+  <nav class="top-nav">
+    <a href="index.html">🏠 Home</a>
+    <a href="library.html">📚 Library</a>
+    <a href="character.html">🧙 Characters</a>
+    <a href="dm.html">🛡️ GM Screen</a>
+    <a href="equipment.html">🛒 Equipment</a>
+  </nav>
+
+  <h1>🤝 Meet in Person</h1>
+  <p class="hint">Playing around a real table? Plan your game nights, print everyone's character sheets, and keep the battle map and the books ready for the GM.</p>
+
+  <!-- ===================== PLAN A GAME NIGHT ===================== -->
+  <div class="panel wide-panel">
+    <h2>🗓️ Plan a game night</h2>
+    <div class="plan-form">
+      <label class="sheet-field">What are you playing? <input id="nightTitle" type="text" maxlength="60" placeholder="e.g. The Sunken Bell, part 1"></label>
+      <label class="sheet-field">Date <input id="nightDate" type="date"></label>
+      <label class="sheet-field">Starts <input id="nightTime" type="time" value="18:00"></label>
+      <label class="sheet-field">How long (hours) <input id="nightHours" type="number" min="1" max="12" value="3"></label>
+      <label class="sheet-field">Where? <input id="nightPlace" type="text" maxlength="80" placeholder="e.g. Sam's house, the library's back room"></label>
+      <label class="sheet-field">Who's coming? <input id="nightPeople" type="text" maxlength="200" placeholder="e.g. Sam (GM), Alex, Jordan, Riley"></label>
+      <label class="sheet-field">Which heroes? <input id="nightHeroes" type="text" maxlength="200" placeholder="e.g. Sir Rowan, Mira, Nim"></label>
+      <label class="sheet-field">Bring / notes <input id="nightNotes" type="text" maxlength="200" placeholder="e.g. snacks, dice, printed sheets"></label>
+    </div>
+    <button id="saveNight">💾 Save this game night</button>
+    <p id="nightStatus" class="hint"></p>
+    <h3 class="section-label">Coming up</h3>
+    <div id="nightList" class="premade-list"></div>
+  </div>
+
+  <!-- ===================== PRINT SHEETS ===================== -->
+  <div class="panel wide-panel">
+    <h2>🖨️ Print character sheets</h2>
+    <p class="hint">Each one opens a clean paper sheet: press 🖨️ Print there (or save it as a PDF).</p>
+    <h3 class="section-label">Your heroes</h3>
+    <div id="myHeroes" class="premade-list"></div>
+    <h3 class="section-label">Ready-made heroes</h3>
+    <label class="hint">Level
+      <select id="premadeLevel">
+        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+        <option value="5">5</option><option value="7">7</option><option value="10">10</option>
+      </select>
+    </label>
+    <div id="premadeHeroes" class="premade-list"></div>
+  </div>
+
+  <!-- ===================== AT THE TABLE (GM) ===================== -->
+  <div class="panel wide-panel">
+    <h2>🛡️ At the table: the GM's kit</h2>
+    <p class="hint">Put the battle map on a tablet or TV in the middle of the table, and keep the books on your own screen.</p>
+    <div class="premade-list">
+      <a class="premade-card" href="map.html"><strong>🗺️ Battle Map</strong><span class="hint">Full screen for the table: walls, fog, monsters and heroes. Tap a token to change its HP.</span></a>
+      <a class="premade-card" href="dm.html"><strong>⚔️ Party &amp; Initiative</strong><span class="hint">The GM Screen: turn order, HP, notes, music and secret rolls.</span></a>
+      <a class="premade-card" href="create.html"><strong>📦 Ready-made battles &amp; maps</strong><span class="hint">Load a fight or a dungeon in one tap.</span></a>
+      <a class="premade-card" href="adventure.html"><strong>🔔 The Sunken Bell</strong><span class="hint">A printable starter adventure with read-aloud boxes.</span></a>
+      <a class="premade-card" href="dice.html"><strong>🎲 Dice roller</strong><span class="hint">Forgot the dice? Roll any of them here.</span></a>
+    </div>
+    <h3 class="section-label">📚 The books</h3>
+    <div class="bookshelf in-person-shelf">
+      <a class="book-spine" href="book.html#rules" style="background-color:#7a2a2a">📕 The Rules</a>
+      <a class="book-spine" href="book.html#spells" style="background-color:#2f5e34">📗 Spellbook</a>
+      <a class="book-spine" href="book.html#monsters" style="background-color:#1f3550">📘 Bestiary</a>
+      <a class="book-spine" href="book.html#items" style="background-color:#8a5a12">📙 Magic Items</a>
+      <a class="book-spine" href="book.html#gear" style="background-color:#5a4630">📒 Weapons &amp; Armor</a>
+      <a class="book-spine" href="book.html#heroes" style="background-color:#34244a">📓 Classes</a>
+    </div>
+  </div>
+
+  <p><a href="index.html" class="back-link">← Back</a></p>
+
+  <footer class="site-footer">
+    <p>
+      This work includes material from the System Reference Document 5.2.1 ("SRD 5.2.1") by Wizards of the Coast LLC,
+      available at <a href="https://www.dndbeyond.com/srd">https://www.dndbeyond.com/srd</a>. The SRD 5.2.1 is licensed under the
+      Creative Commons Attribution 4.0 International License, available at
+      <a href="https://creativecommons.org/licenses/by/4.0/legalcode">https://creativecommons.org/licenses/by/4.0/legalcode</a>.
+    </p>
+    <p>Compatible with fifth edition.</p>
+  </footer>
+
+  <script src="dice.js"></script>
+  <script src="rules.js"></script>
+  <script src="spells.js"></script>
+  <script src="premade.js"></script>
+  <script>
+    const el = function (id) { return document.getElementById(id); };
+    function make(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+
+    // =====================================================================
+    // GAME NIGHTS (localStorage key "gameNights": a list of plans)
+    // =====================================================================
+    function loadNights() {
+      try {
+        const list = JSON.parse(localStorage.getItem("gameNights") || "[]");
+        return Array.isArray(list) ? list.filter(function (n) { return n && n.date; }) : [];
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function storeNights(list) {
+      try {
+        localStorage.setItem("gameNights", JSON.stringify(list));
+        return true;
+      } catch (error) {
+        return false;
+      }
+    }
+
+    // "Saturday 6 December, 6:00 PM"
+    function niceWhen(night) {
+      const start = new Date(night.date + "T" + (night.time || "18:00"));
+      if (isNaN(start)) return night.date;
+      return start.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" }) + ", " +
+        start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    }
+
+    function inviteText(night) {
+      return "🎲 Game night: " + (night.title || "Dragon Table") + "\n" +
+        "🗓️ " + niceWhen(night) + " (" + night.hours + " hours)\n" +
+        (night.place ? "📍 " + night.place + "\n" : "") +
+        (night.people ? "👥 " + night.people + "\n" : "") +
+        (night.heroes ? "🧙 Heroes: " + night.heroes + "\n" : "") +
+        (night.notes ? "🎒 " + night.notes + "\n" : "");
+    }
+
+    // A calendar file (.ics) that phones and computers can add to their calendar.
+    function downloadCalendar(night) {
+      const start = new Date(night.date + "T" + (night.time || "18:00"));
+      const end = new Date(start.getTime() + (Number(night.hours) || 3) * 3600000);
+      const stamp = function (d) { return d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, ""); };
+      const clean = function (t) { return String(t || "").replace(/[\\;,]/g, function (c) { return "\\" + c; }).replace(/\n/g, "\\n"); };
+      const lines = [
+        "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Dragon Table//Game night//EN", "BEGIN:VEVENT",
+        "UID:" + night.key + "@dragon-table", "DTSTAMP:" + stamp(new Date()), "DTSTART:" + stamp(start), "DTEND:" + stamp(end),
+        "SUMMARY:" + clean("🎲 " + (night.title || "Game night")), "LOCATION:" + clean(night.place),
+        "DESCRIPTION:" + clean(inviteText(night)), "END:VEVENT", "END:VCALENDAR"
+      ];
+      const blob = new Blob([lines.join("\r\n")], { type: "text/calendar" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "game-night-" + night.date + ".ics";
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(function () { URL.revokeObjectURL(link.href); }, 1000);
+    }
+
+    function renderNights() {
+      const box = el("nightList");
+      box.innerHTML = "";
+      const today = new Date().toISOString().slice(0, 10);
+      const list = loadNights().sort(function (a, b) { return (a.date + a.time).localeCompare(b.date + b.time); });
+      if (!list.length) box.append(make("p", "hint", "No game nights planned yet."));
+      for (const night of list) {
+        const card = make("div", "premade-card" + (night.date < today ? " past-night" : ""));
+        card.append(make("strong", "", (night.date < today ? "✔️ " : "🎲 ") + (night.title || "Game night")));
+        card.append(make("span", "", "🗓️ " + niceWhen(night)));
+        if (night.place) card.append(make("span", "hint", "📍 " + night.place));
+        if (night.people) card.append(make("span", "hint", "👥 " + night.people));
+        if (night.heroes) card.append(make("span", "hint", "🧙 " + night.heroes));
+        if (night.notes) card.append(make("span", "hint", "🎒 " + night.notes));
+        const buttons = make("div", "");
+        const cal = make("button", "small-button", "📅 Add to calendar");
+        cal.addEventListener("click", function () { downloadCalendar(night); });
+        const copy = make("button", "small-button", "📋 Copy invite");
+        copy.addEventListener("click", function () {
+          const text = inviteText(night);
+          const done = function () { copy.textContent = "✅ Copied!"; setTimeout(function () { copy.textContent = "📋 Copy invite"; }, 1500); };
+          if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, function () { prompt("Copy this invite:", text); });
+          else prompt("Copy this invite:", text);
+        });
+        const remove = make("button", "small-button", "🗑️ Delete");
+        remove.addEventListener("click", function () {
+          if (!confirm("Delete this game night?")) return;
+          storeNights(loadNights().filter(function (n) { return n.key !== night.key; }));
+          renderNights();
+        });
+        buttons.append(cal, copy, remove);
+        card.append(buttons);
+        box.append(card);
+      }
+    }
+
+    el("saveNight").addEventListener("click", function () {
+      const night = {
+        key: "night-" + Date.now(),
+        title: el("nightTitle").value.trim(), date: el("nightDate").value, time: el("nightTime").value || "18:00",
+        hours: Math.min(Math.max(Number(el("nightHours").value) || 3, 1), 12),
+        place: el("nightPlace").value.trim(), people: el("nightPeople").value.trim(),
+        heroes: el("nightHeroes").value.trim(), notes: el("nightNotes").value.trim()
+      };
+      if (!night.date) { el("nightStatus").textContent = "Pick a date first."; return; }
+      const list = loadNights();
+      if (list.length >= 50) { el("nightStatus").textContent = "You have 50 game nights saved. Delete an old one first."; return; }
+      list.push(night);
+      el("nightStatus").textContent = storeNights(list) ? "💾 Saved! Press 📅 Add to calendar or 📋 Copy invite to share it." : "⚠️ This browser wouldn't save it.";
+      renderNights();
+    });
+
+    // Fill in the hero names for the plan from the saved characters
+    el("nightHeroes").placeholder = loadCharacters().length
+      ? "e.g. " + loadCharacters().slice(0, 4).map(function (c) { return c.name; }).join(", ")
+      : el("nightHeroes").placeholder;
+    // Suggest next Saturday
+    {
+      const d = new Date();
+      d.setDate(d.getDate() + ((6 - d.getDay() + 7) % 7 || 7));
+      el("nightDate").value = d.toISOString().slice(0, 10);
+    }
+
+    // =====================================================================
+    // PRINTING SHEETS (sheet.html prints a saved hero, or a ready-made one)
+    // =====================================================================
+    function renderSheets() {
+      const mine = el("myHeroes");
+      mine.innerHTML = "";
+      const heroes = loadCharacters();
+      if (!heroes.length) mine.append(make("p", "hint", "No heroes saved yet. Make one on the Characters page, or print a ready-made one below."));
+      for (const h of heroes) {
+        const card = make("a", "premade-card");
+        card.href = "sheet.html?hero=" + h.id;
+        card.append(make("strong", "", "📄 " + h.name), make("span", "hint", "Level " + h.level + " " + h.species + " " + classSummary(h)));
+        mine.append(card);
+      }
+      const level = Number(el("premadeLevel").value);
+      const ready = el("premadeHeroes");
+      ready.innerHTML = "";
+      for (const def of PREMADE_HEROES) {
+        const card = make("a", "premade-card");
+        card.href = "sheet.html?premade=" + def.key + "&level=" + level;
+        card.append(make("strong", "", "📄 " + def.name), make("span", "hint", "Level " + level + " " + def.species + " " + def.className + " · " + def.about));
+        ready.append(card);
+      }
+    }
+
+    el("premadeLevel").addEventListener("change", renderSheets);
+    renderNights();
+    renderSheets();
+  </script>
+  <script src="pwa.js"></script>
+  <script src="feedback.js"></script>
+</body>
+</html>

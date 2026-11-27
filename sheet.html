@@ -48,6 +48,7 @@
   <script src="rules.js"></script>
   <script src="spells.js"></script>
   <script src="play.js"></script>
+  <script src="premade.js"></script>
   <script>
     const el = function (id) {
       return document.getElementById(id);
@@ -76,7 +77,14 @@
         }
         return clean;
       }
-      const id = Number(new URLSearchParams(location.search).get("hero"));
+      const params = new URLSearchParams(location.search);
+      // A ready-made hero, straight from premade.js: sheet.html?premade=rowan&level=3 (from Meet in person)
+      const premade = PREMADE_HEROES.find(function (d) { return d.key === params.get("premade"); });
+      if (premade) {
+        const level = Math.min(Math.max(Math.round(Number(params.get("level"))) || 1, 1), 20);
+        return buildPremadeHero(premade, level, -1);
+      }
+      const id = Number(params.get("hero"));
       return loadCharacters().find(function (h) { return h.id === id; }) || null;
     }
 

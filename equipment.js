@@ -26,7 +26,7 @@ const SHOP_INFO = {
   shipsTo: "the United States",          // where you ship
   makeTime: "3 to 7 days",               // how long printing takes before you ship
   returnDays: 14,                        // days to return an unused item
-  lastUpdated: "23 November 2026"        // change this whenever you change the policies
+  lastUpdated: "27 November 2026"        // change this whenever you change the policies
 };
 
 // The money symbol shown in front of prices.

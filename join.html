@@ -74,6 +74,14 @@
       <p class="hint">Your device makes the music itself, so it uses no data and you can't hear it on anyone else's phone.</p>
     </div>
 
+    <!-- Video: see each other's faces -->
+    <div id="videoBox" class="voice-box">
+      <p>📹 <strong>Video</strong>: see everyone's faces. <span class="hint">(Sound comes through voice chat.)</span></p>
+      <button id="videoBtn">📹 Turn on my camera</button>
+      <p id="videoStatus" class="hint">Pictures go straight between browsers and aren't recorded.</p>
+      <div id="videoGrid" class="video-grid"></div>
+    </div>
+
     <!-- Voice chat: appears when the GM turns it on -->
     <div id="voiceBox" class="voice-box hidden">
       <p id="voiceText">🎙️ Your GM started voice chat.</p>
@@ -165,6 +173,7 @@
 
   <!-- PeerJS (MIT license, version pinned) connects your browser straight to your GM's browser. -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="video.js"></script>
 
   <script>
     // =====================================================================
@@ -294,7 +303,10 @@
       peer.on("open", function () {
         connectToDm(hero);
       });
-      peer.on("call", handleVoiceCall);
+      peer.on("call", function (call) {
+        if (video.handleCall(call)) return;   // a video call from someone at our table
+        handleVoiceCall(call);                 // otherwise: voice, only from our GM
+      });
 
       peer.on("error", function (error) {
         if (error.type === "peer-unavailable") {
@@ -379,6 +391,8 @@
         dmVoiceOn = data.on === true;
         if (!dmVoiceOn) leaveVoice(true);
         renderVoice();
+      } else if (data.type === "video-people" && joined) {
+        handleVideoPeople(data);
       } else if (data.type === "turn" && joined) {
         handleTurn(data);
       } else if (data.type === "log" && joined) {
@@ -389,6 +403,42 @@
         markSlotUsed(data);
       } else if (data.type === "closed") {
         handleConnectionLost();
+      }
+    }
+
+    // =====================================================================
+    // VIDEO (video.js): the GM's screen sends the list of who's at the table
+    // =====================================================================
+    const video = createVideoChat({
+      getPeer: function () { return peer; },
+      grid: el("videoGrid"),
+      onChange: function () {
+        el("videoBtn").textContent = video.isOn() ? "📷 Turn off my camera" : "📹 Turn on my camera";
+      }
+    });
+
+    function handleVideoPeople(data) {
+      const list = [];
+      for (const raw of (Array.isArray(data.people) ? data.people : []).slice(0, 12)) {
+        if (!raw || typeof raw.id !== "string" || raw.id.length > 80) continue;
+        list.push({ id: raw.id, name: cleanText(raw.name, 40) || "Someone", cam: raw.cam === true });
+      }
+      video.setPeople(list);
+      const on = list.filter(function (p) { return p.cam && p.id !== (peer && peer.id); }).map(function (p) { return p.name; });
+      el("videoStatus").textContent = on.length ? "Cameras on: " + on.join(", ") + "." : "Nobody else has a camera on yet.";
+    }
+
+    async function toggleCamera() {
+      if (!joined) return;
+      if (video.isOn()) {
+        video.stopCamera();
+        send({ type: "video-off" });
+        return;
+      }
+      if (await video.startCamera()) {
+        send({ type: "video-on" });   // the GM's screen tells everyone, and they connect
+      } else {
+        el("videoStatus").textContent = "⚠️ Couldn't use your camera. Allow it for this page in your browser, then try again.";
       }
     }
 
@@ -1117,6 +1167,7 @@
       leaveVoice(true);
       dmVoiceOn = false;
       renderVoice();
+      video.closeAll();   // camera off, everyone's pictures gone
       joined = false;
       if (conn) {
         try {
@@ -1268,6 +1319,7 @@
     });
     el("sayBtn").addEventListener("click", say);
     el("actBtn").addEventListener("click", doMyAction);
+    el("videoBtn").addEventListener("click", toggleCamera);
     el("actionPick").addEventListener("change", fillSlotsAndTargets);
     el("slotPick").addEventListener("change", fillSlotsAndTargets);
     Voice.micButton(el("sayText"));   // a microphone: say something to the GM

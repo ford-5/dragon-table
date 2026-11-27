@@ -24,7 +24,7 @@
   </nav>
 
   <h1>🎓 Learn to be a Game Master</h1>
-  <p class="hint">Eight short lessons based on the fifth-edition rules (the free SRD 5.2.1). Open one, read it, try the practice, then tick it off.</p>
+  <p class="hint">Eight short lessons based on the fifth-edition rules (the free SRD 5.2.1). Each one has examples of what to say at the table and a hands-on practice. Open one, read it, try the practice, then tick it off.</p>
   <p id="progress" class="guide-banner"></p>
 
   <div id="lessons" class="lesson-list"></div>
@@ -41,21 +41,50 @@
   </footer>
 
   <script src="dice.js"></script>
+  <script src="rules.js"></script>
+  <script src="monsters.js"></script>
   <script src="voice.js"></script>
   <script>
     // Shown inside the GM Screen (?embed=1): hide the page furniture.
     const embedded = new URLSearchParams(location.search).get("embed") === "1" && window.parent !== window;
     if (embedded) document.body.classList.add("embedded");
 
-    // Each lesson: a title, paragraphs, and (optionally) a practice tool.
+    // =====================================================================
+    // THE LESSONS
+    // Each lesson can have:
+    //   text:     paragraphs to read
+    //   readAloud: example boxes of what a GM says out loud ({ label, text })
+    //   talk:     a short example conversation at the table ([who, words])
+    //   tool:     a hands-on practice ("plan", "dc", "npc", "passive", "attack", "budget", "checklist")
+    //   quiz:     practice questions ({ q, choices: [{ t, ok, why }] })
+    //   link:     a button to the right page
+    // All examples are written for Dragon Table (they're not copied from any book).
+    // =====================================================================
     const LESSONS = [
       {
         id: "job", title: "1. What does a Game Master do?",
         text: [
-          "The Game Master (GM, also called the Game Master) is the storyteller and the referee. The players each control one hero. You control everything else: the world, the villagers, and the monsters.",
+          "The Game Master (GM) is the storyteller and the referee. The players each control one hero. You control everything else: the world, the villagers, and the monsters.",
           "Every part of the game, whether talking, exploring or fighting, runs on the same loop. 1) You describe the scene. 2) The players say what their heroes do. 3) You say what happens, and sometimes ask for a dice roll. Then back to step 1.",
           "The three pillars of play are social interaction (talking), exploration (finding your way and discovering things) and combat (fighting). A good session mixes all three.",
           "You are not the players' enemy. Your job is to make the world feel real and to make sure everyone has fun, including you."
+        ],
+        talk: [
+          ["GM (1. describe)", "The road ends at a rope bridge over a deep gorge. The wind makes it sway. On the far side, smoke curls up from a chimney. What do you do?"],
+          ["Player (2. decide)", "I test the first plank with my foot before I put my weight on it."],
+          ["GM (3. what happens)", "It creaks, but it holds. Halfway across, one plank is missing: a gap about as long as you are tall. Do you jump it, or look for another way?"]
+        ],
+        quiz: [
+          { q: "A player says: \"I walk into the tavern.\" What's your next move?", choices: [
+            { t: "Ask them to roll a Dexterity check.", ok: false, why: "Walking through a door isn't uncertain, so there's nothing to roll for." },
+            { t: "Describe what they see, hear and smell inside, then ask what they do.", ok: true, why: "Yes! That's step 1 of the loop again: describe, then hand it back to the players." },
+            { t: "Tell them what their hero feels and decides next.", ok: false, why: "The players decide what their own heroes think and do. You describe the world." }
+          ] },
+          { q: "The players come up with a clever plan you never expected. What should you do?", choices: [
+            { t: "Say no, because it isn't in your notes.", ok: false, why: "Your notes are ideas, not a script. Surprises are part of the fun." },
+            { t: "Go with it, and work out what would really happen.", ok: true, why: "Exactly. Rewarding clever ideas makes players feel their choices matter." },
+            { t: "Let them try, but make it fail no matter what.", ok: false, why: "Players can tell when a game is rigged, and it stops being fun." }
+          ] }
         ]
       },
       {
@@ -65,7 +94,10 @@
           "Example: A village's well has turned black (the hook). The heroes follow a trail to an old mine (the place). Goblins have been dumping poison there (the problem). Scenes: talk to the miller, sneak past the guards, fight the goblin boss. The reward is gratitude, coins and a small magic item.",
           "Write down ideas, not a script. Players will always do something you didn't expect, and that's the fun. Be ready to improvise."
         ],
-        tool: "notes"
+        readAloud: [
+          { label: "Example: the opening of that adventure", text: "The village of Millbrook is far too quiet for market day. A crowd stands around the old stone well, but nobody is drawing water. When the bucket comes up, the water inside is black as ink and smells of rotten eggs. A woman in a muddy mayor's sash pushes through the crowd, wringing her hands. \"Travelers! Please. We need help, and we can pay.\"" }
+        ],
+        tool: "plan"
       },
       {
         id: "checks", title: "3. When to ask for a roll",
@@ -75,7 +107,31 @@
           "Advantage means roll two d20s and keep the higher; Disadvantage means keep the lower. Give Advantage when something clearly helps (a good plan, help from a friend), and Disadvantage when something hinders.",
           "When a roll fails, don't just say \"nothing happens.\" Let the story move: they find the door but the guards notice, or they climb the wall but drop something."
         ],
-        tool: "dc"
+        readAloud: [
+          { label: "Example: setting up a check", text: "The heavy oak door at the end of the hall is locked tight. Through the keyhole you see candlelight flicker, and you hear someone slowly counting coins. The lock is old, but sturdy." }
+        ],
+        talk: [
+          ["Player", "I want to pick the lock, quietly."],
+          ["GM", "That's a Dexterity check, and you can add your proficiency with thieves' tools. It's a medium lock, so you need 15."],
+          ["Player", "I rolled a 9. Plus 5 is 14."],
+          ["GM (failing forward)", "So close! The lock clicks open... and so does the coin-counting. Silence. A chair scrapes. Whoever's inside heard you."]
+        ],
+        tool: "dc",
+        quiz: [
+          { q: "A hero walks across an empty, well-lit room.", choices: [
+            { t: "Ask for a roll", ok: false, why: "Nothing is uncertain here, so just describe it." },
+            { t: "No roll: just describe it", ok: true, why: "Right. Save the dice for moments that matter." }
+          ] },
+          { q: "A hero tries to leap a 10-foot chasm while goblins chase them.", choices: [
+            { t: "Ask for a roll", ok: true, why: "Yes: a Strength (Athletics) check. It's uncertain, and failing would be exciting." },
+            { t: "No roll: just describe it", ok: false, why: "This one is risky and dramatic: a perfect time for the dice." }
+          ] },
+          { q: "A player fails a check to climb a castle wall. Which is the best way to describe it?", choices: [
+            { t: "\"You fail. Nothing happens.\"", ok: false, why: "That stops the story. Try to keep it moving." },
+            { t: "\"You reach the top, but a loose stone falls, and a guard shouts: 'Who's there?'\"", ok: true, why: "Yes! A failure with a twist keeps the game exciting." },
+            { t: "\"You fall and your hero dies.\"", ok: false, why: "Far too harsh for one missed roll." }
+          ] }
+        ]
       },
       {
         id: "social", title: "4. Playing the people in your world",
@@ -83,6 +139,26 @@
           "Whenever the heroes talk to someone, you play that person. Give each important character one or two traits: a loud laugh, a nervous habit, a secret. You don't need acting skills: a different speed or tone of voice is enough.",
           "An NPC's attitude toward the heroes is Friendly, Indifferent or Hostile. Friendly people want to help, hostile ones want to get in the way. What the heroes say and do can change an attitude.",
           "Social scenes work through roleplaying and rolls. If a player makes a good argument, let it work with little or no roll. If it's uncertain, ask for a Charisma check (Persuasion, Deception or Intimidation) against a DC that fits the person."
+        ],
+        readAloud: [
+          { label: "Example: bringing a character to life", text: "The innkeeper is a round woman named Bertha, who keeps wiping the same mug over and over. \"Rooms are two silver a night,\" she says, her eyes darting to the door. She leans in and drops her voice. \"And if anyone asks, you didn't hear about the cellar from me.\"" }
+        ],
+        talk: [
+          ["GM's secret notes", "Bertha: Indifferent. Nervous habit: wipes mugs. Wants: to keep her inn safe. Secret: she owes money to the bandits in the cellar."],
+          ["Player", "I put a gold coin on the counter and tell her we're here to get rid of the bandits for good."],
+          ["GM", "That's a good reason for her to trust you. No roll needed: she slides the coin back. \"Keep it. Just make them leave.\""]
+        ],
+        tool: "npc",
+        quiz: [
+          { q: "A player gives a guard a clever, believable reason to let them through. What do you do?", choices: [
+            { t: "Make them roll Persuasion against DC 25.", ok: false, why: "That's very hard. A good argument should make things easier, not harder." },
+            { t: "Let it work, or ask for an easy Charisma (Persuasion) check.", ok: true, why: "Yes: reward good roleplaying." },
+            { t: "Ignore what they said and just make them roll.", ok: false, why: "What players say should matter, not just the dice." }
+          ] },
+          { q: "The heroes politely ask a Hostile bandit leader to give up. What's most likely?", choices: [
+            { t: "The bandit happily surrenders.", ok: false, why: "Hostile people don't simply agree to help." },
+            { t: "The bandit refuses, unless the heroes give a really good reason (or are clearly winning).", ok: true, why: "Right. Attitudes can change, but the heroes have to earn it." }
+          ] }
         ]
       },
       {
@@ -91,16 +167,51 @@
           "Exploration is the heroes traveling, searching rooms, and noticing things. Describe what they can see, hear and smell in a few vivid sentences, then ask what they do.",
           "Don't make players roll to find things that are in plain sight. Use their Passive Perception (10 + their Perception bonus, shown on every character sheet) to see whether they notice hidden things without rolling. The GM Screen lists each player's passive score.",
           "Keep things moving. If the heroes are stuck, add a clue or a new option. Locked doors, traps and puzzles are more fun when there's more than one way through."
+        ],
+        readAloud: [
+          { label: "Example: describing a room with the senses", text: "The tunnel opens into a round room that smells of wet stone and old smoke. Water drips somewhere in the dark. A stone table in the middle holds a cold campfire and three bowls of half-eaten stew. Two passages lead out: on the left you hear faint snoring, and on the right the floor slopes down into blackness." }
+        ],
+        talk: [
+          ["Why it works", "Sight (the table), sound (dripping, snoring), smell (smoke), a clue to investigate (the stew: someone was here a moment ago), and a choice (left or right)."]
+        ],
+        tool: "passive",
+        quiz: [
+          { q: "There's a huge golden statue in the middle of the room. Do the heroes roll Perception to see it?", choices: [
+            { t: "Yes, everyone rolls.", ok: false, why: "It's in plain sight. Just describe it." },
+            { t: "No, they simply see it.", ok: true, why: "Right. Rolls are for things that are hidden or uncertain." }
+          ] },
+          { q: "The heroes are stuck at a locked door with no key. What's the best GM move?", choices: [
+            { t: "Tell them they can't go on.", ok: false, why: "A dead end stops the fun." },
+            { t: "Leave room for other ways: pick the lock, break it down, find a window, or hunt for the key.", ok: true, why: "Yes: more than one way through." }
+          ] }
         ]
       },
       {
         id: "combat", title: "6. Running a fight",
         text: [
-          "Combat is played in rounds of about 6 seconds of game time. At the start, everyone rolls Initiative (a Dexterity check) to set the turn order, and that order stays the same each round. Use the Initiative Tracker on the GM Screen: it sorts everyone and tracks HP for you.",
+          "Combat is played in rounds of about 6 seconds of game time. At the start, everyone rolls Initiative (a Dexterity check) to set the turn order, and that order stays the same each round. The GM Screen's turn cards sort everyone and track HP for you.",
           "On their turn, a creature can move up to its Speed and take one action (attack, cast a spell, dash, dodge, and so on), and sometimes a bonus action as well. Everyone also has one reaction per round, such as an opportunity attack when an enemy leaves their reach.",
           "To attack, roll a d20 and add the attack bonus. If it meets or beats the target's Armor Class (AC), it hits and you roll damage. A natural 20 is a critical hit: roll the damage dice twice.",
           "When a hero drops to 0 Hit Points they fall unconscious and are in danger, so describe it clearly and give the party a chance to help them. Keep fights moving, and describe the action, not just the numbers.",
           "Secret rolls (the 🤫 panel on the GM Screen) let you roll in private for things the players shouldn't know yet."
+        ],
+        readAloud: [
+          { label: "Example: starting a fight", text: "A twig snaps. Three goblins burst out of the bushes, shrieking, rusty blades raised high! Everyone, roll for initiative!" },
+          { label: "Example: describing a hit", text: "Your sword catches the goblin across its shield arm. It yelps and stumbles back, clutching the wound." },
+          { label: "Example: describing a miss", text: "The goblin ducks under your swing at the last second and cackles, \"Too slow, big one!\"" },
+          { label: "Example: a monster goes down", text: "The goblin's knees buckle. It drops its blade, and the other two goblins look at each other nervously." }
+        ],
+        tool: "attack",
+        quiz: [
+          { q: "On one turn, a hero can...", choices: [
+            { t: "Move, attack twice and cast two spells.", ok: false, why: "That's far too much for one turn." },
+            { t: "Move up to their Speed and take one action (plus a bonus action if they have one).", ok: true, why: "Yes. Some features give extra attacks, but that's the basic turn." }
+          ] },
+          { q: "A hero rolls a natural 20 on an attack. What happens?", choices: [
+            { t: "It hits, and the damage dice are rolled twice.", ok: true, why: "Right! Only the dice double, not the bonus." },
+            { t: "The monster dies instantly.", ok: false, why: "It's a big hit, but not an instant win." },
+            { t: "The whole damage total, bonus included, is doubled.", ok: false, why: "Only the dice are doubled. The bonus is added once." }
+          ] }
         ]
       },
       {
@@ -110,6 +221,17 @@
           "Example from the rules: for four level-1 heroes, a Low encounter has a budget of 200 XP. That buys one Bugbear Warrior (200 XP), or six Giant Rats (25 XP each, 150 XP).",
           "More than two creatures per hero can be risky, because a lucky streak can hurt. The Battle Simulator does the maths and can play the fight out many times, so you can see the odds before your players do."
         ],
+        talk: [
+          ["Example plan", "Four level-1 heroes, Moderate fight: budget 4 × 75 = 300 XP. One Goblin Boss (200 XP) + two Goblin Warriors (50 XP each) = 300 XP. ✅ Moderate."]
+        ],
+        tool: "budget",
+        quiz: [
+          { q: "Four level-1 heroes. Which fight fits a Low budget (200 XP)?", choices: [
+            { t: "One Ogre (450 XP)", ok: false, why: "That's more than the High budget for this party (400 XP). Very dangerous!" },
+            { t: "Four Goblin Warriors (50 XP each = 200 XP)", ok: true, why: "Exactly 200 XP: a Low fight." },
+            { t: "One Owlbear (700 XP)", ok: false, why: "Way over budget. Save it for a stronger party." }
+          ] }
+        ],
         link: { href: "battle.html", text: "⚔️ Open the Battle Simulator" }
       },
       {
@@ -117,7 +239,18 @@
         text: [
           "Open the GM Screen, press Open a game, and share the code or invite link. Players choose Player, then Live Game Master, and wait in a waiting room until you open the game. You accept or decline each one.",
           "Press Start voice chat so everyone can talk (headphones stop echo). Players choose whether to join, and everyone who joins can hear everyone else.",
-          "Import their characters into the Party panel to see everyone's AC and HP, and keep the Rulebooks panel handy. Start with a simple scene, be generous with the dice, and have fun. You'll improve with every session."
+          "The Party & Initiative drawer fills itself with everyone's AC and HP. Start with a simple scene, be generous with the dice, and have fun. You'll improve with every session."
+        ],
+        readAloud: [
+          { label: "Example: opening the first session", text: "Welcome, everyone! Tonight you are strangers who have each come to the village of Millbrook for your own reasons. Before we begin, go around the table: tell us your hero's name, and one thing people notice when they first see you." },
+          { label: "Example: ending a session on a cliffhanger", text: "As the last goblin flees into the dark, the black water in the well begins to bubble... and something below lets out a long, low groan. And that's where we stop for tonight!" }
+        ],
+        tool: "checklist",
+        quiz: [
+          { q: "One player has been quiet all session. What can you do?", choices: [
+            { t: "Leave them alone: they'll speak up if they want to.", ok: false, why: "Some people need an invitation." },
+            { t: "Give their hero a moment: an NPC talks to them, or something happens that fits their hero.", ok: true, why: "Yes. A spotlight moment helps quiet players join in." }
+          ] }
         ],
         link: { href: "dm.html", text: "🛡️ Open the GM Screen" }
       }
@@ -127,56 +260,182 @@
       return document.getElementById(id);
     };
 
-    // Which lessons are ticked off (saved in this browser).
-    let done = [];
-    try {
-      done = JSON.parse(localStorage.getItem("dmLessonsDone") || "[]");
-      if (!Array.isArray(done)) done = [];
-    } catch (error) {
-      done = [];
+    // Small helper: an element with a class and some text (textContent is never treated as HTML).
+    function make(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
     }
 
-    function saveDone() {
+    function pickRandom(list) {
+      return list[rollOneDie(list.length) - 1];
+    }
+
+    // Saved progress and practice answers (all in this browser).
+    function loadSaved(key, fallback) {
       try {
-        localStorage.setItem("dmLessonsDone", JSON.stringify(done));
+        const value = JSON.parse(localStorage.getItem(key) || "null");
+        return value === null ? fallback : value;
       } catch (error) {
-        // Storage blocked: progress lasts until the page closes.
+        return fallback;
       }
     }
+
+    function store(key, value) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+        return true;
+      } catch (error) {
+        return false;   // storage blocked: the page still works until it closes
+      }
+    }
+
+    let done = loadSaved("dmLessonsDone", []);
+    if (!Array.isArray(done)) done = [];
 
     function renderProgress() {
       el("progress").textContent = "Progress: " + done.length + " of " + LESSONS.length + " lessons done" +
         (done.length === LESSONS.length ? " 🎉 You're ready to run a game!" : ".");
     }
 
-    // ----- Practice: set a DC, roll for a pretend player -----
-    function buildDcPractice() {
-      const box = document.createElement("div");
-      box.className = "tutor-box";
-      const title = document.createElement("strong");
-      title.textContent = "🎲 Practice: you're the GM. A player says \"I try to pick the lock.\"";
-      const row = document.createElement("div");
-      row.className = "roll-row";
+    // =====================================================================
+    // EXAMPLES: read-aloud boxes and sample conversations
+    // =====================================================================
+    function buildReadAloud(example) {
+      const box = make("div", "learn-read");
+      box.append(make("div", "learn-label", "🗣️ " + example.label));
+      box.append(make("p", "", example.text));
+      const speaker = Voice.speakButton(function () { return example.text; });   // hear how it might sound
+      if (speaker) box.append(speaker);
+      return box;
+    }
 
-      const difficulty = document.createElement("select");
+    function buildTalk(lines) {
+      const box = make("div", "learn-talk");
+      box.append(make("div", "learn-label", "💬 At the table"));
+      for (const [who, words] of lines) {
+        const row = make("p", "");
+        row.append(make("strong", "", who + ": "), document.createTextNode(words));
+        box.append(row);
+      }
+      return box;
+    }
+
+    // =====================================================================
+    // PRACTICE QUESTIONS: pick an answer, see why it is or isn't the best
+    // =====================================================================
+    function buildQuiz(questions) {
+      const box = make("div", "tutor-box learn-quiz");
+      box.append(make("strong", "", "🧠 Practice questions"));
+      questions.forEach(function (question, i) {
+        const block = make("div", "quiz-question");
+        block.append(make("p", "", (i + 1) + ". " + question.q));
+        const answers = make("div", "quiz-answers");
+        const feedback = make("p", "quiz-feedback");
+        feedback.setAttribute("aria-live", "polite");
+        for (const choice of question.choices) {
+          const button = make("button", "small-button", choice.t);
+          button.addEventListener("click", function () {
+            for (const other of answers.children) other.classList.remove("right", "wrong");
+            button.classList.add(choice.ok ? "right" : "wrong");
+            feedback.textContent = (choice.ok ? "✅ " : "❌ Not quite. ") + choice.why;
+          });
+          answers.append(button);
+        }
+        block.append(answers, feedback);
+        box.append(block);
+      });
+      return box;
+    }
+
+    // =====================================================================
+    // HANDS-ON PRACTICE TOOLS
+    // =====================================================================
+
+    // ----- Lesson 2: plan an adventure in five parts (with idea dice) -----
+    const PLAN_IDEAS = {
+      hook: ["A merchant's wagon was found on the road, empty, with claw marks on the wheels.",
+        "The town's bells ring by themselves every night at midnight.",
+        "A frightened child hands the heroes a map and runs away.",
+        "The only bridge to the next village was torn down overnight.",
+        "A famous adventurer's sword is for sale at the market, and its owner is missing.",
+        "The village well has turned black, and the mayor is offering a reward."],
+      place: ["a flooded cellar under the old inn", "a ruined watchtower on a windy hill", "a cave hidden behind a waterfall",
+        "an abandoned mine full of rusty carts", "a forest where the trees whisper", "a sunken temple, half underwater"],
+      problem: ["goblins stealing food for their greedy boss", "a cultist trying to wake something old and hungry",
+        "a wolf pack driven out of its home by something worse", "a bandit gang with a spy inside the village",
+        "a restless ghost who wants its story told", "a young dragon who thinks the village owes it gold"],
+      scenes: ["Talk to a nervous witness; follow tracks into the wild; a fight at the entrance.",
+        "A trap in a long hallway; a prisoner who can help; the final showdown.",
+        "A chase through the market; a locked-door puzzle; a tense deal with the villain.",
+        "A storm forces the heroes to shelter; strange noises at night; an ambush at dawn."],
+      reward: ["50 gold pieces and free rooms at the inn", "a Potion of Healing for each hero", "a map that leads to a bigger adventure",
+        "a favor from the mayor", "a mysterious magic ring", "the villagers' friendship (and a feast in the heroes' honor)"]
+    };
+    const PLAN_PARTS = [
+      ["hook", "🪝 Hook", "Why do the heroes get involved?"],
+      ["place", "🏚️ Place", "Where will they explore?"],
+      ["problem", "😈 Villain or problem", "What's wrong?"],
+      ["scenes", "🎬 Two or three scenes", "What could happen along the way?"],
+      ["reward", "💰 Reward", "What do they get for it?"]
+    ];
+
+    function buildPlanPractice() {
+      const box = make("div", "tutor-box");
+      box.append(make("strong", "", "✍️ Practice: plan your own adventure in five parts. Stuck? Press 🎲 for an idea."));
+      const plan = loadSaved("dmPlan", {});
+      // An older version of this course saved just the hook under "dmHook"
+      if (!plan.hook) {
+        try { plan.hook = localStorage.getItem("dmHook") || ""; } catch (error) { plan.hook = ""; }
+      }
+      const status = make("p", "hint");
+      for (const [key, label, question] of PLAN_PARTS) {
+        const row = make("div", "plan-row");
+        const name = make("label", "plan-label", label);
+        const input = make("input", "wide-input");
+        input.type = "text";
+        input.maxLength = 200;
+        input.placeholder = question;
+        input.value = typeof plan[key] === "string" ? plan[key] : "";
+        input.setAttribute("aria-label", label);
+        const save = function () {
+          plan[key] = input.value;
+          status.textContent = store("dmPlan", plan) ? "Saved ✓ (it'll be here next time)." : "";
+        };
+        input.addEventListener("input", save);
+        const dice = make("button", "small-button", "🎲");
+        dice.title = "Give me an idea";
+        dice.addEventListener("click", function () {
+          input.value = pickRandom(PLAN_IDEAS[key]);
+          save();
+        });
+        row.append(name, input, dice);
+        box.append(row);
+      }
+      box.append(status);
+      return box;
+    }
+
+    // ----- Lesson 3: set a DC, roll for a pretend player -----
+    function buildDcPractice() {
+      const box = make("div", "tutor-box");
+      box.append(make("strong", "", "🎲 Practice: you're the GM. A player says \"I try to pick the lock.\""));
+      const row = make("div", "roll-row");
+      const difficulty = make("select");
       for (const [name, dc] of [["Very easy", 5], ["Easy", 10], ["Medium", 15], ["Hard", 20], ["Very hard", 25], ["Nearly impossible", 30]]) {
         difficulty.append(new Option(name + " (DC " + dc + ")", dc));
       }
       difficulty.value = "15";
-      const bonus = document.createElement("input");
+      const bonus = make("input", "mini-number");
       bonus.type = "number";
       bonus.value = 5;
-      bonus.className = "mini-number";
       bonus.setAttribute("aria-label", "The player's bonus");
-      const bonusLabel = document.createElement("label");
-      bonusLabel.className = "hint";
+      const bonusLabel = make("label", "hint");
       bonusLabel.append("their bonus ", bonus);
-      const roll = document.createElement("button");
-      roll.className = "small-button";
-      roll.textContent = "🎲 Roll their d20";
-      const result = document.createElement("p");
+      const roll = make("button", "small-button", "🎲 Roll their d20");
+      const result = make("p");
       result.setAttribute("aria-live", "polite");
-
       roll.addEventListener("click", function () {
         const die = rollOneDie(20);
         const total = die + (Number(bonus.value) || 0);
@@ -185,82 +444,293 @@
           (total >= dc ? "✅ success! Describe how they do it." : "❌ failure. Don't say \"nothing happens\": add a twist.");
       });
       row.append(difficulty, bonusLabel, roll);
-      box.append(title, row, result);
+      box.append(row, result);
       return box;
     }
 
-    // ----- Practice: a one-line adventure plan -----
-    function buildNotesPractice() {
-      const box = document.createElement("div");
-      box.className = "tutor-box";
-      const title = document.createElement("strong");
-      title.textContent = "✍️ Practice: write your hook in one sentence.";
-      const input = document.createElement("input");
-      input.type = "text";
-      input.className = "wide-input";
-      input.maxLength = 200;
-      input.placeholder = "e.g. The village well has turned black, and the mayor is offering a reward.";
-      try {
-        input.value = localStorage.getItem("dmHook") || "";
-      } catch (error) {
-        input.value = "";
-      }
-      const saved = document.createElement("p");
-      saved.className = "hint";
-      input.addEventListener("input", function () {
-        try {
-          localStorage.setItem("dmHook", input.value);
-          saved.textContent = "Saved ✓ (you'll find it again here next time.)";
-        } catch (error) {
-          saved.textContent = "";
+    // ----- Lesson 4: make up a person in one click -----
+    const NPC_PARTS = {
+      name: ["Bertha Oakbarrel", "Tomas the Tanner", "Old Wren", "Pip Quickfoot", "Captain Mara Holt", "Brother Aldo",
+             "Grizzle", "Lady Fenwick", "Jax Two-Coins", "Nettie Spindle", "Sir Bramble", "Ilsa Brightwater"],
+      looks: ["is missing two front teeth", "is covered in flour", "is very tall and has to stoop through doorways", "wears far too many rings",
+              "has a pet crow on one shoulder", "always smells of wood smoke", "has a bright red beard braided with bells", "squints through cracked spectacles"],
+      voice: ["talks very fast", "whispers everything, even good news", "laughs at their own jokes", "speaks slowly, choosing every word",
+              "calls everyone \"friend\"", "answers questions with more questions", "hums between sentences", "is very, very polite"],
+      wants: ["to get rich quick", "to find their missing brother", "to be left alone", "to impress the mayor",
+              "to leave this town forever", "revenge on the bandits", "a good night's sleep", "someone to listen to their stories"],
+      secret: ["is secretly working for the villain", "saw what happened, but is too scared to say", "is a retired adventurer",
+               "owes money to the wrong people", "stole the very thing everyone is looking for", "isn't human at all (a shapeshifter!)"],
+      attitude: ["Friendly 😊", "Indifferent 😐", "Hostile 😠"]
+    };
+
+    function buildNpcPractice() {
+      const box = make("div", "tutor-box");
+      box.append(make("strong", "", "🎭 Practice: make up a person, then try saying a line as them, out loud, in their voice."));
+      const out = make("div", "npc-card");
+      const show = function () {
+        out.innerHTML = "";
+        const name = pickRandom(NPC_PARTS.name);
+        const lines = [
+          ["Name", name], ["Looks", "This person " + pickRandom(NPC_PARTS.looks) + "."],
+          ["How they talk", "They " + pickRandom(NPC_PARTS.voice) + "."], ["Wants", pickRandom(NPC_PARTS.wants)],
+          ["Secret (just for you)", "They " + pickRandom(NPC_PARTS.secret) + "."], ["Attitude to the heroes", pickRandom(NPC_PARTS.attitude)]
+        ];
+        for (const [label, text] of lines) {
+          const row = make("p", "");
+          row.append(make("strong", "", label + ": "), document.createTextNode(text));
+          out.append(row);
         }
-      });
-      box.append(title, input, saved);
+        out.append(make("p", "hint", "Your turn: say hello to the heroes as " + name + ". How would they ask for help, or refuse it?"));
+      };
+      const button = make("button", "small-button", "🎲 Make up a new person");
+      button.addEventListener("click", show);
+      show();
+      box.append(button, out);
       return box;
     }
 
+    // ----- Lesson 5: Passive Perception: who notices the hidden trap? -----
+    function buildPassivePractice() {
+      const box = make("div", "tutor-box");
+      box.append(make("strong", "", "👁️ Practice: there's a hidden tripwire in the hallway. Who notices it without rolling?"));
+      const row = make("div", "roll-row");
+      const dc = make("select");
+      for (const [name, value] of [["Easy to spot (DC 10)", 10], ["Well hidden (DC 13)", 13], ["Very well hidden (DC 15)", 15], ["Expert trap (DC 18)", 18]]) {
+        dc.append(new Option(name, value));
+      }
+      dc.value = "13";
+      row.append(dc);
+      const heroes = [["Brann", 10], ["Elowen", 14], ["Mira", 12], ["Tok", 11]];
+      const boxes = [];
+      for (const [name, value] of heroes) {
+        const label = make("label", "hint");
+        const input = make("input", "mini-number");
+        input.type = "number";
+        input.min = 1;
+        input.max = 30;
+        input.value = value;
+        input.setAttribute("aria-label", name + "'s Passive Perception");
+        label.append(name + " ", input);
+        row.append(label);
+        boxes.push([name, input]);
+      }
+      const check = make("button", "small-button", "👁️ Who notices?");
+      const result = make("p");
+      result.setAttribute("aria-live", "polite");
+      check.addEventListener("click", function () {
+        const target = Number(dc.value);
+        const spotted = boxes.filter(function (b) { return (Number(b[1].value) || 0) >= target; }).map(function (b) { return b[0]; });
+        result.textContent = spotted.length
+          ? "✅ " + spotted.join(" and ") + " notice" + (spotted.length === 1 ? "s" : "") + " the tripwire. Describe it to them: \"A thin wire glints just above the floor.\""
+          : "❌ Nobody notices. Whoever walks first triggers it! (Passive scores of " + target + " or more would have spotted it.)";
+      });
+      box.append(row, check, result);
+      box.append(make("p", "hint", "Passive Perception = 10 + the hero's Perception bonus. If it meets or beats the trap's DC, they notice."));
+      return box;
+    }
+
+    // ----- Lesson 6: roll an attack and describe it -----
+    const NARRATION = {
+      miss: ["The goblin twists aside and your blow whistles past its ear.", "Your strike bounces off its shield with a loud CLANG.",
+             "It ducks at the last second and cackles at you."],
+      hit: ["Your blade bites into its shoulder. It snarls in pain.", "A solid hit! It staggers back, clutching its side.",
+            "You catch it across the ribs, and it howls."],
+      crit: ["A perfect strike! It never saw it coming.", "CRITICAL! Your blow lands with a crack that echoes through the cave."],
+      down: ["It crumples to the ground and doesn't get up.", "It drops its weapon and falls still. The others look nervous."]
+    };
+
+    function buildAttackPractice() {
+      const box = make("div", "tutor-box");
+      box.append(make("strong", "", "⚔️ Practice: a hero swings a longsword (+5 to hit, 1d8+3 damage) at a goblin (AC 15, 10 HP)."));
+      let goblinHp = 10;
+      const status = make("p", "", "🧌 Goblin: 10/10 HP");
+      const result = make("p");
+      result.setAttribute("aria-live", "polite");
+      const roll = make("button", "small-button", "🎲 Roll the attack");
+      const reset = make("button", "small-button", "🔁 New goblin");
+      roll.addEventListener("click", function () {
+        if (goblinHp <= 0) { result.textContent = "The goblin is already down. Press New goblin."; return; }
+        const die = rollOneDie(20);
+        const total = die + 5;
+        let text = "🎲 " + die + " + 5 = " + total + " against AC 15 → ";
+        if (die === 1 || (die !== 20 && total < 15)) {
+          text += "miss. Say it like this: \"" + pickRandom(NARRATION.miss) + "\"";
+        } else {
+          const crit = die === 20;
+          const damage = rollDiceText("1d8+3", crit);
+          goblinHp = Math.max(goblinHp - damage.total, 0);
+          text += (crit ? "CRITICAL HIT (the dice are rolled twice)! " : "hit! ") + damage.total + " damage " + damage.text + ". Say it like this: \"" +
+            pickRandom(goblinHp === 0 ? NARRATION.down : (crit ? NARRATION.crit : NARRATION.hit)) + "\"";
+        }
+        result.textContent = text;
+        status.textContent = "🧌 Goblin: " + goblinHp + "/10 HP" + (goblinHp === 0 ? " (down!)" : "");
+      });
+      reset.addEventListener("click", function () {
+        goblinHp = 10;
+        status.textContent = "🧌 Goblin: 10/10 HP";
+        result.textContent = "";
+      });
+      box.append(status, roll, reset, result);
+      box.append(make("p", "hint", "Tip: describe what the numbers mean in the story. Players remember \"it howls\" far better than \"it takes 7.\""));
+      return box;
+    }
+
+    // ----- Lesson 7: spend an XP budget on real monsters -----
+    function buildBudgetPractice() {
+      const box = make("div", "tutor-box");
+      box.append(make("strong", "", "🧮 Practice: build a fight for your party, using the rules' XP budget table."));
+      const row = make("div", "roll-row");
+      const size = make("select");
+      for (let n = 1; n <= 6; n++) size.append(new Option(n + (n === 1 ? " hero" : " heroes"), n));
+      size.value = "4";
+      const level = make("select");
+      for (let n = 1; n <= 10; n++) level.append(new Option("level " + n, n));
+      row.append(size, level);
+      const budgets = make("p", "hint");
+
+      const pickRow = make("div", "roll-row");
+      const monster = make("select");
+      monster.setAttribute("aria-label", "Monster");
+      const sorted = MONSTERS.filter(function (m) { return m.xp <= 5900; }).sort(function (a, b) { return a.xp - b.xp || a.n.localeCompare(b.n); });
+      for (const m of sorted) monster.append(new Option(m.n + " (CR " + m.cr + ", " + m.xp + " XP)", m.n));
+      monster.value = "Goblin Warrior";
+      const count = make("input", "mini-number");
+      count.type = "number";
+      count.min = 1;
+      count.max = 12;
+      count.value = 1;
+      count.setAttribute("aria-label", "How many");
+      const add = make("button", "small-button", "➕ Add");
+      const clear = make("button", "small-button", "🧹 Clear");
+      pickRow.append(monster, count, add, clear);
+
+      const list = make("ul", "budget-list");
+      const verdict = make("p", "budget-verdict");
+      verdict.setAttribute("aria-live", "polite");
+      let chosen = [];   // [{ monster, count }]
+
+      const show = function () {
+        const heroes = Number(size.value);
+        const b = getEncounterBudgets(Number(level.value), heroes);
+        budgets.textContent = "Budgets for this party: Low " + b.low + " XP · Moderate " + b.moderate + " XP · High " + b.high + " XP.";
+        list.innerHTML = "";
+        let xp = 0;
+        let creatures = 0;
+        for (const entry of chosen) {
+          xp += entry.monster.xp * entry.count;
+          creatures += entry.count;
+          list.append(make("li", "", entry.count + " × " + entry.monster.n + " = " + entry.monster.xp * entry.count + " XP"));
+        }
+        if (!chosen.length) { verdict.textContent = "Add some monsters to see how hard the fight is."; return; }
+        const level2 = describeEncounterXp(xp, Number(level.value), heroes);
+        const words = { "Low": "✅ Low: a good warm-up fight.", "Moderate": "✅ Moderate: a real challenge.",
+                        "High": "⚠️ High: dangerous. Heroes could fall.", "Over High": "☠️ Over High: this could wipe out the party!" };
+        verdict.textContent = "Total: " + xp + " XP → " + (words[level2] || level2) +
+          (creatures > heroes * 2 ? " Also, that's more than two creatures per hero: lucky rolls could hurt." : "");
+      };
+      add.addEventListener("click", function () {
+        const m = MONSTERS.find(function (x) { return x.n === monster.value; });
+        const n = Math.min(Math.max(Math.round(Number(count.value)) || 1, 1), 12);
+        const existing = chosen.find(function (e) { return e.monster === m; });
+        if (existing) existing.count = Math.min(existing.count + n, 24);
+        else chosen.push({ monster: m, count: n });
+        show();
+      });
+      clear.addEventListener("click", function () { chosen = []; show(); });
+      size.addEventListener("change", show);
+      level.addEventListener("change", show);
+      show();
+      box.append(row, budgets, pickRow, list, verdict);
+      return box;
+    }
+
+    // ----- Lesson 8: a checklist for game night -----
+    const CHECKLIST = [
+      "Pick tonight's adventure (the free starter adventure works great) and read it through once.",
+      "Choose a map: a pre-made one, or one you saved on the Battle Map page.",
+      "Open the GM Screen and press \"Open a game\".",
+      "Send the invite link to your players.",
+      "Accept everyone, then check they can all hear each other in voice chat.",
+      "Agree on table rules: breaks, phones, and anything that's off-limits in the story.",
+      "Take a breath, smile, and read your first read-aloud box. Have fun!"
+    ];
+
+    function buildChecklist() {
+      const box = make("div", "tutor-box");
+      box.append(make("strong", "", "✅ Practice: your game-night checklist (it remembers your ticks)."));
+      let ticks = loadSaved("dmChecklist", []);
+      if (!Array.isArray(ticks)) ticks = [];
+      CHECKLIST.forEach(function (text, i) {
+        const label = make("label", "check-row");
+        const tick = make("input");
+        tick.type = "checkbox";
+        tick.checked = ticks.includes(i);
+        tick.addEventListener("change", function () {
+          ticks = ticks.filter(function (n) { return n !== i; });
+          if (tick.checked) ticks.push(i);
+          store("dmChecklist", ticks);
+        });
+        label.append(tick, document.createTextNode(" " + text));
+        box.append(label);
+      });
+      const reset = make("button", "small-button", "🔁 Untick everything (for next game night)");
+      reset.addEventListener("click", function () {
+        ticks = [];
+        store("dmChecklist", ticks);
+        for (const input of box.querySelectorAll("input")) input.checked = false;
+      });
+      box.append(reset);
+      return box;
+    }
+
+    const TOOLS = { plan: buildPlanPractice, dc: buildDcPractice, npc: buildNpcPractice, passive: buildPassivePractice,
+                    attack: buildAttackPractice, budget: buildBudgetPractice, checklist: buildChecklist };
+
+    // =====================================================================
+    // DRAWING THE LESSONS
+    // =====================================================================
     function renderLessons() {
       const list = el("lessons");
       list.innerHTML = "";
       for (const lesson of LESSONS) {
-        const details = document.createElement("details");
-        details.className = "panel lesson";
-        const summary = document.createElement("summary");
-        summary.textContent = (done.includes(lesson.id) ? "✅ " : "") + lesson.title;
+        const details = make("details", "panel lesson");
+        const summary = make("summary", "", (done.includes(lesson.id) ? "✅ " : "") + lesson.title);
         details.append(summary);
-        const speaker = Voice.speakButton(function () { return Voice.textOf(details); });   // reads the lesson aloud
+        const speaker = Voice.speakButton(function () {
+          // Reads the lesson itself (not the practice buttons)
+          return lesson.text.join(" ");
+        });
         if (speaker) details.append(speaker);
+        for (const paragraph of lesson.text) details.append(make("p", "lesson-text", paragraph));
 
-        for (const paragraph of lesson.text) {
-          const p = document.createElement("p");
-          p.className = "lesson-text";
-          p.textContent = paragraph;
-          details.append(p);
-        }
-        if (lesson.tool === "dc") details.append(buildDcPractice());
-        if (lesson.tool === "notes") details.append(buildNotesPractice());
+        // Examples
+        if (lesson.readAloud || lesson.talk) details.append(make("h3", "section-label", "📖 Examples"));
+        for (const example of lesson.readAloud || []) details.append(buildReadAloud(example));
+        if (lesson.talk) details.append(buildTalk(lesson.talk));
+
+        // Practice
+        if (lesson.tool || lesson.quiz) details.append(make("h3", "section-label", "🏋️ Practice"));
+        if (lesson.tool && TOOLS[lesson.tool]) details.append(TOOLS[lesson.tool]());
+        if (lesson.quiz) details.append(buildQuiz(lesson.quiz));
+
         if (lesson.link) {
-          const a = document.createElement("a");
-          a.className = "plain-button";
+          const a = make("a", "plain-button", lesson.link.text);
           a.href = lesson.link.href;
-          a.textContent = lesson.link.text;
           details.append(a);
         }
-
-        const check = document.createElement("label");
-        check.className = "hint";
-        const box = document.createElement("input");
+        const check = make("label", "hint");
+        const box = make("input");
         box.type = "checkbox";
         box.checked = done.includes(lesson.id);
         box.addEventListener("change", function () {
           done = done.filter(function (id) { return id !== lesson.id; });
           if (box.checked) done.push(lesson.id);
-          saveDone();
+          store("dmLessonsDone", done);
           summary.textContent = (box.checked ? "✅ " : "") + lesson.title;
           renderProgress();
         });
         check.append(box, " I've finished this lesson");
-        details.append(document.createElement("br"), check);
+        details.append(make("br"), check);
         list.append(details);
       }
     }

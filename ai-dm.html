@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Game Master</title>
+  <title>AI App Master</title>
   <link rel="stylesheet" href="style.css">
   <!-- App icon, colors, and the file that makes Dragon Table installable -->
   <link rel="manifest" href="manifest.webmanifest">
@@ -18,11 +18,11 @@
     <a href="index.html" class="active">🏠 Home</a>
     <a href="library.html">📚 Library</a>
     <a href="character.html">🧙 Characters</a>
-    <a href="dm.html">🛡️ GM Screen</a>
+    <a href="dm.html">🛡️ AM Screen</a>
     <a href="equipment.html">🛒 Equipment</a>
   </nav>
 
-  <h1>🤖 AI Game Master</h1>
+  <h1>🤖 AI App Master</h1>
   <p><a href="player.html" class="back-link">← Back</a></p>
 
   <!-- Is the helper server running, and is the AI set up? Filled in by the script. -->
@@ -96,7 +96,7 @@
             </select>
           </label>
         </div>
-        <label class="sheet-field">Anything else the GM should know? (optional)
+        <label class="sheet-field">Anything else the AM should know? (optional)
           <input id="tone" type="text" class="wide-input" maxlength="120" placeholder="e.g. lots of jokes, no spiders, a talking cat sidekick">
         </label>
       </div>
@@ -122,7 +122,7 @@
           <label class="sheet-field">What can it do?
             <textarea id="pickPowers" class="notes-box short-notes" maxlength="600" placeholder="Once per day, it can set its blade alight for one minute..."></textarea>
           </label>
-          <p class="hint">A homemade item's powers are a suggestion: the Game Master keeps them fair.</p>
+          <p class="hint">A homemade item's powers are a suggestion: the App Master keeps them fair.</p>
         </div>
         <label class="sheet-field">What does it look like?
           <textarea id="pickLooks" class="notes-box short-notes" maxlength="400" placeholder="Pitted black iron with a thin vein of glowing orange..."></textarea>
@@ -138,7 +138,7 @@
       <p id="startError" class="chat-error hidden"></p>
       <p class="hint">
         💬 Your messages, your campaign choices and your hero's sheet (name, class, stats and item) are sent to Anthropic's Claude
-        to write the Game Master's replies. Using the AI costs money on the account that owns the API key.
+        to write the App Master's replies. Using the AI costs money on the account that owns the API key.
       </p>
     </div>
   </div>
@@ -147,7 +147,7 @@
   <div class="panel hidden" id="gamePanel">
     <h2 id="gameTitle"></h2>
 
-    <!-- Scene music, chosen by the Game Master as the story changes -->
+    <!-- Scene music, chosen by the App Master as the story changes -->
     <div class="roll-row music-row">
       <button class="small-button" id="musicBtn">🎵 Music: off</button>
       <span id="musicMood" class="hint"></span>
@@ -157,19 +157,19 @@
     <!-- Beginners get a short "how to play" lesson, which they can hide -->
     <details id="howToPlay" class="tutor-box hidden">
       <summary><strong>🧭 How to play</strong></summary>
-      <p>1. Read what the Game Master describes. 2. Type (or 🎤 say) what your hero does, in your own words, like "I sneak up to the door and listen", then press Send.</p>
-      <p>3. When something is risky, the GM asks for a roll and a big button appears. Click it: it rolls a d20 and adds your bonus for you. Higher is better!</p>
+      <p>1. Read what the App Master describes. 2. Type (or 🎤 say) what your hero does, in your own words, like "I sneak up to the door and listen", then press Send.</p>
+      <p>3. When something is risky, the AM asks for a roll and a big button appears. Click it: it rolls a d20 and adds your bonus for you. Higher is better!</p>
       <p>4. In a fight, everyone takes turns. On your turn you can move and do one main thing, such as attack or cast a spell. Your Armor Class (AC) is how hard you are to hit, and Hit Points (HP) are how much damage you can take.</p>
-      <p>Stuck? Just ask the GM "What can I do?" They'll explain.</p>
+      <p>Stuck? Just ask the AM "What can I do?" They'll explain.</p>
     </details>
 
     <div id="chat" class="chat-log" aria-live="polite"></div>
 
-    <!-- When the Game Master asks for a roll, this button is set up and ready -->
+    <!-- When the App Master asks for a roll, this button is set up and ready -->
     <div id="readyRoll" class="ready-roll hidden">
-      <p class="hint">The Game Master asks for a roll:</p>
+      <p class="hint">The App Master asks for a roll:</p>
       <button id="readyRollBtn"></button>
-      <p class="hint">One click rolls it, adds your bonus, tells you if it worked, and sends it to the Game Master.</p>
+      <p class="hint">One click rolls it, adds your bonus, tells you if it worked, and sends it to the App Master.</p>
     </div>
 
     <div class="roll-row">
@@ -196,11 +196,11 @@
       </label>
       <label class="hint">or type it <input id="targetBox" type="number" min="1" max="40" class="mini-number" placeholder="DC / AC"></label>
     </div>
-    <p class="hint">Rolls add up for you and say if they worked. The result goes into the message box: press Send to tell the Game Master.</p>
+    <p class="hint">Rolls add up for you and say if they worked. The result goes into the message box: press Send to tell the App Master.</p>
 
     <textarea id="chatInput" class="notes-box chat-input" placeholder="What do you do? (Enter to send, Shift+Enter for a new line)"></textarea>
 
-    <!-- Voice: speak your reply, and have the Game Master read aloud -->
+    <!-- Voice: speak your reply, and have the App Master read aloud -->
     <div class="roll-row">
       <button class="small-button" id="micBtn">🎤 Speak your reply</button>
       <label class="hint"><input type="checkbox" id="autoRead"> 🔊 Read new replies aloud</label>
@@ -211,7 +211,7 @@
       <button id="sendBtn">Send</button>
       <button class="small-button" id="newBtn">🔄 New adventure</button>
     </p>
-    <p class="hint">The Game Master tracks your HP in the story. Update your sheet yourself when it changes.</p>
+    <p class="hint">The App Master tracks your HP in the story. Update your sheet yourself when it changes.</p>
     <p class="hint">🎤 Voice typing uses your browser's speech service, which may send your voice to Google (Chrome) or Apple (Safari) to turn it into text.</p>
   </div>
 
@@ -270,7 +270,7 @@
       const body = document.createElement("p");
 
       if (serverState === "ready") {
-        title.textContent = "✅ The AI Game Master is ready";
+        title.textContent = "✅ The AI App Master is ready";
         body.className = "hint";
         body.textContent = "Connected to the helper server (model: " + status.model + ").";
         panel.append(title, body);
@@ -285,7 +285,7 @@
       } else {
         // On the public website there is no helper (and there must never be a key there).
         const onlineCopy = location.protocol.startsWith("http") && !["localhost", "127.0.0.1"].includes(location.hostname);
-        title.textContent = onlineCopy ? "🖥️ The AI Game Master runs on your own computer" : "🖥️ Start the helper server first";
+        title.textContent = onlineCopy ? "🖥️ The AI App Master runs on your own computer" : "🖥️ Start the helper server first";
         body.textContent = (onlineCopy
           ? "The online version can't use the AI, because the AI needs your private API key, and that must stay on your computer. On a computer with this app downloaded, open Terminal and run:"
           : "The AI needs a small helper program on your computer. It keeps your API key private. Open Terminal and run:");
@@ -304,7 +304,7 @@
           wait.href = waitlistUrl();
           wait.target = "_blank";
           wait.rel = "noopener";
-          wait.textContent = "✉️ Tell me when the AI Game Master is online";
+          wait.textContent = "✉️ Tell me when the AI App Master is online";
           panel.append(wait);
         }
       }
@@ -321,15 +321,15 @@
     const GUIDE_TIPS = {
       beginner: {
         hero: "Your hero is the character you play. If you don't have one yet, press \"Create a new hero\": it walks you through every step and explains it.",
-        campaign: "A campaign is your story: where it happens and what kind of adventure it is. Pick anything that sounds fun. The Game Master builds the story from your choices.",
+        campaign: "A campaign is your story: where it happens and what kind of adventure it is. Pick anything that sounds fun. The App Master builds the story from your choices.",
         item: "Every hero gets one special item to start with. Pick a real magic item from the rules, or invent your own and describe what it looks like and what it does.",
-        begin: "Ready! The Game Master will describe the opening scene. Then you say what your hero does. Since you picked Beginner, the GM will explain the rules as they come up and suggest things you could try."
+        begin: "Ready! The App Master will describe the opening scene. Then you say what your hero does. Since you picked Beginner, the AM will explain the rules as they come up and suggest things you could try."
       },
       intermediate: {
         hero: "Pick a hero, or make a new one.",
         campaign: "Choose a setting and a kind of story.",
         item: "From the list, or invent your own.",
-        begin: "The GM will give short rule reminders when an unusual rule comes up."
+        begin: "The AM will give short rule reminders when an unusual rule comes up."
       }
     };
 
@@ -419,7 +419,7 @@
       return Boolean(campaign.setting && campaign.story);
     }
 
-    // The campaign as plain text for the AI Game Master.
+    // The campaign as plain text for the AI App Master.
     function makeCampaignText(campaign) {
       if (!campaign) return "";
       const lines = [];
@@ -590,7 +590,7 @@
       adventure.messages.forEach(function (message, index) {
         const bubble = document.createElement("div");
         if (index === 0) {
-          // The first message just tells the GM to begin. Show it as a quiet note.
+          // The first message just tells the AM to begin. Show it as a quiet note.
           bubble.className = "chat-note";
           bubble.textContent = "✨ The adventure begins";
         } else {
@@ -601,7 +601,7 @@
           text.textContent = message.role === "assistant" ? stripDmTags(message.content) : message.content;
           bubble.append(text);
 
-          // The Game Master's messages get a "read aloud" button.
+          // The App Master's messages get a "read aloud" button.
           if (message.role === "assistant" && canSpeak()) {
             const speakButton = document.createElement("button");
             speakButton.className = "small-button speak-btn";
@@ -620,11 +620,11 @@
       if (busy) {
         const thinking = document.createElement("div");
         thinking.className = "chat-note";
-        thinking.textContent = "…the Game Master is thinking";
+        thinking.textContent = "…the App Master is thinking";
 
         log.append(thinking);
 
-        // While the GM is still thinking (the answer isn't on screen yet), the move can be taken back.
+        // While the AM is still thinking (the answer isn't on screen yet), the move can be taken back.
         if (canRedo()) {
           const row = document.createElement("div");
           row.className = "redo-row";   // its own line, so it isn't faded like the "thinking" note
@@ -666,7 +666,7 @@
       });
     }
 
-    // Add what the player said, ask the server, add the Game Master's answer.
+    // Add what the player said, ask the server, add the App Master's answer.
     async function askDm(playerText) {
       // Remember this request, so "Redo my move" can cancel it and a late answer is ignored.
       const request = { controller: new AbortController() };
@@ -701,16 +701,16 @@
         currentRequest = null;
 
         if (!response.ok || !data || !data.text) {
-          throw new Error((data && data.error) || "The Game Master didn't answer.");
+          throw new Error((data && data.error) || "The App Master didn't answer.");
         }
 
         adventure.messages.push({ role: "assistant", content: data.text });
         saveAdventure();
         setBusy(false);
-        updateReadyRoll();          // did the GM ask for a roll?
-        applyMusicTag(data.text);   // did the GM change the mood?
+        updateReadyRoll();          // did the AM ask for a roll?
+        applyMusicTag(data.text);   // did the AM change the mood?
         if (el("autoRead").checked) toggleSpeaking(stripDmTags(data.text), adventure.messages.length - 1);
-        if (data.truncated) showChatError("That reply was cut short. Ask the GM to continue.");
+        if (data.truncated) showChatError("That reply was cut short. Ask the AM to continue.");
       } catch (error) {
         // Cancelled by Redo (or replaced by a newer request): Redo already tidied up.
         if (currentRequest !== request) return;
@@ -746,9 +746,9 @@
     }
 
     // =====================================================================
-    // REDO MY MOVE (only while the Game Master is still thinking)
+    // REDO MY MOVE (only while the App Master is still thinking)
     // =====================================================================
-    let currentRequest = null;   // the request waiting for the GM's answer, if any
+    let currentRequest = null;   // the request waiting for the AM's answer, if any
 
     // Redo is allowed only while the answer is still on its way, and not for:
     //  - the very first "begin the adventure" message, and
@@ -850,7 +850,7 @@
       const sentences = text.match(/[^.!?\n]+[.!?]*\s*/g) || [text];
       const voice = pickVoice();
       speakingIndex = index;
-      duckMusic(true);   // music gets quieter while the GM talks
+      duckMusic(true);   // music gets quieter while the AM talks
 
       sentences.forEach(function (sentence, i) {
         const utterance = new SpeechSynthesisUtterance(sentence.trim());
@@ -913,7 +913,7 @@
         return;
       }
 
-      stopSpeaking();   // so the microphone doesn't hear the Game Master talking
+      stopSpeaking();   // so the microphone doesn't hear the App Master talking
 
       const box = el("chatInput");
       const before = box.value.trim() ? box.value.trim() + " " : "";   // keep what's already typed
@@ -950,7 +950,7 @@
     // =====================================================================
     // THE READY-TO-ROLL BUTTON
     // =====================================================================
-    // When the Game Master's latest message asks for a roll ([ROLL: Perception]),
+    // When the App Master's latest message asks for a roll ([ROLL: Perception]),
     // the button is set up with the right roll and the bonus from the sheet.
     let pendingRoll = null;
 
@@ -969,7 +969,7 @@
       }
     }
 
-    // One click: roll, then send the result (plus anything already typed) to the GM.
+    // One click: roll, then send the result (plus anything already typed) to the AM.
     function rollReady() {
       if (!pendingRoll || busy) return;
       const result = rollRequest(currentHero(), pendingRoll, currentTarget());   // from play.js
@@ -1032,7 +1032,7 @@
       }
     }
 
-    // The GM's reply may change the mood: [MUSIC: battle]
+    // The AM's reply may change the mood: [MUSIC: battle]
     function applyMusicTag(text) {
       const mood = findMusicTag(text);   // from play.js
       if (!mood) return;
@@ -1043,7 +1043,7 @@
       }
     }
 
-    // While the GM reads aloud, the music gets quieter.
+    // While the AM reads aloud, the music gets quieter.
     function duckMusic(on) {
       ducked = on;
       if (music) music.setVolume(musicVolume());
@@ -1083,7 +1083,7 @@
       if (wantsMusic) startMusic();
       else showMusicState();
 
-      // A brand-new adventure: ask the Game Master to open the story.
+      // A brand-new adventure: ask the App Master to open the story.
       if (adventure.messages.length === 0) {
         askDm("Begin the adventure with an opening scene that fits the campaign.");
       }

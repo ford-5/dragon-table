@@ -19,7 +19,7 @@
     <a href="index.html">🏠 Home</a>
     <a href="library.html">📚 Library</a>
     <a href="character.html">🧙 Characters</a>
-    <a href="dm.html">🛡️ GM Screen</a>
+    <a href="dm.html">🛡️ AM Screen</a>
     <a href="equipment.html">🛒 Equipment</a>
   </nav>
 
@@ -280,13 +280,13 @@
       if (event.key === "ArrowLeft") turn(-1);
     });
     window.addEventListener("resize", showPages);
-    // Put it back: inside the GM Screen, tell it to close the book; on its own, go back.
+    // Put it back: inside the AM Screen, tell it to close the book; on its own, go back.
     el("putBack").addEventListener("click", function () {
       if (embedded) window.parent.postMessage({ type: "closeBook" }, location.origin);
       else if (history.length > 1) history.back();
       else location.href = "index.html";
     });
-    // The GM Screen picks another book by changing the part after #
+    // The AM Screen picks another book by changing the part after #
     window.addEventListener("hashchange", function () {
       el("bookSearch").value = "";
       openBook(location.hash.slice(1));

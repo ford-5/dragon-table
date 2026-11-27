@@ -19,14 +19,14 @@
     <a href="index.html">🏠 Home</a>
     <a href="library.html">📚 Library</a>
     <a href="character.html">🧙 Characters</a>
-    <a href="dm.html">🛡️ GM Screen</a>
+    <a href="dm.html">🛡️ AM Screen</a>
     <a href="equipment.html">🛒 Equipment</a>
     <a href="battle.html">⚔️ Battle</a>
     <a href="map.html" class="active">🗺️ Map</a>
   </nav>
 
   <h1>🗺️ Battle Map</h1>
-  <p class="hint" id="shareHint">To show this map to your players, open the GM Screen, start a live game, and press "Show the map to players".</p>
+  <p class="hint" id="shareHint">To show this map to your players, open the AM Screen, start a live game, and press "Show the map to players".</p>
   <p class="hint">Place heroes, monsters and terrain on a grid. Each square is 5 feet. Drag tokens to move them: the map counts the movement by the rules.</p>
 
   <!-- ===== What a click or drag does ===== -->
@@ -82,7 +82,7 @@
 
     <h3 class="section-label">Heroes</h3>
     <div id="heroButtons" class="shop-tabs"></div>
-    <p id="noHeroes" class="hint hidden">No heroes yet: make some on the <a href="character.html">Characters</a> page, or import players into the party on the GM Screen.</p>
+    <p id="noHeroes" class="hint hidden">No heroes yet: make some on the <a href="character.html">Characters</a> page, or import players into the party on the AM Screen.</p>
 
     <h3 class="section-label">Monsters (from the SRD)</h3>
     <div class="settings add-form">
@@ -126,7 +126,7 @@
     <p class="hint">The map saves itself in this browser.</p>
   </div>
 
-  <p><a href="dm.html" class="back-link">← Back to the GM Screen</a></p>
+  <p><a href="dm.html" class="back-link">← Back to the AM Screen</a></p>
 
   <footer class="site-footer">
     <p>Grid movement and creature sizes follow the System Reference Document 5.2.1 ("Playing on a Grid", "Creature Size and Space"); monster stats from the SRD 5.2.1 by Wizards of the Coast LLC, licensed under CC-BY-4.0.</p>
@@ -203,9 +203,9 @@
 
     // =====================================================================
     // SHARING WITH PLAYERS
-    // The live game's connections belong to the GM Screen page, so this page talks to it
+    // The live game's connections belong to the AM Screen page, so this page talks to it
     // over a BroadcastChannel: a message channel between pages of the same website in the
-    // same browser. The GM Screen forwards what it hears to the players.
+    // same browser. The AM Screen forwards what it hears to the players.
     // =====================================================================
     let channel = null;
     try {
@@ -237,7 +237,7 @@
       return true;
     }
 
-    // What the players get to see: no hidden tokens, no monster HP or AC, no GM notes.
+    // What the players get to see: no hidden tokens, no monster HP or AC, no AM notes.
     // Fog: players get the LIST of fogged squares (to paint them dark) but never what's
     // under them: terrain and monsters in the fog are simply left out of the message.
     // Heroes always show, so players know where their own party is.
@@ -274,13 +274,13 @@
       channel.onmessage = function (event) {
         const data = event.data;
         if (!data || typeof data !== "object") return;
-        if (data.type === "hello") broadcastMap();                 // the GM Screen asks for the latest map
+        if (data.type === "hello") broadcastMap();                 // the AM Screen asks for the latest map
         if (data.type === "playerMove") applyPlayerMove(data);     // a player moved their own hero
-        if (data.type === "setHp") applyHpFromScreen(data);        // the GM Screen's turn cards dealt damage
+        if (data.type === "setHp") applyHpFromScreen(data);        // the AM Screen's turn cards dealt damage
       };
     }
 
-    // The GM Screen's turn cards changed a token's HP (an attack or a spell).
+    // The AM Screen's turn cards changed a token's HP (an attack or a spell).
     function applyHpFromScreen(data) {
       const token = findToken(Number(data.tokenId));
       const hp = Math.round(Number(data.hp));
@@ -290,7 +290,7 @@
       render();
     }
 
-    // A player dragged their own hero. The GM Screen has already checked WHO they are
+    // A player dragged their own hero. The AM Screen has already checked WHO they are
     // and sends their hero's name; this checks the move itself.
     function applyPlayerMove(data) {
       const x = Number(data.x), y = Number(data.y);
@@ -456,7 +456,7 @@
       render();
     }
 
-    // Heroes from the Characters page and the GM Screen's party (live players).
+    // Heroes from the Characters page and the AM Screen's party (live players).
     function knownHeroes() {
       const list = [];
       for (const c of loadCharacters()) {
@@ -522,7 +522,7 @@
         board.append(square);
       }
 
-      // Fog: the GM sees it as a see-through dark cloud; players see solid dark squares
+      // Fog: the AM sees it as a see-through dark cloud; players see solid dark squares
       for (const k in map.fog) {
         const [x, y] = k.split(",").map(Number);
         if (!inBounds(x, y)) continue;
@@ -875,9 +875,18 @@
     fillMonsterPick();
     setMode("move");
     importFromSimulator();
-    broadcastMap();   // tell the GM Screen what's on the map right now
-    // Shown inside the GM Screen (map.html?embed=1): hide the page furniture.
+    broadcastMap();   // tell the AM Screen what's on the map right now
+    // Shown inside the AM Screen (map.html?embed=1): hide the page furniture.
     if (new URLSearchParams(location.search).get("embed") === "1") document.body.classList.add("embedded");   // after setMode, so its message isn't cleared
+
+    // Inside the AM Screen, its 🧱 Obstacles bar picks the tool (only our own pages may)
+    window.addEventListener("message", function (event) {
+      if (event.origin !== location.origin || event.source !== window.parent || !event.data) return;
+      const data = event.data;
+      if (data.type === "setMode" && MODES.some(function (m) { return m.key === data.mode; })) setMode(data.mode);
+      if (data.type === "fogAll") el("fogAllBtn").click();
+      if (data.type === "revealAll") el("revealAllBtn").click();
+    });
 
     el("monsterSearch").addEventListener("input", fillMonsterPick);
     Voice.micButton(el("monsterSearch"));   // a microphone: say a monster's name
@@ -949,7 +958,7 @@
         if (!confirm("Load \"" + preset.name.replace(/^\S+\s/, "") + "\"? This replaces the map you have now.")) return;
       }
       const fresh = newMap();
-      fresh.cell = map.cell;   // keep the zoom the GM likes
+      fresh.cell = map.cell;   // keep the zoom the AM likes
       fresh.cols = preset.rows[0].length;
       fresh.rows = preset.rows.length;
       fresh.ground = preset.ground;
@@ -980,7 +989,7 @@
         }, spot.x, spot.y);
       }
 
-      // The heroes this GM knows about, gathered at the start
+      // The heroes this AM knows about, gathered at the start
       for (const hero of knownHeroes()) {
         addToken({ side: "hero", name: hero.name, size: 1, hp: hero.hp, maxHp: hero.maxHp, ac: hero.ac, speed: hero.speed },
                  start.x, start.y);
@@ -1085,7 +1094,7 @@
           !confirm("Load \"" + entry.name + "\"? This replaces the map you have now.")) return;
       const fresh = Object.assign(newMap(), JSON.parse(JSON.stringify(entry.map)));
       if (!fresh.fog || typeof fresh.fog !== "object") fresh.fog = {};
-      fresh.cell = map.cell;   // keep the zoom the GM likes
+      fresh.cell = map.cell;   // keep the zoom the AM likes
       map = fresh;
       el("colsBox").value = map.cols;
       el("rowsBox").value = map.rows;
@@ -1144,7 +1153,7 @@
       for (let x = 0; x < map.cols; x++) {
         for (let y = 0; y < map.rows; y++) map.fog[x + "," + y] = 1;
       }
-      setMode("reveal");   // the next thing a GM does is reveal where the heroes are
+      setMode("reveal");   // the next thing an AM does is reveal where the heroes are
       saveMap();
       render();
     });

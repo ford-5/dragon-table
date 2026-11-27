@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GM Screen</title>
+  <title>AM Screen</title>
 
   <!-- Same shared styles as the player page -->
-  <meta name="description" content="The Game Master screen: invite players, track initiative and HP, and keep the rules handy.">
+  <meta name="description" content="The App Master screen: invite players, track initiative and HP, and keep the rules handy.">
   <link rel="stylesheet" href="style.css">
   <!-- App icon, colors, and the file that makes Dragon Table installable -->
   <link rel="manifest" href="manifest.webmanifest">
@@ -16,16 +16,16 @@
   <meta name="apple-mobile-web-app-title" content="Dragon Table">
 </head>
 
-<!-- class="dm" switches on the purple GM theme from style.css -->
+<!-- class="dm" switches on the purple AM theme from style.css -->
 <body class="dm gm-screen">
   <!-- One slim bar on top: title, menu and Back, so the rest of the screen is for the game -->
   <header class="gm-topbar">
-    <h1>🛡️ GM Screen</h1>
+    <h1>🛡️ AM Screen</h1>
     <nav class="top-nav">
       <a href="index.html">🏠 Home</a>
       <a href="library.html">📚 Library</a>
       <a href="character.html">🧙 Characters</a>
-      <a href="dm.html" class="active">🛡️ GM Screen</a>
+      <a href="dm.html" class="active">🛡️ AM Screen</a>
       <a href="equipment.html">🛒 Equipment</a>
       <a href="battle.html">⚔️ Battle</a>
       <a href="map.html">🗺️ Map</a>
@@ -37,20 +37,19 @@
 
   <!-- TURN CARDS: one card per creature in the fight, in initiative order. Click a card to
        see what it can do; pick an attack or spell and a target, and the dice do the rest. -->
-  <section id="turnBar" class="turn-bar hidden">
-    <div class="turn-head">
-      <strong id="turnRound"></strong>
-      <button class="small-button" onclick="nextTurn()">Next turn ▶</button>
-      <button class="small-button" onclick="endCombat()">End combat</button>
-    </div>
-    <div id="turnCards" class="turn-cards"></div>
-    <div id="actionPanel" class="action-panel"></div>
-  </section>
 
   <!-- ONE screen in three parts: tools on the LEFT and RIGHT sides, and the
        STAGE in the middle (battle map, adventure or library). Each side tool is a
        <details> "drawer": click its title to pull it open or push it closed. -->
   <div class="gm-layout">
+    <!-- BOOKS on the left edge (and the Map), like the drawing -->
+    <nav class="book-edge" aria-label="Books">
+<button class="book-spine" data-book="rules" style="background-color:#7a2a2a" title="The rules in brief, and the conditions">📕 The Rules</button>
+<button class="book-spine" data-book="spells" style="background-color:#2f5e34" title="All 339 spells">📗 Spellbook</button>
+<button class="book-spine" data-book="monsters" style="background-color:#1f3550" title="All 288 monsters">📘 Bestiary</button>
+<button class="book-spine" data-book="items" style="background-color:#8a5a12" title="Magic items">📙 Magic Items</button>
+<button class="book-spine map-spine" id="mapSpine" title="Back to the battle map">🗺️ Map</button>
+    </nav>
 
     <!-- ===================== LEFT SIDE ===================== -->
     <aside class="gm-side">
@@ -177,13 +176,48 @@
 
     <!-- ===================== THE MIDDLE (the stage) ===================== -->
     <main class="gm-stage">
+      <!-- OBSTACLES for the map (they control the battle map in the middle) -->
+      <div class="obstacle-bar" id="obstacleBar">
+        <span class="obstacle-title">🧱 Obstacles:</span>
+        <button class="small-button" data-mode="move" title="Drag tokens">✋ Move</button>
+        <button class="small-button" data-mode="range" title="Measure between two tokens">📏 Measure</button>
+        <button class="small-button" data-mode="wall">🧱 Wall</button>
+        <button class="small-button" data-mode="tree">🌳 Tree</button>
+        <button class="small-button" data-mode="rubble">🪨 Rubble</button>
+        <button class="small-button" data-mode="water">🌊 Water</button>
+        <button class="small-button" data-mode="erase">🧽 Erase</button>
+        <button class="small-button" data-mode="fog">☁️ Fog</button>
+        <button class="small-button" data-mode="reveal">🔦 Reveal</button>
+        <button class="small-button" data-map-action="fogAll" title="Cover the whole map in fog">☁️ All</button>
+        <button class="small-button" data-map-action="revealAll" title="Clear all fog">🔦 All</button>
+      </div>
+
+      <!-- THE PLAYERS: AC and HP, in order of initiative in a fight. These stay put when the
+           middle changes, and come back to full on a long rest. -->
+      <section id="turnBar" class="turn-bar">
+        <div class="turn-head">
+          <strong id="turnRound"></strong>
+          <span id="fightButtons" class="hidden">
+            <button class="small-button" onclick="nextTurn()">Next turn ▶</button>
+            <button class="small-button" onclick="endCombat()">End combat</button>
+          </span>
+          <span id="peaceButtons">
+            <button class="small-button" onclick="startFight()">⚔️ Roll initiative</button>
+            <button class="small-button" onclick="takeRest('short')" title="Second Wind, Action Surge, Focus and some Rage come back; Warlock slots too">☕ Short rest</button>
+            <button class="small-button" onclick="takeRest('long')" title="Everyone back to full HP, spell slots and feature uses">🌙 Long rest</button>
+          </span>
+        </div>
+        <div id="turnCards" class="turn-cards"></div>
+        <div id="actionPanel" class="action-panel"></div>
+      </section>
+
       <!-- One button per thing that can fill the middle. setStage() does the work. -->
       <div class="stage-tabs" id="stageTabs">
         <button class="small-button" data-stage="map" title="Battle map">🗺️ Map</button>
         <button class="small-button" data-stage="adventure" title="Starter adventure">📜 Adventure</button>
         <button class="small-button" data-stage="battle" title="Battle Simulator">⚔️ Simulator</button>
         <button class="small-button" data-stage="characters" title="Characters">🧙 Heroes</button>
-        <button class="small-button" data-stage="learn" title="Learn to be a GM">🎓 Learn</button>
+        <button class="small-button" data-stage="learn" title="Learn to be an AM">🎓 Learn</button>
         <button class="small-button" data-stage="shop" title="Equipment shop">🛒 Shop</button>
         <button class="small-button" data-stage="none" title="Show table talk and voice here">🙈 Hide</button>
       </div>
@@ -200,28 +234,16 @@
         <div class="stage-pane hidden" id="stage-book"></div>
         <div class="stage-pane stage-empty hidden" id="stage-none"></div>
       </div>
+
+      <!-- AUTOMATIC DAMAGE: what the last attacks and spells did (newest first) -->
+      <div class="damage-strip" id="damageStrip" aria-live="polite">
+        <strong>💥 Automatic damage</strong>
+        <div id="damageLines"><span class="hint">Attacks and spells rolled on the cards above show up here, and their damage is taken off by itself.</span></div>
+      </div>
     </main>
 
     <!-- ===================== RIGHT SIDE ===================== -->
     <aside class="gm-side">
-
-      <!-- THE BOOKSHELF: pull a book out to read it in the middle, then put it back -->
-      <details class="panel drawer" open>
-        <summary>📚 Bookshelf</summary>
-        <div class="bookshelf" id="bookshelf">
-          <button class="book-spine" data-book="rules" style="background-color:#7a2a2a" title="The rules in brief, and the conditions">📕 The Rules</button>
-          <button class="book-spine" data-book="spells" style="background-color:#2f5e34" title="All 339 spells">📗 Spellbook</button>
-          <button class="book-spine" data-book="monsters" style="background-color:#1f3550" title="All 288 monsters">📘 Bestiary</button>
-          <button class="book-spine" data-book="items" style="background-color:#8a5a12" title="Magic items">📙 Magic Items</button>
-          <button class="book-spine" data-book="gear" style="background-color:#5a4630" title="Weapons and armor">📒 Weapons &amp; Armor</button>
-          <button class="book-spine" data-book="heroes" style="background-color:#34244a" title="Classes, features by level, species and backgrounds">📓 Classes</button>
-          <button class="book-spine" data-stage-book="adventure" style="background-color:#6b2f4a" title="The free starter adventure">🔔 Sunken Bell</button>
-          <button class="book-spine" data-stage-book="learn" style="background-color:#2f4a5e" title="Learn to be a Game Master">🎓 GM Guide</button>
-        </div>
-        <p class="hint">Click a book to pull it out and read it in the middle. Press 📚 Put it back to return to what you had there.</p>
-        <p class="hint">The full free rules: <a href="https://www.dndbeyond.com/srd" target="_blank" rel="noopener">SRD 5.2.1</a> ·
-          the paid core books are on the <a href="https://marketplace.dndbeyond.com/" target="_blank" rel="noopener">official marketplace</a>.</p>
-      </details>
 
       <!-- SECRET ROLLS -->
       <details class="panel drawer" open>
@@ -278,6 +300,15 @@
         <button class="small-button" onclick="setStage('battle')">⚔️ Show it in the middle</button>
       </details>
     </aside>
+
+    <!-- BOOKS on the right edge -->
+    <nav class="book-edge" aria-label="More books">
+<button class="book-spine" data-book="gear" style="background-color:#5a4630" title="Weapons and armor">📒 Weapons &amp; Armor</button>
+<button class="book-spine" data-book="heroes" style="background-color:#34244a" title="Classes, features by level, species and backgrounds">📓 Classes</button>
+<button class="book-spine" data-stage-book="adventure" style="background-color:#6b2f4a" title="The free starter adventure">🔔 Sunken Bell</button>
+<button class="book-spine" data-stage-book="learn" style="background-color:#2f4a5e" title="Learn to be an App Master">🎓 AM Guide</button>
+<a class="book-spine" href="https://www.dndbeyond.com/srd" target="_blank" rel="noopener" style="background-color:#444" title="The full free rules (SRD 5.2.1), in a new tab">📄 Full SRD</a>
+    </nav>
   </div>
 
   <!-- Shared dice helpers (rollOneDie). Must load BEFORE the script below. -->
@@ -290,7 +321,7 @@
   <script src="music.js"></script>
   <script src="voice.js"></script>
 
-  <!-- PeerJS (MIT license, version pinned) connects the GM's browser straight to the players' browsers. -->
+  <!-- PeerJS (MIT license, version pinned) connects the AM's browser straight to the players' browsers. -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="video.js"></script>
 
@@ -505,7 +536,7 @@
     // =====================================================================
     // TURN CARDS AND ACTIONS (the row across the top of the screen)
     // The rules for attacks and spells live in combat.js. This part shows the
-    // cards, lets the GM pick an action and targets, and applies the damage.
+    // cards, lets the AM pick an action and targets, and applies the damage.
     // =====================================================================
     let combatUiReady = false;   // true once the whole page (party, live game) has loaded
     let panelActorId = null;     // whose card is open
@@ -578,10 +609,12 @@
     }
 
     function renderTurnCards() {
-      const bar = document.getElementById("turnBar");
-      bar.classList.toggle("hidden", combatants.length === 0);
-      if (combatants.length === 0) {
+      const fighting = combatants.length > 0;
+      document.getElementById("fightButtons").classList.toggle("hidden", !fighting);
+      document.getElementById("peaceButtons").classList.toggle("hidden", fighting);
+      if (!fighting) {
         panelActorId = null;
+        renderPartyCards();
         return;
       }
       if (panelActorId === null || !findCombatant(panelActorId)) panelActorId = currentId || combatants[0].id;
@@ -625,6 +658,98 @@
         row.append(card);
       }
       renderActionPanel();
+    }
+
+    // Outside a fight: one card per player with their AC and HP (from the party).
+    function renderPartyCards() {
+      document.getElementById("turnRound").textContent = party.length ? "🧑‍🤝‍🧑 The players" : "🧑‍🤝‍🧑 No players yet";
+      const row = document.getElementById("turnCards");
+      row.innerHTML = "";
+      document.getElementById("actionPanel").innerHTML = "";
+      if (!party.length) {
+        row.append(makeEl("p", "hint", "Players appear here when they join your game (or press 📥 Refresh in Party & Initiative)."));
+        return;
+      }
+      for (const member of party) {
+        const card = makeEl("div", "turn-card side-hero" + (member.hp <= 0 ? " down" : ""));
+        card.append(makeEl("strong", "turn-name", (member.remoteKey ? (liveConns.has(member.remoteKey) ? "🟢 " : "⚪ ") : "") + member.name));
+        const bar = makeEl("span", "turn-hpbar");
+        const fill = makeEl("span", "turn-hpfill");
+        fill.style.width = Math.max(0, Math.min(1, member.hp / Math.max(member.maxHp, 1))) * 100 + "%";
+        bar.append(fill);
+        card.append(bar, makeEl("span", "turn-line", "❤️ " + member.hp + "/" + member.maxHp + "  🛡️ AC " + member.ac));
+        if (member.summary) card.append(makeEl("span", "turn-line hint", member.summary));
+        row.append(card);
+      }
+    }
+
+    // ☕ Short rest / 🌙 Long rest for the whole party (SRD 5.2.1 "Resting").
+    // Long rest: full HP, spell slots and feature uses. Short rest: features that come back
+    // on a short rest (players spend Hit Dice for HP on their own sheets).
+    function takeRest(kind) {
+      if (combatants.length) return;
+      if (kind === "long" && !confirm("Long rest: everyone back to full HP, spell slots and feature uses?")) return;
+      const list = loadCharacters();
+      let changedSaved = false;
+      for (const member of party) {
+        if (kind === "long") setPartyHp(member.id, member.maxHp);
+        const saved = member.characterId ? list.find(function (c) { return c.id === member.characterId; }) : null;
+        if (saved) {
+          if (kind === "long") { takeLongRest(saved); saved.hp = getMaxHp(saved); } else takeShortRest(saved);
+          changedSaved = true;
+        }
+      }
+      if (changedSaved) saveCharacters(list);
+      // Players in a live game: their own devices restore their slots and send the new sheet
+      for (const connection of liveConns.values()) {
+        if (connection.open) connection.send({ type: "rest", kind: kind === "long" ? "long" : "short" });
+      }
+      talk(kind === "long" ? "🌙 Long rest: everyone is back to full HP and spell slots." : "☕ Short rest: short-rest features and Pact Magic slots are back. Spend Hit Dice on your sheet to heal.");
+      for (const connection of liveConns.values()) {
+        if (connection.open) connection.send({ type: "announce", text: kind === "long" ? "🌙 Long rest! You're back to full HP and spell slots." : "☕ Short rest! Short-rest features are back." });
+      }
+      render();
+    }
+
+    // The obstacles bar controls the battle map in the middle (map.html listens for these).
+    function sendToMap(message) {
+      const send = function () {
+        const frame = document.querySelector("#stage-map iframe");
+        if (frame && frame.contentWindow) frame.contentWindow.postMessage(message, location.origin);
+      };
+      if (stageNow !== "map") {
+        if (typeof markSpine === "function") markSpine(null);
+        setStage("map");
+        setTimeout(send, 700);   // a moment for the map to load
+      } else {
+        send();
+      }
+    }
+
+    for (const button of document.querySelectorAll("#obstacleBar button")) {
+      button.addEventListener("click", function () {
+        if (button.dataset.mode) {
+          sendToMap({ type: "setMode", mode: button.dataset.mode });
+          for (const other of document.querySelectorAll("#obstacleBar button[data-mode]")) other.classList.toggle("picked", other === button);
+        } else {
+          sendToMap({ type: button.dataset.mapAction });
+        }
+      });
+    }
+
+    // 💥 Automatic damage: the newest attack and spell results, under the middle.
+    function renderDamage() {
+      const box = document.getElementById("damageLines");
+      if (!box) return;
+      const lines = talkLog.filter(function (t) { return t.indexOf("⚔️ ") === 0; }).slice(-4).reverse();
+      if (!lines.length) return;
+      box.innerHTML = "";
+      lines.forEach(function (line, i) {
+        const row = makeEl("div", "damage-line" + (i === 0 ? " newest" : ""), line.replace(/^⚔️ /, ""));
+        if (/→ (hit!|CRITICAL HIT!)|takes [1-9]/.test(line)) row.classList.add("hit");
+        else if (/→ miss|natural 1/.test(line)) row.classList.add("miss");
+        box.append(row);
+      });
     }
 
     function renderActionPanel() {
@@ -737,7 +862,7 @@
       if (lastResult) panel.append(makeEl("pre", "action-result", lastResult));
     }
 
-    // The GM rolls an action for anyone (a monster, or a hero whose player is at the table).
+    // The AM rolls an action for anyone (a monster, or a hero whose player is at the table).
     // The spell slot an action needs: a spell's chosen slot, or (for a smite) the lowest one.
     function slotFor(action, profile, slotKind, slotLevel) {
       if (action.kind === "spell" && action.spell.level > 0) {
@@ -844,7 +969,7 @@
       }
     }
 
-    // A player chose their own attack or spell. Check it's plausible, then the GM's
+    // A player chose their own attack or spell. Check it's plausible, then the AM's
     // device rolls the dice (so nobody can fake a roll).
     function handlePlayerAction(conn, member, data) {
       const reply = function (ok, text, spent) {
@@ -854,7 +979,7 @@
       if (!me || currentId !== me.id) return reply(false, "It isn't your turn yet.");
       if (me.hp <= 0) return reply(false, "You're down, so you can't act.");
       const profile = profileOfMember(member);
-      if (!profile) return reply(false, "Your GM doesn't have your sheet yet. Press \"Send my updated sheet\".");
+      if (!profile) return reply(false, "Your AM doesn't have your sheet yet. Press \"Send my updated sheet\".");
       if (!me.state) me.state = newFeatureState(profile);
 
       // Only actions they really have AND still have uses of (heroActions leaves out used-up features)
@@ -879,7 +1004,7 @@
       const slotUsed = slot && (!action.rider || result.riderUsed);
       if (slotUsed) spendSlotFor(member, slot, false);   // their device marks it when it gets the reply
       markTurnUsed(me, result);
-      // Show it on the GM's screen straight away: the player's card opens with the roll and the result
+      // Show it on the AM's screen straight away: the player's card opens with the roll and the result
       panelActorId = me.id;
       panelActionKey = null;
       const bar = document.getElementById("turnBar");
@@ -1007,7 +1132,7 @@
             passive: getPassivePerception(c),
             init: getModifier(getAbilityScore(c, "dex")),   // initiative bonus
             summary: describeSavedCharacter(c),
-            item: c.specialItem || null   // the player's special item, so the GM can see it
+            item: c.specialItem || null   // the player's special item, so the AM can see it
           });
           nextPartyId++;
           added++;
@@ -1074,11 +1199,11 @@
         return;
       }
 
-      // prompt() pops up a box asking the GM to type something. The second part fills the box
-      // with an automatic roll, so the GM can just press OK (or type the player's own roll).
+      // prompt() pops up a box asking the AM to type something. The second part fills the box
+      // with an automatic roll, so the AM can just press OK (or type the player's own roll).
       const rolled = rollOneDie(20) + (member.init || 0);
       const answer = prompt("Initiative for " + member.name + " (rolled for you; type the player's own roll if they rolled):", rolled);
-      if (answer === null) return;   // the GM clicked Cancel
+      if (answer === null) return;   // the AM clicked Cancel
 
       combatants.push({
         id: nextId,
@@ -1147,6 +1272,7 @@
     }
 
     function renderParty() {
+      if (combatUiReady && !combatants.length) renderPartyCards();   // the players' cards in the middle
       const list = document.getElementById("party");
       list.innerHTML = "";
 
@@ -1262,15 +1388,15 @@
     buildConditions();
 
     // =====================================================================
-    // LIVE GAME — players ask to join, the GM accepts or declines
+    // LIVE GAME — players ask to join, the AM accepts or declines
     // =====================================================================
-    // PeerJS connects the GM's browser straight to each player's browser (encrypted).
+    // PeerJS connects the AM's browser straight to each player's browser (encrypted).
     // A free public "matchmaking" service only introduces them to each other.
     // Nothing is stored online: when you close this page, the game is over.
     //
     // Messages that travel between the browsers are small objects with a "type":
-    //   player -> GM:  request, update, roll, say
-    //   GM -> player:  waiting, accepted, declined, announce, hp, closed
+    //   player -> AM:  request, update, roll, say
+    //   AM -> player:  waiting, accepted, declined, announce, hp, closed
 
     let peer = null;            // our PeerJS connection to the matchmaking service
     let gameCode = "";          // e.g. "K7M4QX"
@@ -1326,7 +1452,7 @@
 
       peer.on("connection", handleIncoming);
       peer.on("call", function (call) {
-        if (!video.handleCall(call)) call.close();   // the GM only takes video calls (voice calls go out from here)
+        if (!video.handleCall(call)) call.close();   // the AM only takes video calls (voice calls go out from here)
       });
 
       peer.on("error", function (error) {
@@ -1392,17 +1518,17 @@
         joinPage.search = "?code=" + gameCode;
         inviteLink = joinPage.href;
         note.textContent = "Send your players this invite link: " + inviteLink +
-          " (or they choose Player → Live Game Master and type the code).";
+          " (or they choose Player → Live App Master and type the code).";
       } else {
         inviteLink = "";
-        note.textContent = "Players need to open this app on their own device and choose Player → Live Game Master, then type the code. " +
+        note.textContent = "Players need to open this app on their own device and choose Player → Live App Master, then type the code. " +
           "To let players on your Wi-Fi open it, start the helper with:  ruby server.rb --share";
       }
       document.getElementById("copyInviteBtn").classList.toggle("hidden", !inviteLink);
     }
 
     // =====================================================================
-    // VIDEO CHAT (video.js). The GM's screen keeps the list of who's at the table and
+    // VIDEO CHAT (video.js). The AM's screen keeps the list of who's at the table and
     // whose camera is on, and sends it to every accepted player.
     // =====================================================================
     const videoCams = new Set();   // keys of players whose camera is on
@@ -1414,7 +1540,7 @@
 
     function videoPeople() {
       const list = [];
-      if (peer && peer.id) list.push({ id: peer.id, name: "GM", cam: video.isOn() });
+      if (peer && peer.id) list.push({ id: peer.id, name: "AM", cam: video.isOn() });
       for (const [key, connection] of liveConns) {
         if (!connection.open) continue;
         const member = party.find(function (m) { return m.remoteKey === key; });
@@ -1444,7 +1570,7 @@
 
     function renderVideoControls() {
       document.getElementById("videoBtn").textContent = video.isOn() ? "📷 Turn off my camera" : "📹 Turn on my camera";
-      const others = videoPeople().filter(function (p) { return p.cam && p.name !== "GM"; }).map(function (p) { return p.name; });
+      const others = videoPeople().filter(function (p) { return p.cam && p.name !== "AM"; }).map(function (p) { return p.name; });
       document.getElementById("videoStatus").textContent = (video.isOn() ? "🟢 Your camera is on. " : "") +
         (others.length ? "Cameras on: " + others.join(", ") + "." : "No player cameras on yet.") + " Press 🙈 Hide above the middle to see faces big.";
     }
@@ -1452,7 +1578,7 @@
     // =====================================================================
     // SAVING THE SESSION
     // Party, notes and the battle map already save themselves. This saves the rest:
-    // the fight (turn cards) and the live game's code and name, so the GM can close
+    // the fight (turn cards) and the live game's code and name, so the AM can close
     // the app and carry on later. Saved in localStorage key "dmSession".
     // =====================================================================
     function rememberSession() {
@@ -1506,7 +1632,7 @@
       if (hadGame) {
         rememberSession();
         for (const connection of liveConns.values()) {
-          if (connection.open) connection.send({ type: "announce", text: "💾 The GM saved the game and is taking a break. When they reopen it, press Leave game, then join again with the same code: " + gameCode + "." });
+          if (connection.open) connection.send({ type: "announce", text: "💾 The AM saved the game and is taking a break. When they reopen it, press Leave game, then join again with the same code: " + gameCode + "." });
         }
       }
       const code = gameCode;
@@ -1629,7 +1755,7 @@
         const character = cleanSharedCharacter(data.character);   // from play.js
         if (!character || !character.key) return;
 
-        // A player the GM already accepted (same unguessable key) can come straight back in.
+        // A player the AM already accepted (same unguessable key) can come straight back in.
         const known = party.find(function (m) {
           return m.remoteKey === character.key;
         });
@@ -1643,7 +1769,7 @@
           return r.character.key === character.key;
         });
         if (!alreadyWaiting && pendingRequests.length >= 12) {
-          conn.send({ type: "declined", reason: "The GM has too many requests waiting." });
+          conn.send({ type: "declined", reason: "The AM has too many requests waiting." });
           return;
         }
 
@@ -1692,7 +1818,7 @@
       }
     }
 
-    // Copy a shared character's details onto a party member. The GM's tracked HP is kept.
+    // Copy a shared character's details onto a party member. The AM's tracked HP is kept.
     function applyCharacterToMember(member, character) {
       member.name = character.name;
       member.ac = character.ac;
@@ -1778,7 +1904,7 @@
     }
 
     function declinePlayer(request) {
-      if (request.conn.open) request.conn.send({ type: "declined", reason: "The GM declined your request." });
+      if (request.conn.open) request.conn.send({ type: "declined", reason: "The AM declined your request." });
       pendingRequests = pendingRequests.filter(function (r) {
         return r !== request;
       });
@@ -1890,7 +2016,7 @@
       renderMapControls();
     }
 
-    // A player dragged their own hero. WHO they are comes from their connection (the GM's
+    // A player dragged their own hero. WHO they are comes from their connection (the AM's
     // own party list), never from the message. Only whole-number squares are passed on.
     function handleMapMove(key, member, data) {
       if (!mapShare.on || !mapShare.moves || !mapChannel) return;
@@ -1922,7 +2048,7 @@
     // The middle shows ONE thing at a time: the battle map, the starter adventure,
     // the Library, or nothing ("none"), which shows table talk + voice there instead.
     // An <iframe> is a window that shows another page inside this one. "?embed=1" tells
-    // that page to hide its own menus, because the GM Screen already has them.
+    // that page to hide its own menus, because the AM Screen already has them.
     const STAGE_PAGES = {
       map: "map.html?embed=1",
       adventure: "adventure.html?embed=1",
@@ -1934,7 +2060,7 @@
       book: "book.html?embed=1"
     };
     const STAGE_TITLES = { map: "Battle map", adventure: "Starter adventure", library: "Library",
-                           battle: "Battle Simulator", characters: "Characters", learn: "Learn to be a GM", book: "Book",
+                           battle: "Battle Simulator", characters: "Characters", learn: "Learn to be an AM", book: "Book",
                            shop: "Equipment shop" };
     let stageNow = "map";
 
@@ -2005,7 +2131,12 @@
       setStage(stageBeforeBook || "map");
     }
 
-    for (const spine of document.querySelectorAll(".book-spine")) {
+    document.getElementById("mapSpine").addEventListener("click", function () {
+      markSpine(null);
+      setStage("map");
+    });
+
+    for (const spine of document.querySelectorAll(".book-spine[data-book], .book-spine[data-stage-book]")) {
       spine.addEventListener("click", function () {
         if (spine.dataset.book) {
           if (stageNow === "book" && spine.classList.contains("out")) putBookBack();   // click it again to put it back
@@ -2045,10 +2176,10 @@
 
 
     // ---------- Music for the table ----------
-    // The GM picks a mood; every player's own device makes the music (nothing is streamed).
+    // The AM picks a mood; every player's own device makes the music (nothing is streamed).
     // Only a tiny message goes out: { type: "music", on, mood }.
     const tableMusic = { on: false, mood: "calm" };
-    const gmMusic = createMusicController();   // from music.js: plays on THIS device, if the GM wants
+    const gmMusic = createMusicController();   // from music.js: plays on THIS device, if the AM wants
 
     function sendMusicToAll() {
       for (const connection of liveConns.values()) {
@@ -2101,12 +2232,12 @@
     }
 
     // ---------- Voice chat ----------
-    // Everyone calls the GM (a "star"). The GM's browser mixes the sound so each player
-    // hears the GM AND the other players, but not themselves.
-    //   microphone → GM's mixer → one output stream per player (everyone except that player)
+    // Everyone calls the AM (a "star"). The AM's browser mixes the sound so each player
+    // hears the AM AND the other players, but not themselves.
+    //   microphone → AM's mixer → one output stream per player (everyone except that player)
     const voice = {
       on: false,
-      stream: null,      // the GM's microphone
+      stream: null,      // the AM's microphone
       ctx: null,         // the Web Audio mixer
       mic: null,         // the microphone as a mixer input
       players: new Map() // player key -> { call, dest, source, audio }
@@ -2137,7 +2268,7 @@
       dropVoicePlayer(key);   // a fresh call replaces any old one
 
       const dest = voice.ctx.createMediaStreamDestination();
-      voice.mic.connect(dest);                       // they hear the GM
+      voice.mic.connect(dest);                       // they hear the AM
       for (const other of voice.players.values()) {  // ...and everyone already in voice
         if (other.source) other.source.connect(dest);
       }
@@ -2153,7 +2284,7 @@
         entry.audio.srcObject = remote;
         entry.audio.muted = true;
         entry.source = voice.ctx.createMediaStreamSource(remote);
-        entry.source.connect(voice.ctx.destination);   // the GM hears them
+        entry.source.connect(voice.ctx.destination);   // the AM hears them
         for (const [otherKey, other] of voice.players) {
           if (otherKey !== key) entry.source.connect(other.dest);   // the other players hear them
         }
@@ -2235,6 +2366,7 @@
       talkLog.push(text);
       if (talkLog.length > 60) talkLog.shift();
       renderTalk();
+      renderDamage();
     }
 
     function renderTalk() {

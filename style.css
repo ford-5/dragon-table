@@ -3088,3 +3088,221 @@ body.embedded.book-body .book-page {
   justify-content: center;
   text-decoration: none;
 }
+
+/* =====================================================================
+   THE AM SCREEN, like the drawing (2026-11-27): books down both edges,
+   obstacles on top, the players' cards, the map, automatic damage underneath
+   ===================================================================== */
+.book-edge {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+}
+
+.book-edge .book-spine {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.book-spine.map-spine {
+  background-color: #3e6b3a;
+  height: 80px;
+}
+
+.obstacle-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  margin-bottom: 6px;
+  padding: 4px 6px;
+  border: 2px solid #c9a227;
+  border-radius: 10px;
+  background-color: #2b1d14;
+}
+
+.obstacle-bar .small-button {
+  margin: 0;
+  padding: 3px 7px;
+  font-size: 12px;
+}
+
+.obstacle-bar .small-button.picked {
+  background-color: #c9a227;
+  color: #1a1424;
+}
+
+.obstacle-title {
+  font-size: 13px;
+  font-weight: bold;
+  margin-right: 4px;
+}
+
+/* The players' cards sit in the middle column now */
+.gm-stage .turn-bar {
+  margin-bottom: 6px;
+}
+
+.gm-stage .turn-head span .small-button {
+  margin: 0 2px;
+}
+
+.damage-strip {
+  margin-top: 6px;
+  padding: 6px 10px;
+  text-align: left;
+  border: 2px solid #c0504d;
+  border-radius: 10px;
+  background-color: #2a1414;
+  font-size: 13px;
+}
+
+.damage-line {
+  margin: 2px 0;
+  opacity: 0.75;
+}
+
+.damage-line.newest {
+  opacity: 1;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.damage-line.hit::before { content: "✅ "; }
+.damage-line.miss::before { content: "❌ "; }
+
+@media (min-width: 1000px) {
+  .gm-layout {
+    grid-template-columns: 44px 250px minmax(0, 1fr) 250px 44px;
+  }
+
+  /* The edges: a column of book spines each */
+  .book-edge {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 6px;
+    overflow-y: auto;
+    min-height: 0;
+  }
+
+  .book-edge .book-spine {
+    width: 40px;
+    flex: 0 0 auto;
+  }
+
+  .book-edge .book-spine:hover {
+    transform: translateX(4px);   /* pulled out sideways */
+  }
+
+  .gm-layout > .book-edge:last-child .book-spine:hover {
+    transform: translateX(-4px);
+  }
+
+  .damage-strip {
+    max-height: 92px;
+    overflow-y: auto;
+  }
+
+  .gm-stage .action-panel {
+    max-height: 150px;
+  }
+}
+
+/* Phones: the books become a row of short spines above and below */
+@media (max-width: 999px) {
+  .book-edge .book-spine {
+    height: 84px;
+    width: 34px;
+    font-size: 11px;
+  }
+
+  .gm-layout > .book-edge:first-child {
+    order: -2;
+  }
+}
+
+/* The map inside the AM Screen: the AM Screen's Obstacles bar replaces its own tools */
+body.embedded .map-tools {
+  display: none;
+}
+
+/* =====================================================================
+   THE PLAYER'S SCREEN, like the drawing: books down both edges
+   ===================================================================== */
+.player-layout {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  gap: 8px;
+  align-items: start;
+}
+
+.player-layout .book-edge {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: sticky;
+  top: 8px;
+}
+
+.player-layout .book-spine {
+  width: 40px;
+  text-decoration: none;
+}
+
+.player-center {
+  min-width: 0;
+}
+
+.player-center #combatBox,
+.player-center #mapBox {
+  margin-top: 0;
+}
+
+/* Phones: the books go in a row above */
+@media (max-width: 700px) {
+  .player-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .player-layout .book-edge {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .player-layout .book-spine {
+    height: 84px;
+    width: 34px;
+    font-size: 11px;
+  }
+}
+
+/* A book pulled out over the page (bookshelf.js) */
+.book-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background-color: rgba(10, 6, 4, 0.75);
+}
+
+.book-overlay iframe {
+  width: min(1100px, 100%);
+  height: min(92vh, 100%);
+  border: 3px solid #c9a227;
+  border-radius: 12px;
+  background-color: #2b1d14;
+}
+
+body.book-open {
+  overflow: hidden;
+}

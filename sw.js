@@ -10,20 +10,20 @@
 //      which made fresh updates look like they hadn't happened).
 //   2. If that works, save a copy and use it.
 //   3. If there's no internet (or it takes more than 4 seconds), use the saved copy.
-// The AI Game Master (api/...), live games and the order forms always need the
+// The AI App Master (api/...), live games and the order forms always need the
 // internet, so they're never answered from the copy.
 //
 // ⚠️ When you add a new page or file to the app, add it to APP_FILES below too,
 //    and change CACHE_NAME (v1 → v2) so phones fetch the new list.
 // =====================================================================
-const CACHE_NAME = "dragon-table-v28";
+const CACHE_NAME = "dragon-table-v30";
 
 const APP_FILES = [
   "./",
   "index.html", "player.html", "ai-dm.html", "join.html", "character.html", "dice.html",
   "dm-start.html", "dm-learn.html", "dm.html", "battle.html", "map.html",
   "equipment.html", "mini.html", "policies.html", "library.html", "support.html", "sheet.html", "adventure.html", "solo.html", "learn-play.html", "create.html", "book.html", "in-person.html",
-  "style.css", "dice.js", "rules.js", "play.js", "music.js", "monsters.js", "maps.js", "combat.js", "premade.js", "video.js",
+  "style.css", "dice.js", "rules.js", "play.js", "music.js", "monsters.js", "maps.js", "combat.js", "premade.js", "video.js", "bookshelf.js",
   "equipment.js", "mini3d.js", "feedback.js", "pwa.js", "spells.js", "monetize.js", "voice.js",
   "manifest.webmanifest", "icons/icon.svg", "icons/icon-180.png", "icons/icon-192.png", "icons/icon-512.png"
 ];

@@ -241,7 +241,7 @@ function createMusicPlayer(ctx) {
 // allow sound after a tap or click), keeps composing a little ahead, and has simple controls.
 //   const music = createMusicController();
 //   music.start();  music.setMood("battle");  music.setVolume(0.5);  music.stop();
-// (The AI Game Master page has its own, older copy of this logic.)
+// (The AI App Master page has its own, older copy of this logic.)
 // ---------------------------------------------------------------------
 function createMusicController() {
   let ctx = null;

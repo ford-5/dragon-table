@@ -19,7 +19,7 @@
     <a href="index.html">🏠 Home</a>
     <a href="library.html" class="active">📚 Library</a>
     <a href="character.html">🧙 Characters</a>
-    <a href="dm.html">🛡️ GM Screen</a>
+    <a href="dm.html">🛡️ AM Screen</a>
     <a href="equipment.html">🛒 Equipment</a>
   </nav>
 
@@ -371,7 +371,7 @@
     // =====================================================================
     // RULES IN BRIEF (written in our own words; the SRD has the full rules)
     // =====================================================================
-    // RULES_BRIEF now lives in rules.js (the GM Screen's books use it too).
+    // RULES_BRIEF now lives in rules.js (the AM Screen's books use it too).
 
     function renderRules(box) {
       const panel = make("div", "panel");
@@ -387,7 +387,7 @@
       panel.append(conditions);
       const more = make("p", "hint");
       more.append("Want to learn to run games? Try ");
-      const learn = make("a", "", "Learn to be a GM");
+      const learn = make("a", "", "Learn to be an AM");
       learn.href = "dm-learn.html";
       more.append(learn, " or run the free ");
       const adventure = make("a", "", "starter adventure");
@@ -464,13 +464,13 @@
     const hash = location.hash.replace("#", "");
     showTab(hash.startsWith("spell-") ? "spells" : (RENDERERS[hash] ? hash : "spells"));
 
-    // The GM Screen changes the #tab to switch tabs without reloading the page.
+    // The AM Screen changes the #tab to switch tabs without reloading the page.
     window.addEventListener("hashchange", function () {
       const key = location.hash.replace("#", "");
       if (RENDERERS[key]) showTab(key);
     });
 
-    // Shown inside the GM Screen (library.html?embed=1): hide the page furniture.
+    // Shown inside the AM Screen (library.html?embed=1): hide the page furniture.
     if (new URLSearchParams(location.search).get("embed") === "1") document.body.classList.add("embedded");
   </script>
 

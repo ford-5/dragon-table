@@ -1,7 +1,7 @@
 // =====================================================================
 // COMBAT ACTIONS: attacks and spells that roll and deal damage by the rules
 // (SRD 5.2.1 "Combat" and "Spells"). Shared by:
-//   dm.html    the GM Screen's turn cards (the GM's device rolls every die)
+//   dm.html    the AM Screen's turn cards (the AM's device rolls every die)
 //   join.html  players choosing their own attack or spell in a live game
 //   solo.html  solo dungeons (the monsters fight back by themselves)
 // Needs dice.js, rules.js, spells.js and play.js loaded first.
@@ -12,7 +12,7 @@ const SAVE_KEYS = { Strength: "str", Dexterity: "dex", Constitution: "con", Inte
 
 // ---------------------------------------------------------------------
 // 1. A HERO'S COMBAT PROFILE: everything needed to fight, worked out from
-//    the saved character by the rules. Small enough to send to the GM.
+//    the saved character by the rules. Small enough to send to the AM.
 // ---------------------------------------------------------------------
 function makeCombatProfile(character) {
   const features = getCombatFeatures(character);   // rules.js: Second Wind, Sneak Attack, Rage...
@@ -138,7 +138,7 @@ function cleanFeatures(raw, level) {
 
 // ---------------------------------------------------------------------
 // FEATURE STATE: what's left during a fight or an adventure (uses, Rage on or off).
-// Kept by the page (Solo: on the game; GM Screen: on each combatant) and passed in.
+// Kept by the page (Solo: on the game; AM Screen: on each combatant) and passed in.
 // ---------------------------------------------------------------------
 function newFeatureState(profile) {
   const f = (profile && profile.features) || {};
@@ -485,7 +485,7 @@ function resolveAction(actorName, action, targets, options) {
   const damage = getSpellDamage(spell, { level: profile ? profile.level : 1 }, castAt);
   if (!damage) {
     result.lines.push(title + (targets[0].id !== null ? " on " + targets.map(function (t) { return t.name; }).join(", ") : "") +
-      ". (No dice: the GM decides what happens.)");
+      ". (No dice: the AM decides what happens.)");
     return result;
   }
 

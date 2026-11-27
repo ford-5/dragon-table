@@ -38,7 +38,10 @@ Pages should **calculate** from the rules (modifiers, proficiency, HP, AC, saves
 - Do the work for them where you can. Never ask for, see, or store their Anthropic key, passwords or payment details: they type those themselves (the launcher app asks for the key in Terminal and never saves it).
 - Say honestly what was tested and what wasn't (no real phones, microphones, printers or multi-player sessions so far; the AI has only been tested against a fake API).
 - End each feature with a plain summary, "new concepts" and a small challenge, like the earlier steps.
-- Visible wording: **Game Master / GM** (not "Dungeon Master/DM"), and no "D&D" / "Dungeons & Dragons" on public pages (trademarks). "Compatible with fifth edition" and the exact SRD 5.2.1 attribution are required and already in the footers. File names (`dm.html`...) and saved-data keys still say dm on purpose.
+- Visible wording: **App Master / AM** (the user's own name for the role, chosen 2026-11-27; never "Dungeon Master/DM", and no longer "Game Master/GM"). Exceptions: SRD text in spells.js/monsters.js stays as written, the real book "Game Master's Guide" keeps its name, and the AI's instructions in server.rb say "Game Master (called App Master in this app)", and no "D&D" / "Dungeons & Dragons" on public pages (trademarks). "Compatible with fifth edition" and the exact SRD 5.2.1 attribution are required and already in the footers. File names (`dm.html`...) and saved-data keys still say dm on purpose.
+
+## The user's design style (from their own drawing, 2026-11-27)
+Game screens follow the user's sketch: **books down both edges** (pull one out, read it, put it back), the most-used tools on top (obstacles), the **players' cards with AC and HP in initiative order** that stay put when the middle changes, the **map big in the middle**, and **automatic damage** underneath. Everything else stays as it was. Use this layout for new play screens too.
 
 ## Where things are (one line each; full details in `docs/FEATURES.md`: search it for the file name)
 **Pages**

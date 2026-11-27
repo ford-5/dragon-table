@@ -18,18 +18,18 @@
     <a href="index.html" class="active">🏠 Home</a>
     <a href="library.html">📚 Library</a>
     <a href="character.html">🧙 Characters</a>
-    <a href="dm.html">🛡️ GM Screen</a>
+    <a href="dm.html">🛡️ AM Screen</a>
     <a href="equipment.html">🛒 Equipment</a>
   </nav>
 
-  <h1>👥 Live Game Master</h1>
+  <h1>👥 Live App Master</h1>
   <p><a href="player.html" class="back-link">← Back</a></p>
 
   <!-- =============== STEP 1: ask to join =============== -->
   <div class="panel" id="joinPanel">
    <div id="joinForm">
     <h2>1. Game code</h2>
-    <p class="hint">Your GM gives you a 6-letter code. If they haven't opened the game yet, you'll wait in the waiting room until they show up.</p>
+    <p class="hint">Your AM gives you a 6-letter code. If they haven't opened the game yet, you'll wait in the waiting room until they show up.</p>
     <input id="codeInput" type="text" class="code-input" maxlength="10" placeholder="K7M4QX" autocomplete="off" autocapitalize="characters">
 
     <h2>2. Choose your hero</h2>
@@ -39,7 +39,7 @@
     <p><button id="joinBtn">🙋 Go to the waiting room</button></p>
    </div>
 
-    <!-- The waiting room: shown until the GM shows up and lets you in -->
+    <!-- The waiting room: shown until the AM shows up and lets you in -->
     <div id="waitRoom" class="wait-room hidden">
       <div class="big-choice-icon">⏳</div>
       <h2>Waiting room</h2>
@@ -50,8 +50,8 @@
     <p id="joinError" class="chat-error hidden"></p>
 
     <p class="hint">
-      🔒 Your hero's name, class, AC, HP and special item are sent to your GM's browser, and only your GM sees them.
-      If you join voice chat, your voice goes to your GM and the other players at the table.
+      🔒 Your hero's name, class, AC, HP and special item are sent to your AM's browser, and only your AM sees them.
+      If you join voice chat, your voice goes to your AM and the other players at the table.
       A free matchmaking service introduces the two browsers; the game itself is not stored anywhere.
     </p>
   </div>
@@ -59,44 +59,17 @@
   <!-- =============== STEP 2: at the table =============== -->
   <div class="panel hidden table-wide" id="tablePanel">
     <h2 id="tableTitle">At the table</h2>
-    <p>❤️ Your HP (kept by your GM): <strong id="hpDisplay">–</strong></p>
-
-    <!-- MY HERO: the whole character sheet. Tap a weapon or spell to use it: on your turn in a
-         fight it goes to your GM's screen, which rolls it and deals the damage if it hits. -->
-    <section id="mySheet" class="my-sheet"></section>
-
-    <!-- Music: appears when the GM starts it -->
-    <div id="musicBox" class="voice-box hidden">
-      <p id="musicText">🎵 Your GM is playing music for the table.</p>
-      <button id="musicJoinBtn">🎵 Join the music</button>
-      <button class="small-button hidden" id="musicOffBtn">🔇 Turn my music off</button>
-      <label class="hint">Volume <input type="range" id="musicVol" min="0" max="100" value="60"></label>
-      <p class="hint">Your device makes the music itself, so it uses no data and you can't hear it on anyone else's phone.</p>
-    </div>
-
-    <!-- Video: see each other's faces -->
-    <div id="videoBox" class="voice-box">
-      <p>📹 <strong>Video</strong>: see everyone's faces. <span class="hint">(Sound comes through voice chat.)</span></p>
-      <button id="videoBtn">📹 Turn on my camera</button>
-      <p id="videoStatus" class="hint">Pictures go straight between browsers and aren't recorded.</p>
-      <div id="videoGrid" class="video-grid"></div>
-    </div>
-
-    <!-- Voice chat: appears when the GM turns it on -->
-    <div id="voiceBox" class="voice-box hidden">
-      <p id="voiceText">🎙️ Your GM started voice chat.</p>
-      <button id="voiceJoinBtn">🎙️ Join voice chat</button>
-      <button class="small-button hidden" id="voiceMuteBtn">🔇 Mute me</button>
-      <button class="small-button hidden" id="voiceLeaveBtn">Leave voice chat</button>
-      <p class="hint">Voice goes straight between your browsers. Nothing is recorded.</p>
-    </div>
-
-    <!-- Combat: appears when the GM starts a fight -->
+    <!-- Like the AM Screen: books down both edges; in the middle the turn order (AC and HP),
+         the map, automatic damage, then your sheet, and everything else as normal -->
+    <div class="player-layout">
+      <nav class="book-edge" id="leftBooks" aria-label="Books"></nav>
+      <div class="player-center">
+    <!-- Combat: appears when the AM starts a fight -->
     <div id="combatBox" class="voice-box hidden">
       <h3 class="section-label" id="combatTitle">⚔️ Turn order</h3>
       <div id="turnOrder" class="turn-cards player-turns"></div>
       <div id="myTurn" class="hidden">
-        <p><strong>🎯 It's your turn!</strong> Pick what you do and who you aim at. Your GM's screen rolls the dice.</p>
+        <p><strong>🎯 It's your turn!</strong> Pick what you do and who you aim at. Your AM's screen rolls the dice.</p>
         <select id="actionPick" aria-label="Your attack or spell"></select>
         <select id="slotPick" class="hidden" aria-label="Spell slot"></select>
         <div id="targetPick" class="action-controls"></div>
@@ -106,10 +79,7 @@
       <pre id="myResult" class="action-result hidden"></pre>
     </div>
 
-    <label class="hint"><input type="checkbox" id="readFeed"> 🔊 Read the GM's messages aloud</label>
-    <div id="feed" class="chat-log short-log" aria-live="polite"></div>
-
-    <!-- The battle map: appears when the GM shows it -->
+    <!-- The battle map: appears when the AM shows it -->
     <div id="mapBox" class="hidden">
       <h3 class="section-label">🗺️ Battle map</h3>
       <div class="roll-row">
@@ -125,6 +95,46 @@
       <p id="mapNote" class="hint"></p>
       <ul id="mapLegend" class="map-legend"></ul>
     </div>
+
+          <!-- AUTOMATIC DAMAGE: what the latest attacks and spells did -->
+        <div class="damage-strip hidden" id="damageStrip" aria-live="polite">
+          <strong>💥 Automatic damage</strong>
+          <div id="damageLines"></div>
+        </div>
+    <!-- MY HERO: the whole character sheet. Tap a weapon or spell to use it: on your turn in a
+         fight it goes to your AM's screen, which rolls it and deals the damage if it hits. -->
+    <section id="mySheet" class="my-sheet"></section>
+
+    <p>❤️ Your HP (kept by your AM): <strong id="hpDisplay">–</strong></p>
+
+    <!-- Music: appears when the AM starts it -->
+    <div id="musicBox" class="voice-box hidden">
+      <p id="musicText">🎵 Your AM is playing music for the table.</p>
+      <button id="musicJoinBtn">🎵 Join the music</button>
+      <button class="small-button hidden" id="musicOffBtn">🔇 Turn my music off</button>
+      <label class="hint">Volume <input type="range" id="musicVol" min="0" max="100" value="60"></label>
+      <p class="hint">Your device makes the music itself, so it uses no data and you can't hear it on anyone else's phone.</p>
+    </div>
+
+    <!-- Video: see each other's faces -->
+    <div id="videoBox" class="voice-box">
+      <p>📹 <strong>Video</strong>: see everyone's faces. <span class="hint">(Sound comes through voice chat.)</span></p>
+      <button id="videoBtn">📹 Turn on my camera</button>
+      <p id="videoStatus" class="hint">Pictures go straight between browsers and aren't recorded.</p>
+      <div id="videoGrid" class="video-grid"></div>
+    </div>
+
+    <!-- Voice chat: appears when the AM turns it on -->
+    <div id="voiceBox" class="voice-box hidden">
+      <p id="voiceText">🎙️ Your AM started voice chat.</p>
+      <button id="voiceJoinBtn">🎙️ Join voice chat</button>
+      <button class="small-button hidden" id="voiceMuteBtn">🔇 Mute me</button>
+      <button class="small-button hidden" id="voiceLeaveBtn">Leave voice chat</button>
+      <p class="hint">Voice goes straight between your browsers. Nothing is recorded.</p>
+    </div>
+
+    <label class="hint"><input type="checkbox" id="readFeed"> 🔊 Read the AM's messages aloud</label>
+    <div id="feed" class="chat-log short-log" aria-live="polite"></div>
 
     <div class="roll-row">
       <select id="checkSelect" aria-label="Choose a roll"></select>
@@ -150,10 +160,10 @@
       </label>
       <label class="hint">or type it <input id="targetBox" type="number" min="1" max="40" class="mini-number" placeholder="DC / AC"></label>
     </div>
-    <p class="hint">Every roll is shown to your GM.</p>
+    <p class="hint">Every roll is shown to your AM.</p>
 
     <div class="settings add-form">
-      <input id="sayText" type="text" class="wide-input" maxlength="300" placeholder="Say something to your GM">
+      <input id="sayText" type="text" class="wide-input" maxlength="300" placeholder="Say something to your AM">
       <button class="small-button" id="sayBtn">Send</button>
     </div>
 
@@ -161,6 +171,9 @@
       <button class="small-button" id="updateBtn">📤 Send my updated sheet</button>
       <button class="small-button" id="leaveBtn">🚪 Leave game</button>
     </p>
+      </div>
+      <nav class="book-edge" id="rightBooks" aria-label="More books"></nav>
+    </div>
   </div>
 
   <script src="dice.js"></script>
@@ -171,9 +184,10 @@
   <script src="music.js"></script>
   <script src="voice.js"></script>
 
-  <!-- PeerJS (MIT license, version pinned) connects your browser straight to your GM's browser. -->
+  <!-- PeerJS (MIT license, version pinned) connects your browser straight to your AM's browser. -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="video.js"></script>
+  <script src="bookshelf.js"></script>
 
   <script>
     // =====================================================================
@@ -181,17 +195,17 @@
     // =====================================================================
     let heroes = loadCharacters();   // from rules.js
     let peer = null;                 // our connection to the matchmaking service
-    let conn = null;                 // our direct connection to the GM
-    let joined = false;              // has the GM accepted us?
+    let conn = null;                 // our direct connection to the AM
+    let joined = false;              // has the AM accepted us?
     let waitTimer = null;
-    let retryTimer = null;           // checks again for a GM who hasn't shown up yet
+    let retryTimer = null;           // checks again for an AM who hasn't shown up yet
     let waitingSince = 0;
-    let dmPeerId = "";               // the GM's address, from the game code
+    let dmPeerId = "";               // the AM's address, from the game code
 
     // Voice chat
-    let dmVoiceOn = false;           // has the GM turned voice chat on?
+    let dmVoiceOn = false;           // has the AM turned voice chat on?
     let voiceStream = null;          // our microphone, once we choose to join
-    let voiceCall = null;            // the audio call with the GM
+    let voiceCall = null;            // the audio call with the AM
     let voiceAudio = null;           // plays what we hear
 
     const el = function (id) {
@@ -269,6 +283,25 @@
       row.textContent = text;   // textContent: never treated as HTML
       el("feed").append(row);
       el("feed").scrollTop = el("feed").scrollHeight;
+      if (text.indexOf("⚔️ ") === 0) addDamageLine(text.slice(3));
+    }
+
+    // 💥 Automatic damage (like the AM Screen): the newest attack and spell results
+    const damageLines = [];
+    function addDamageLine(text) {
+      damageLines.unshift(text);
+      if (damageLines.length > 4) damageLines.pop();
+      const box = el("damageLines");
+      box.innerHTML = "";
+      damageLines.forEach(function (line, i) {
+        const row = document.createElement("div");
+        row.className = "damage-line" + (i === 0 ? " newest" : "");
+        if (/→ (hit!|CRITICAL HIT!)|takes [1-9]/.test(line)) row.classList.add("hit");
+        else if (/→ miss|natural 1/.test(line)) row.classList.add("miss");
+        row.textContent = line;
+        box.append(row);
+      });
+      el("damageStrip").classList.remove("hidden");
     }
 
     // =====================================================================
@@ -280,7 +313,7 @@
       const hero = selectedHero();
 
       if (code.length !== 6) {
-        showError("The game code is 6 letters and numbers. Check it with your GM.");
+        showError("The game code is 6 letters and numbers. Check it with your AM.");
         return;
       }
       if (!hero) {
@@ -305,17 +338,17 @@
       });
       peer.on("call", function (call) {
         if (video.handleCall(call)) return;   // a video call from someone at our table
-        handleVoiceCall(call);                 // otherwise: voice, only from our GM
+        handleVoiceCall(call);                 // otherwise: voice, only from our AM
       });
 
       peer.on("error", function (error) {
         if (error.type === "peer-unavailable") {
-          // No game with this code YET: the GM may not have opened it. Keep checking.
+          // No game with this code YET: the AM may not have opened it. Keep checking.
           if (Date.now() - waitingSince > 30 * 60 * 1000) {
-            stopWaiting("Your GM still hasn't opened the game after 30 minutes. Check the code with them.");
+            stopWaiting("Your AM still hasn't opened the game after 30 minutes. Check the code with them.");
             return;
           }
-          setStatus("Waiting for your GM to show up and open the game… (checking every 5 seconds)");
+          setStatus("Waiting for your AM to show up and open the game… (checking every 5 seconds)");
           clearTimeout(retryTimer);
           retryTimer = setTimeout(function () {
             if (peer && !peer.destroyed && !joined) connectToDm(hero);
@@ -326,7 +359,7 @@
       });
     }
 
-    // One try at reaching the GM's browser.
+    // One try at reaching the AM's browser.
     function connectToDm(hero) {
       const attempt = peer.connect(dmPeerId, { reliable: true });
       let opened = false;
@@ -335,14 +368,14 @@
       attempt.on("open", function () {
         opened = true;
         attempt.send({ type: "request", character: makeSharedCharacter(hero) });   // from play.js
-        setStatus("Your GM is here! Asking to join…");
+        setStatus("Your AM is here! Asking to join…");
         clearTimeout(waitTimer);
         waitTimer = setTimeout(function () {
-          if (!joined) setStatus("Still waiting for your GM to let you in. They may be busy: hang on, or tell them you're here.");
+          if (!joined) setStatus("Still waiting for your AM to let you in. They may be busy: hang on, or tell them you're here.");
         }, 60000);
       });
       attempt.on("data", handleDmMessage);
-      // A failed try (GM not here yet) also closes: only a real, opened connection counts as "lost".
+      // A failed try (AM not here yet) also closes: only a real, opened connection counts as "lost".
       attempt.on("close", function () {
         if (opened && conn === attempt) handleConnectionLost();
       });
@@ -364,24 +397,24 @@
     }
 
     // =====================================================================
-    // MESSAGES FROM THE GM (untrusted: check the shape first)
+    // MESSAGES FROM THE AM (untrusted: check the shape first)
     // =====================================================================
     function handleDmMessage(data) {
       if (!data || typeof data !== "object" || typeof data.type !== "string") return;
 
       if (data.type === "waiting") {
-        setStatus("The GM has your request. Waiting for them to accept…");
+        setStatus("The AM has your request. Waiting for them to accept…");
       } else if (data.type === "accepted") {
         enterTable(cleanText(data.game, 40), data.hp, data.maxHp);
       } else if (data.type === "declined") {
-        stopWaiting(cleanText(data.reason, 100) || "The GM declined your request.");
+        stopWaiting(cleanText(data.reason, 100) || "The AM declined your request.");
       } else if (data.type === "announce" && joined) {
         const said = cleanText(data.text, 300);
-        addToFeed("📢 GM: " + said);
+        addToFeed("📢 AM: " + said);
         if (el("readFeed").checked) Voice.speak(said);   // a speaker, for players who'd rather listen
       } else if (data.type === "hp" && joined) {
         showHp(data.hp, data.maxHp);
-        saveHpToSheet(data.hp);   // keep the character sheet in step with what the GM tracks
+        saveHpToSheet(data.hp);   // keep the character sheet in step with what the AM tracks
         renderMySheet();
       } else if (data.type === "music" && joined) {
         handleMusic(data);
@@ -391,6 +424,8 @@
         dmVoiceOn = data.on === true;
         if (!dmVoiceOn) leaveVoice(true);
         renderVoice();
+      } else if (data.type === "rest" && joined) {
+        takeRestOnMySheet(data.kind === "long" ? "long" : "short");
       } else if (data.type === "video-people" && joined) {
         handleVideoPeople(data);
       } else if (data.type === "turn" && joined) {
@@ -406,8 +441,21 @@
       }
     }
 
+    // The AM called a rest: restore spell slots (and HP on a long rest) on my own sheet,
+    // then send the AM my updated sheet.
+    function takeRestOnMySheet(kind) {
+      const list = loadCharacters();
+      const hero = list.find(function (h) { return h.id === Number(el("heroSelect").value); });
+      if (!hero) return;
+      if (kind === "long") { takeLongRest(hero); hero.hp = getMaxHp(hero); } else takeShortRest(hero);
+      saveCharacters(list);
+      send({ type: "update", character: makeSharedCharacter(hero) });
+      if (kind === "long") showHp(hero.hp, getMaxHp(hero));
+      renderMySheet();
+    }
+
     // =====================================================================
-    // VIDEO (video.js): the GM's screen sends the list of who's at the table
+    // VIDEO (video.js): the AM's screen sends the list of who's at the table
     // =====================================================================
     const video = createVideoChat({
       getPeer: function () { return peer; },
@@ -436,7 +484,7 @@
         return;
       }
       if (await video.startCamera()) {
-        send({ type: "video-on" });   // the GM's screen tells everyone, and they connect
+        send({ type: "video-on" });   // the AM's screen tells everyone, and they connect
       } else {
         el("videoStatus").textContent = "⚠️ Couldn't use your camera. Allow it for this page in your browser, then try again.";
       }
@@ -492,7 +540,7 @@
           ? "🎯 It's your turn! Tap a weapon, spell or feature below." + (combat.canAct ? "" : " (Action used: bonus actions only.)")
           : "⏳ A fight is on. Wait for your turn: your card in the turn order will light up.";
       } else {
-        turnNote.textContent = "Tap a weapon or spell to roll it for your GM. In a fight, the GM's screen rolls it on your turn and deals the damage for you.";
+        turnNote.textContent = "Tap a weapon or spell to roll it for your AM. In a fight, the AM's screen rolls it on your turn and deals the damage for you.";
       }
       box.append(turnNote);
 
@@ -597,7 +645,7 @@
       return card;
     }
 
-    // A check from the sheet (abilities and skills): rolled here and shown to the GM.
+    // A check from the sheet (abilities and skills): rolled here and shown to the AM.
     function sendCheck(hero, entry) {
       if (!entry) return;
       const result = rollCharacterCheck(hero, entry, "normal", currentTarget());
@@ -607,7 +655,7 @@
 
     // Using a weapon, spell or feature from the sheet.
     function useFromSheet(action) {
-      // In a fight, on my turn: the GM's screen rolls it (so nobody can fake a roll) and deals the damage
+      // In a fight, on my turn: the AM's screen rolls it (so nobody can fake a roll) and deals the damage
       if (combat && combat.order.length) {
         if (!combat.yourTurn) { addToFeed("⏳ It isn't your turn yet."); return; }
         const pick = el("actionPick");
@@ -623,7 +671,7 @@
         showMyResult("👉 Now tick who you aim at, then press ⚔️ Do it.");
         return;
       }
-      // Not in a fight: roll it here and tell the GM, who decides what happens
+      // Not in a fight: roll it here and tell the AM, who decides what happens
       const hero = selectedHero();
       const profile = makeCombatProfile(hero);
       if (action.kind === "spell" && action.spell.level > 0) {
@@ -644,7 +692,7 @@
           { profile: profile, state: newFeatureState(profile), selfId: 0, slotLevel: action.kind === "spell" ? action.spell.level : 0 });
         text = result.lines.join(" ");
       } else {
-        // No number yet: roll the attack and the damage, and let the GM say whether it hits
+        // No number yet: roll the attack and the damage, and let the AM say whether it hits
         const bonus = action.kind === "weapon" ? action.attack.toHit : action.caster.atk;
         const dice = action.kind === "weapon" ? action.attack.dmg : getSpellDamage(action.spell, { level: profile.level }, action.spell.level).dice;
         const times = action.kind === "weapon" ? action.times || 1 : spellRepeats(action.spell, profile, action.spell.level);
@@ -655,9 +703,9 @@
           parts.push("🎲 " + (d20 + bonus) + " to hit (" + d20 + " " + formatBonus(bonus) + ")" + (d20 === 20 ? " CRITICAL!" : d20 === 1 ? " natural 1!" : "") +
             ", " + damage.total + " damage if it hits");
         }
-        text = hero.name + " uses " + (action.kind === "weapon" ? action.attack.n : action.spell.n) + ": " + parts.join("; ") + ". The GM says whether it hits.";
+        text = hero.name + " uses " + (action.kind === "weapon" ? action.attack.n : action.spell.n) + ": " + parts.join("; ") + ". The AM says whether it hits.";
       }
-      // The GM's feed already shows who it is, so the message starts after the name
+      // The AM's feed already shows who it is, so the message starts after the name
       const message = text.indexOf(hero.name + " ") === 0 ? text.slice(hero.name.length + 1) : text;
       addToFeed("You: " + message);
       send({ type: "roll", text: message });
@@ -666,9 +714,9 @@
 
     // =====================================================================
     // COMBAT: the turn order, and choosing your own attack or spell
-    // The GM's device checks the choice and rolls the dice (combat.js has the rules).
+    // The AM's device checks the choice and rolls the dice (combat.js has the rules).
     // =====================================================================
-    let combat = null;          // the latest turn order from the GM
+    let combat = null;          // the latest turn order from the AM
     let waitingForGm = false;   // sent an action, waiting for the result
 
     function handleTurn(data) {
@@ -685,7 +733,7 @@
         }
         order.push(entry);
       }
-      // My class features left (Second Wind uses, raging...), as the GM's screen keeps them: numbers only
+      // My class features left (Second Wind uses, raging...), as the AM's screen keeps them: numbers only
       let state = null;
       if (data.state && typeof data.state === "object") {
         state = {};
@@ -816,7 +864,7 @@
       send({ type: "action", action: action.key, slotKind: slotKind, slotLevel: Number(slotLevel) || 0, targets: targets,
              allyNear: Boolean(ally && ally.checked && !ally.closest(".hidden")) });
       waitingForGm = true;
-      showMyResult("⏳ Sent! Your GM's screen is rolling the dice…");
+      showMyResult("⏳ Sent! Your AM's screen is rolling the dice…");
       renderCombat();
     }
 
@@ -849,7 +897,7 @@
       renderMySheet();
     }
 
-    // The GM's screen spent one of my spell slots: mark it on my sheet too, and send the GM my sheet.
+    // The AM's screen spent one of my spell slots: mark it on my sheet too, and send the AM my sheet.
     function markSlotUsed(slot) {
       const kind = slot && slot.kind === "pact" ? "pact" : "slot";
       const level = cleanNumber(slot && slot.level, 1, 9, 1);
@@ -871,7 +919,7 @@
       el("tableTitle").textContent = gameName ? "At the table: " + gameName : "At the table";
       fillCheckSelect(el("checkSelect"), hero);   // from play.js
       showHp(hp, maxHp);
-      addToFeed("✅ The GM accepted you. Welcome, " + hero.name + "!");
+      addToFeed("✅ The AM accepted you. Welcome, " + hero.name + "!");
       renderMySheet();
     }
 
@@ -881,7 +929,7 @@
       el("hpDisplay").textContent = current + " / " + max;
     }
 
-    // The GM keeps the official HP in a live game, so write it onto the saved sheet too.
+    // The AM keeps the official HP in a live game, so write it onto the saved sheet too.
     function saveHpToSheet(hp) {
       const hero = selectedHero();
       if (!hero) return;
@@ -908,19 +956,19 @@
       leaveVoice(true);
       renderVoice();
       if (wasJoined) {
-        addToFeed("⚠️ Disconnected from the GM. If your GM saved the game for a break, wait until they reopen it, then press Leave game and join again with the same code. You'll come straight back in.");
+        addToFeed("⚠️ Disconnected from the AM. If your AM saved the game for a break, wait until they reopen it, then press Leave game and join again with the same code. You'll come straight back in.");
       } else {
-        stopWaiting("The connection to the GM closed.");
+        stopWaiting("The connection to the AM closed.");
       }
     }
 
 
 
     // =====================================================================
-    // MUSIC FROM THE GM (made on your own device; you choose to join)
+    // MUSIC FROM THE AM (made on your own device; you choose to join)
     // =====================================================================
     const tableMusic = createMusicController();   // from music.js
-    let gmMusicOn = false;       // is the GM playing music?
+    let gmMusicOn = false;       // is the AM playing music?
     let gmMood = "calm";
 
     function handleMusic(data) {
@@ -931,7 +979,7 @@
       tableMusic.setMood(gmMood);
       if (!gmMusicOn) {
         tableMusic.stop();
-        if (wasOn) addToFeed("🎵 The GM stopped the music.");   // only say it when something changed
+        if (wasOn) addToFeed("🎵 The AM stopped the music.");   // only say it when something changed
       }
       renderMusic();
     }
@@ -943,7 +991,7 @@
       el("musicOffBtn").classList.toggle("hidden", !listening);
       el("musicText").textContent = listening
         ? "🎵 Now playing: " + MUSIC_MOODS[gmMood].label
-        : "🎵 Your GM is playing music for the table.";
+        : "🎵 Your AM is playing music for the table.";
       if (!tableMusic.supported()) el("musicJoinBtn").classList.add("hidden");
     }
 
@@ -960,7 +1008,7 @@
     }
 
     // =====================================================================
-    // THE BATTLE MAP (shown by the GM)
+    // THE BATTLE MAP (shown by the AM)
     // =====================================================================
     const TERRAIN_ICONS = { wall: "🧱", tree: "🌳", rubble: "🪨", water: "🌊" };
     const TERRAIN_BLOCKS = ["wall", "tree"];
@@ -970,14 +1018,14 @@
       if (data.map === null) {
         sharedMap = null;
         el("mapBox").classList.add("hidden");
-        addToFeed("🗺️ The GM put the map away.");
+        addToFeed("🗺️ The AM put the map away.");
         return;
       }
       const clean = cleanMapSnapshot(data.map);   // from play.js
       if (!clean) return;
       const first = sharedMap === null;
       sharedMap = { map: clean, canMove: data.canMove === true, you: cleanText(data.you, 40) };
-      if (first) addToFeed("🗺️ The GM is showing the battle map.");
+      if (first) addToFeed("🗺️ The AM is showing the battle map.");
       renderPlayerMap();
     }
 
@@ -985,7 +1033,7 @@
       return x < 0 || y < 0 || x >= map.cols || y >= map.rows || TERRAIN_BLOCKS.includes(map.terrain[x + "," + y]);
     }
 
-    // Can this token stand with its top-left corner at (x, y)? (The GM double-checks.)
+    // Can this token stand with its top-left corner at (x, y)? (The AM double-checks.)
     function playerCanStand(token, x, y) {
       const map = sharedMap.map;
       for (let dx = 0; dx < token.size; dx++) {
@@ -1022,7 +1070,7 @@
         board.append(square);
       }
 
-      // Fog of war: solid darkness. The GM never sends what's under it.
+      // Fog of war: solid darkness. The AM never sends what's under it.
       for (const key of map.fog) {
         const [x, y] = key.split(",").map(Number);
         const cloud = document.createElement("div");
@@ -1066,8 +1114,8 @@
       }
 
       el("mapNote").textContent = sharedMap.canMove && mine
-        ? "👆 Drag your own token to move. Your GM can see and fix your position."
-        : "Your token has a white ring. Only your GM can move tokens right now.";
+        ? "👆 Drag your own token to move. Your AM can see and fix your position."
+        : "Your token has a white ring. Only your AM can move tokens right now.";
 
       // A list of who is where, in words (also easier to read on a small screen).
       const legend = el("mapLegend");
@@ -1081,7 +1129,7 @@
       }
     }
 
-    // Drag your own token (a mouse, a finger or a pen). On release, ask the GM to move it.
+    // Drag your own token (a mouse, a finger or a pen). On release, ask the AM to move it.
     function makeDraggable(piece, token, cell) {
       piece.addEventListener("pointerdown", function (event) {
         event.preventDefault();
@@ -1108,7 +1156,7 @@
           if ((target[0] !== token.x || target[1] !== token.y) && playerCanStand(token, target[0], target[1])) {
             send({ type: "mapmove", x: target[0], y: target[1] });
           }
-          renderPlayerMap();   // snaps back; the GM's update moves it for real
+          renderPlayerMap();   // snaps back; the AM's update moves it for real
         };
         piece.addEventListener("pointermove", onMove);
         piece.addEventListener("pointerup", onUp);
@@ -1128,7 +1176,7 @@
       const entry = getCheckList(hero)[Number(el("checkSelect").value)];
       const result = rollCharacterCheck(hero, entry, el("modeSelect").value, currentTarget());   // adds it up and says if it worked
       addToFeed("You " + result.text);
-      send({ type: "roll", text: result.text });   // the GM sees every roll
+      send({ type: "roll", text: result.text });   // the AM sees every roll
     }
 
 
@@ -1158,7 +1206,7 @@
       const hero = selectedHero();
       if (!hero) return;
       send({ type: "update", character: makeSharedCharacter(hero) });
-      addToFeed("📤 Sent your updated sheet to the GM.");
+      addToFeed("📤 Sent your updated sheet to the AM.");
     }
 
     function leaveGame(quiet) {
@@ -1190,7 +1238,7 @@
     }
 
     // =====================================================================
-    // VOICE CHAT (the GM turns it on; you choose whether to join)
+    // VOICE CHAT (the AM turns it on; you choose whether to join)
     // =====================================================================
     async function joinVoice() {
       if (!joined || !dmVoiceOn) return;
@@ -1200,12 +1248,12 @@
         el("voiceText").textContent = "🎙️ Couldn't use your microphone. Allow it for this page in your browser, then try again.";
         return;
       }
-      send({ type: "voice-ready" });   // the GM's browser now calls us
+      send({ type: "voice-ready" });   // the AM's browser now calls us
       el("voiceText").textContent = "🎙️ Connecting voice…";
       renderVoice();
     }
 
-    // Only answer an audio call from OUR GM, and only after we chose to join.
+    // Only answer an audio call from OUR AM, and only after we chose to join.
     function handleVoiceCall(call) {
       if (call.peer !== dmPeerId || !voiceStream || !joined) {
         call.close();
@@ -1234,7 +1282,7 @@
       el("voiceMuteBtn").textContent = track.enabled ? "🔇 Mute me" : "🎙️ Unmute me";
     }
 
-    // quiet = we're leaving because of something else, so don't tell the GM.
+    // quiet = we're leaving because of something else, so don't tell the AM.
     function leaveVoice(quiet) {
       if (!voiceStream && !voiceCall) return;
       if (!quiet) send({ type: "voice-leave" });
@@ -1252,7 +1300,7 @@
       voiceCall = null;
       voiceStream = null;
       el("voiceMuteBtn").textContent = "🔇 Mute me";
-      el("voiceText").textContent = "🎙️ Your GM started voice chat.";
+      el("voiceText").textContent = "🎙️ Your AM started voice chat.";
       renderVoice();
     }
 
@@ -1319,10 +1367,11 @@
     });
     el("sayBtn").addEventListener("click", say);
     el("actBtn").addEventListener("click", doMyAction);
+    addBookEdges(el("leftBooks"), el("rightBooks"), ["rules", "spells", "items"], ["gear", "heroes"]);
     el("videoBtn").addEventListener("click", toggleCamera);
     el("actionPick").addEventListener("change", fillSlotsAndTargets);
     el("slotPick").addEventListener("change", fillSlotsAndTargets);
-    Voice.micButton(el("sayText"));   // a microphone: say something to the GM
+    Voice.micButton(el("sayText"));   // a microphone: say something to the AM
     try {
       el("readFeed").checked = localStorage.getItem("liveAutoRead") === "yes";
     } catch (error) {
@@ -1345,7 +1394,7 @@
       leaveGame(false);
     });
 
-    // If the sheet is edited in another tab while we're at the table, tell the GM automatically.
+    // If the sheet is edited in another tab while we're at the table, tell the AM automatically.
     window.addEventListener("storage", function (event) {
       if (event.key !== "characters") return;
       if (joined) sendUpdatedSheet();

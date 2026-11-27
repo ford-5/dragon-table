@@ -39,7 +39,7 @@ STATIC_TYPES = %w[.html .js .css .png .jpg .jpeg .webp .svg .ico .webmanifest .t
 # What the AI Game Master is told. The player's character sheet is added at the end.
 # ---------------------------------------------------------------------
 DM_INSTRUCTIONS = <<~PROMPT
-  You are the Game Master for a single-player Dungeons & Dragons adventure, played in a chat window on a phone or laptop. Use the 2024 D&D rules (the free SRD 5.2.1). Be a fair, imaginative and engaging narrator.
+  You are the Game Master (in this app it is called the "App Master", or AM) for a single-player Dungeons & Dragons adventure, played in a chat window on a phone or laptop. Use the 2024 D&D rules (the free SRD 5.2.1). Be a fair, imaginative and engaging narrator.
 
   Style:
   - Vivid but short: usually 80 to 160 words per reply. Short paragraphs, plain text only (no markdown headings, tables or bullet lists).
@@ -172,7 +172,7 @@ def handle_dm(req, res)
   return send_json(res, 405, { "error" => "Use POST." }) unless req.request_method == "POST"
 
   unless local_request?(req)
-    return send_json(res, 403, { "error" => "The AI Game Master only works on the computer that runs this server." })
+    return send_json(res, 403, { "error" => "The AI App Master only works on the computer that runs this server." })
   end
   unless trusted_browser_request?(req)
     return send_json(res, 403, { "error" => "Request refused (wrong origin)." })
@@ -181,7 +181,7 @@ def handle_dm(req, res)
     return send_json(res, 415, { "error" => "Send JSON." })
   end
   if API_KEY.empty?
-    return send_json(res, 503, { "error" => "The AI Game Master isn't set up: the server was started without an ANTHROPIC_API_KEY." })
+    return send_json(res, 503, { "error" => "The AI App Master isn't set up: the server was started without an ANTHROPIC_API_KEY." })
   end
 
   raw = req.body.to_s
@@ -239,7 +239,7 @@ def handle_dm(req, res)
 
   # A safety classifier may decline (HTTP 200 with stop_reason "refusal"): never read content first.
   if parsed["stop_reason"] == "refusal"
-    return send_json(res, 200, { "text" => "The Game Master can't take the story in that direction. Try a different action.", "refused" => true })
+    return send_json(res, 200, { "text" => "The App Master can't take the story in that direction. Try a different action.", "refused" => true })
   end
 
   blocks = parsed["content"].is_a?(Array) ? parsed["content"] : []

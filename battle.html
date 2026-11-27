@@ -19,7 +19,7 @@
     <a href="index.html">🏠 Home</a>
     <a href="library.html">📚 Library</a>
     <a href="character.html">🧙 Characters</a>
-    <a href="dm.html">🛡️ GM Screen</a>
+    <a href="dm.html">🛡️ AM Screen</a>
     <a href="equipment.html">🛒 Equipment</a>
     <a href="battle.html" class="active">⚔️ Battle</a>
     <a href="map.html">🗺️ Map</a>
@@ -27,7 +27,7 @@
 
   <h1>⚔️ Battle Simulator</h1>
   <p class="hint">Build an encounter, see how hard the rules say it is, then play it out on screen to find out how it might go.</p>
-  <p><a href="dm.html" class="back-link">← Back to the GM Screen</a></p>
+  <p><a href="dm.html" class="back-link">← Back to the AM Screen</a></p>
 
   <!-- ===== 1. THE HEROES ===== -->
   <div class="panel">
@@ -51,7 +51,7 @@
     <div id="monsterInfo" class="info-box"></div>
     <ul id="encounter" class="request-list"></ul>
 
-    <!-- Pre-made battles, and the GM's own saved ones (premade.js) -->
+    <!-- Pre-made battles, and the AM's own saved ones (premade.js) -->
     <h3 class="section-label">📦 Pre-made &amp; saved battles</h3>
     <p class="hint">Load one to fill in the monsters (it replaces the list above).</p>
     <div id="battleList" class="premade-list"></div>
@@ -94,7 +94,7 @@
   <script src="voice.js"></script>
 
   <script>
-    // Shown inside the GM Screen (?embed=1): hide the page furniture.
+    // Shown inside the AM Screen (?embed=1): hide the page furniture.
     const embedded = new URLSearchParams(location.search).get("embed") === "1" && window.parent !== window;
     if (embedded) document.body.classList.add("embedded");
 
@@ -657,7 +657,7 @@
         showSummary("This browser won't let the page pass the fight to the map.");
         return;
       }
-      // Inside the GM Screen? Ask it to show its own map. Otherwise go to the map page.
+      // Inside the AM Screen? Ask it to show its own map. Otherwise go to the map page.
       if (embedded) {
         window.parent.postMessage({ type: "showMap" }, location.origin);
       } else {

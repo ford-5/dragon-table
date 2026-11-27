@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Learn to be a GM</title>
-  <meta name="description" content="A short free course on running your first fifth-edition game as the Game Master.">
+  <title>Learn to be an AM</title>
+  <meta name="description" content="A short free course on running your first fifth-edition game as the App Master.">
   <link rel="stylesheet" href="style.css">
   <!-- App icon, colors, and the file that makes Dragon Table installable -->
   <link rel="manifest" href="manifest.webmanifest">
@@ -19,11 +19,11 @@
     <a href="index.html">🏠 Home</a>
     <a href="library.html">📚 Library</a>
     <a href="character.html">🧙 Characters</a>
-    <a href="dm.html">🛡️ GM Screen</a>
+    <a href="dm.html">🛡️ AM Screen</a>
     <a href="equipment.html">🛒 Equipment</a>
   </nav>
 
-  <h1>🎓 Learn to be a Game Master</h1>
+  <h1>🎓 Learn to be an App Master</h1>
   <p class="hint">Eight short lessons based on the fifth-edition rules (the free SRD 5.2.1). Each one has examples of what to say at the table and a hands-on practice. Open one, read it, try the practice, then tick it off.</p>
   <p id="progress" class="guide-banner"></p>
 
@@ -31,7 +31,7 @@
 
   <div class="panel">
     <h2>Ready?</h2>
-    <p><a class="plain-button" href="dm.html">🛡️ Go to the GM Screen</a> <a class="plain-button" href="battle.html">⚔️ Battle Simulator</a> <a class="plain-button" href="adventure.html">📜 Free starter adventure</a></p>
+    <p><a class="plain-button" href="dm.html">🛡️ Go to the AM Screen</a> <a class="plain-button" href="battle.html">⚔️ Battle Simulator</a> <a class="plain-button" href="adventure.html">📜 Free starter adventure</a></p>
   </div>
 
   <p><a href="dm-start.html" class="back-link">← Back</a></p>
@@ -45,7 +45,7 @@
   <script src="monsters.js"></script>
   <script src="voice.js"></script>
   <script>
-    // Shown inside the GM Screen (?embed=1): hide the page furniture.
+    // Shown inside the AM Screen (?embed=1): hide the page furniture.
     const embedded = new URLSearchParams(location.search).get("embed") === "1" && window.parent !== window;
     if (embedded) document.body.classList.add("embedded");
 
@@ -53,7 +53,7 @@
     // THE LESSONS
     // Each lesson can have:
     //   text:     paragraphs to read
-    //   readAloud: example boxes of what a GM says out loud ({ label, text })
+    //   readAloud: example boxes of what an AM says out loud ({ label, text })
     //   talk:     a short example conversation at the table ([who, words])
     //   tool:     a hands-on practice ("plan", "dc", "npc", "passive", "attack", "budget", "checklist")
     //   quiz:     practice questions ({ q, choices: [{ t, ok, why }] })
@@ -62,17 +62,17 @@
     // =====================================================================
     const LESSONS = [
       {
-        id: "job", title: "1. What does a Game Master do?",
+        id: "job", title: "1. What does an App Master do?",
         text: [
-          "The Game Master (GM) is the storyteller and the referee. The players each control one hero. You control everything else: the world, the villagers, and the monsters.",
+          "The App Master (AM) is the storyteller and the referee. The players each control one hero. You control everything else: the world, the villagers, and the monsters.",
           "Every part of the game, whether talking, exploring or fighting, runs on the same loop. 1) You describe the scene. 2) The players say what their heroes do. 3) You say what happens, and sometimes ask for a dice roll. Then back to step 1.",
           "The three pillars of play are social interaction (talking), exploration (finding your way and discovering things) and combat (fighting). A good session mixes all three.",
           "You are not the players' enemy. Your job is to make the world feel real and to make sure everyone has fun, including you."
         ],
         talk: [
-          ["GM (1. describe)", "The road ends at a rope bridge over a deep gorge. The wind makes it sway. On the far side, smoke curls up from a chimney. What do you do?"],
+          ["AM (1. describe)", "The road ends at a rope bridge over a deep gorge. The wind makes it sway. On the far side, smoke curls up from a chimney. What do you do?"],
           ["Player (2. decide)", "I test the first plank with my foot before I put my weight on it."],
-          ["GM (3. what happens)", "It creaks, but it holds. Halfway across, one plank is missing: a gap about as long as you are tall. Do you jump it, or look for another way?"]
+          ["AM (3. what happens)", "It creaks, but it holds. Halfway across, one plank is missing: a gap about as long as you are tall. Do you jump it, or look for another way?"]
         ],
         quiz: [
           { q: "A player says: \"I walk into the tavern.\" What's your next move?", choices: [
@@ -112,9 +112,9 @@
         ],
         talk: [
           ["Player", "I want to pick the lock, quietly."],
-          ["GM", "That's a Dexterity check, and you can add your proficiency with thieves' tools. It's a medium lock, so you need 15."],
+          ["AM", "That's a Dexterity check, and you can add your proficiency with thieves' tools. It's a medium lock, so you need 15."],
           ["Player", "I rolled a 9. Plus 5 is 14."],
-          ["GM (failing forward)", "So close! The lock clicks open... and so does the coin-counting. Silence. A chair scrapes. Whoever's inside heard you."]
+          ["AM (failing forward)", "So close! The lock clicks open... and so does the coin-counting. Silence. A chair scrapes. Whoever's inside heard you."]
         ],
         tool: "dc",
         quiz: [
@@ -144,9 +144,9 @@
           { label: "Example: bringing a character to life", text: "The innkeeper is a round woman named Bertha, who keeps wiping the same mug over and over. \"Rooms are two silver a night,\" she says, her eyes darting to the door. She leans in and drops her voice. \"And if anyone asks, you didn't hear about the cellar from me.\"" }
         ],
         talk: [
-          ["GM's secret notes", "Bertha: Indifferent. Nervous habit: wipes mugs. Wants: to keep her inn safe. Secret: she owes money to the bandits in the cellar."],
+          ["AM's secret notes", "Bertha: Indifferent. Nervous habit: wipes mugs. Wants: to keep her inn safe. Secret: she owes money to the bandits in the cellar."],
           ["Player", "I put a gold coin on the counter and tell her we're here to get rid of the bandits for good."],
-          ["GM", "That's a good reason for her to trust you. No roll needed: she slides the coin back. \"Keep it. Just make them leave.\""]
+          ["AM", "That's a good reason for her to trust you. No roll needed: she slides the coin back. \"Keep it. Just make them leave.\""]
         ],
         tool: "npc",
         quiz: [
@@ -165,7 +165,7 @@
         id: "explore", title: "5. Exploring",
         text: [
           "Exploration is the heroes traveling, searching rooms, and noticing things. Describe what they can see, hear and smell in a few vivid sentences, then ask what they do.",
-          "Don't make players roll to find things that are in plain sight. Use their Passive Perception (10 + their Perception bonus, shown on every character sheet) to see whether they notice hidden things without rolling. The GM Screen lists each player's passive score.",
+          "Don't make players roll to find things that are in plain sight. Use their Passive Perception (10 + their Perception bonus, shown on every character sheet) to see whether they notice hidden things without rolling. The AM Screen lists each player's passive score.",
           "Keep things moving. If the heroes are stuck, add a clue or a new option. Locked doors, traps and puzzles are more fun when there's more than one way through."
         ],
         readAloud: [
@@ -180,7 +180,7 @@
             { t: "Yes, everyone rolls.", ok: false, why: "It's in plain sight. Just describe it." },
             { t: "No, they simply see it.", ok: true, why: "Right. Rolls are for things that are hidden or uncertain." }
           ] },
-          { q: "The heroes are stuck at a locked door with no key. What's the best GM move?", choices: [
+          { q: "The heroes are stuck at a locked door with no key. What's the best AM move?", choices: [
             { t: "Tell them they can't go on.", ok: false, why: "A dead end stops the fun." },
             { t: "Leave room for other ways: pick the lock, break it down, find a window, or hunt for the key.", ok: true, why: "Yes: more than one way through." }
           ] }
@@ -189,11 +189,11 @@
       {
         id: "combat", title: "6. Running a fight",
         text: [
-          "Combat is played in rounds of about 6 seconds of game time. At the start, everyone rolls Initiative (a Dexterity check) to set the turn order, and that order stays the same each round. The GM Screen's turn cards sort everyone and track HP for you.",
+          "Combat is played in rounds of about 6 seconds of game time. At the start, everyone rolls Initiative (a Dexterity check) to set the turn order, and that order stays the same each round. The AM Screen's turn cards sort everyone and track HP for you.",
           "On their turn, a creature can move up to its Speed and take one action (attack, cast a spell, dash, dodge, and so on), and sometimes a bonus action as well. Everyone also has one reaction per round, such as an opportunity attack when an enemy leaves their reach.",
           "To attack, roll a d20 and add the attack bonus. If it meets or beats the target's Armor Class (AC), it hits and you roll damage. A natural 20 is a critical hit: roll the damage dice twice.",
           "When a hero drops to 0 Hit Points they fall unconscious and are in danger, so describe it clearly and give the party a chance to help them. Keep fights moving, and describe the action, not just the numbers.",
-          "Secret rolls (the 🤫 panel on the GM Screen) let you roll in private for things the players shouldn't know yet."
+          "Secret rolls (the 🤫 panel on the AM Screen) let you roll in private for things the players shouldn't know yet."
         ],
         readAloud: [
           { label: "Example: starting a fight", text: "A twig snaps. Three goblins burst out of the bushes, shrieking, rusty blades raised high! Everyone, roll for initiative!" },
@@ -237,7 +237,7 @@
       {
         id: "session", title: "8. Running your first session",
         text: [
-          "Open the GM Screen, press Open a game, and share the code or invite link. Players choose Player, then Live Game Master, and wait in a waiting room until you open the game. You accept or decline each one.",
+          "Open the AM Screen, press Open a game, and share the code or invite link. Players choose Player, then Live App Master, and wait in a waiting room until you open the game. You accept or decline each one.",
           "Press Start voice chat so everyone can talk (headphones stop echo). Players choose whether to join, and everyone who joins can hear everyone else.",
           "The Party & Initiative drawer fills itself with everyone's AC and HP. Start with a simple scene, be generous with the dice, and have fun. You'll improve with every session."
         ],
@@ -252,7 +252,7 @@
             { t: "Give their hero a moment: an NPC talks to them, or something happens that fits their hero.", ok: true, why: "Yes. A spotlight moment helps quiet players join in." }
           ] }
         ],
-        link: { href: "dm.html", text: "🛡️ Open the GM Screen" }
+        link: { href: "dm.html", text: "🛡️ Open the AM Screen" }
       }
     ];
 
@@ -420,7 +420,7 @@
     // ----- Lesson 3: set a DC, roll for a pretend player -----
     function buildDcPractice() {
       const box = make("div", "tutor-box");
-      box.append(make("strong", "", "🎲 Practice: you're the GM. A player says \"I try to pick the lock.\""));
+      box.append(make("strong", "", "🎲 Practice: you're the AM. A player says \"I try to pick the lock.\""));
       const row = make("div", "roll-row");
       const difficulty = make("select");
       for (const [name, dc] of [["Very easy", 5], ["Easy", 10], ["Medium", 15], ["Hard", 20], ["Very hard", 25], ["Nearly impossible", 30]]) {
@@ -648,7 +648,7 @@
     const CHECKLIST = [
       "Pick tonight's adventure (the free starter adventure works great) and read it through once.",
       "Choose a map: a pre-made one, or one you saved on the Battle Map page.",
-      "Open the GM Screen and press \"Open a game\".",
+      "Open the AM Screen and press \"Open a game\".",
       "Send the invite link to your players.",
       "Accept everyone, then check they can all hear each other in voice chat.",
       "Agree on table rules: breaks, phones, and anything that's off-limits in the story.",

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>The Sunken Bell: a free starter adventure</title>
-  <meta name="description" content="A free, ready-to-run starter adventure for new Game Masters: three scenes, three fights that size themselves to your party, and tips for every step. Levels 1 to 2, about two hours.">
+  <meta name="description" content="A free, ready-to-run starter adventure for new App Masters: three scenes, three fights that size themselves to your party, and tips for every step. Levels 1 to 2, about two hours.">
   <link rel="stylesheet" href="style.css">
   <!-- App icon, colors, and the file that makes Dragon Table installable -->
   <link rel="manifest" href="manifest.webmanifest">
@@ -19,7 +19,7 @@
     <a href="index.html">🏠 Home</a>
     <a href="library.html">📚 Library</a>
     <a href="character.html">🧙 Characters</a>
-    <a href="dm.html">🛡️ GM Screen</a>
+    <a href="dm.html">🛡️ AM Screen</a>
     <a href="equipment.html">🛒 Equipment</a>
   </nav>
 
@@ -46,14 +46,14 @@
 
   <div id="adv" class="paper-sheet adventure"></div>
 
-  <p class="no-print"><a href="dm-start.html" class="back-link">← Back</a> · <a href="dm-learn.html" class="back-link">🎓 Learn to be a GM</a></p>
+  <p class="no-print"><a href="dm-start.html" class="back-link">← Back</a> · <a href="dm-learn.html" class="back-link">🎓 Learn to be an AM</a></p>
 
   <script src="dice.js"></script>
   <script src="rules.js"></script>
   <script src="monsters.js"></script>
   <script src="voice.js"></script>
   <script>
-    // Shown inside the GM Screen (adventure.html?embed=1): hide the page furniture.
+    // Shown inside the AM Screen (adventure.html?embed=1): hide the page furniture.
     const embedded = new URLSearchParams(location.search).get("embed") === "1" && window.parent !== window;
     if (embedded) document.body.classList.add("embedded");
 
@@ -74,7 +74,7 @@
     //   target:   the difficulty to aim for ("low" or "moderate", from the SRD's XP Budget table)
     //   fraction: how much of that budget to spend
     //   perHeroCap: never more than this many creatures per hero (the SRD warns about big crowds,
-    //               and a crowd is a lot to run for a new GM, so the tougher fights use fewer)
+    //               and a crowd is a lot to run for a new AM, so the tougher fights use fewer)
     //   core:     always included.   fillers: added while they still fit the budget.
     //   mode:     "ordered" = fill with the first filler, then the next; "round" = take turns
     const ENCOUNTERS = {
@@ -161,7 +161,7 @@
         } catch (error) {
           return;
         }
-        // Inside the GM Screen? Ask it to show its own map. Otherwise go to the map page.
+        // Inside the AM Screen? Ask it to show its own map. Otherwise go to the map page.
         if (embedded) {
           window.parent.postMessage({ type: "showMap" }, location.origin);
         } else {
@@ -196,7 +196,7 @@
       };
       const tip = function (text) {
         const box = make("div", "adv-tip");
-        box.append(make("strong", "", "💡 GM tip: "), text);
+        box.append(make("strong", "", "💡 AM tip: "), text);
         root.append(box);
       };
       const bullets = function (lines) {
@@ -219,7 +219,7 @@
 
       // ---------- Title ----------
       root.append(make("h1", "", "The Sunken Bell"));
-      root.append(make("div", "ps-sub", "A free starter adventure for new Game Masters · 3 to 6 heroes of level 1 to 2 · about 2 hours"));
+      root.append(make("div", "ps-sub", "A free starter adventure for new App Masters · 3 to 6 heroes of level 1 to 2 · about 2 hours"));
 
       heading("How to run this");
       bullets([
@@ -227,7 +227,7 @@
         "After each description, ask the players what they do. Say yes to good ideas.",
         "Ask for a roll only when the result is uncertain and failing would be interesting. The DC (the number to beat) is shown for each check.",
         "The fights below already fit your party (choose its size and level at the top). Use the Battle Map button on each fight to set the scene in one click.",
-        "New to all this? The course in Learn to be a GM takes about 20 minutes."
+        "New to all this? The course in Learn to be an AM takes about 20 minutes."
       ]);
 
       heading("The story in a nutshell");
@@ -260,7 +260,7 @@
         "Map idea: a 16 by 12 room with rubble for toppled pews and water along the south side."
       ]));
       para("Treasure: a dented offering box holds 15 gp.");
-      tip("If a fight is going badly early, let the rats flee. A clever GM changes the story to keep it fun and fair.");
+      tip("If a fight is going badly early, let the rats flee. A clever AM changes the story to keep it fun and fair.");
 
       // ---------- Scene 3 ----------
       heading("Scene 3: The flooded crypt");

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create</title>
+  <meta name="description" content="Make and save your own maps and battles, or start from ready-made maps, battles and character sheets.">
+  <link rel="stylesheet" href="style.css">
+  <!-- App icon, colors, and the file that makes Dragon Table installable -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#2b1d14">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <meta name="apple-mobile-web-app-title" content="Dragon Table">
+</head>
+
+<body class="dm">
+  <nav class="top-nav">
+    <a href="index.html">🏠 Home</a>
+    <a href="library.html">📚 Library</a>
+    <a href="character.html">🧙 Characters</a>
+    <a href="dm.html">🛡️ GM Screen</a>
+    <a href="equipment.html">🛒 Equipment</a>
+  </nav>
+
+  <h1>🛠️ Create</h1>
+  <p class="hint">Make your own maps and battles and save them for later, or start from ready-made ones. Everything is kept in this browser.</p>
+
+  <!-- ===================== MAPS ===================== -->
+  <div class="panel create-section">
+    <h2>🗺️ Maps &amp; dungeons</h2>
+    <div class="premade-list">
+      <a class="premade-card" href="map.html">
+        <strong>✏️ Draw a new map</strong>
+        <span class="hint">Walls, trees, water, monsters, heroes and fog of war. Then press 💾 Save this map.</span>
+      </a>
+      <a class="premade-card" href="map.html#premadeList">
+        <strong id="premadeMapCount">📦 Pre-made maps</strong>
+        <span class="hint">Ready-made maps and dungeons to load and change.</span>
+      </a>
+      <a class="premade-card" href="map.html#savedMapList">
+        <strong id="savedMapCount">💾 Your saved maps</strong>
+        <span class="hint" id="savedMapNames">Maps you saved on the Battle Map page.</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- ===================== BATTLES ===================== -->
+  <div class="panel create-section">
+    <h2>⚔️ Battles</h2>
+    <p class="hint">A battle is a set of monsters. Open one in the Battle Simulator to see how hard it is, or put it straight on the Battle Map.</p>
+    <div class="premade-list">
+      <a class="premade-card" href="battle.html">
+        <strong>✏️ Build a new battle</strong>
+        <span class="hint">Pick monsters, check the difficulty by the rules, then press 💾 Save this battle.</span>
+      </a>
+    </div>
+    <div id="battleList" class="premade-list"></div>
+  </div>
+
+  <!-- ===================== HEROES ===================== -->
+  <div class="panel create-section">
+    <h2>🧙 Ready-made heroes</h2>
+    <p class="hint">A finished character sheet for every class, built by the rules. Pick a level, then add one to your characters (for yourself, a friend, or the GM's helpers).</p>
+    <label class="hint">Level
+      <select id="heroLevel">
+        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+        <option value="5">5</option><option value="7">7</option><option value="10">10</option>
+      </select>
+    </label>
+    <div id="heroList" class="premade-list"></div>
+  </div>
+
+  <!-- ===================== MORE ===================== -->
+  <div class="panel create-section">
+    <h2>📜 Also ready-made</h2>
+    <div class="premade-list">
+      <a class="premade-card" href="adventure.html"><strong>🔔 The Sunken Bell</strong><span class="hint">A free starter adventure for 3 to 6 heroes.</span></a>
+      <a class="premade-card" href="solo.html"><strong>🗡️ Solo dungeons</strong><span class="hint">Twelve dungeons made for one hero, levels 1 to 10.</span></a>
+      <a class="premade-card" href="dm.html"><strong>🛡️ GM Screen</strong><span class="hint">Run it all: maps, battles, books and live players.</span></a>
+    </div>
+  </div>
+
+  <p><a href="index.html" class="back-link">← Back</a></p>
+
+  <footer class="site-footer">
+    <p>
+      This work includes material from the System Reference Document 5.2.1 ("SRD 5.2.1") by Wizards of the Coast LLC,
+      available at <a href="https://www.dndbeyond.com/srd">https://www.dndbeyond.com/srd</a>. The SRD 5.2.1 is licensed under the
+      Creative Commons Attribution 4.0 International License, available at
+      <a href="https://creativecommons.org/licenses/by/4.0/legalcode">https://creativecommons.org/licenses/by/4.0/legalcode</a>.
+    </p>
+    <p>Compatible with fifth edition.</p>
+  </footer>
+
+  <script src="dice.js"></script>
+  <script src="rules.js"></script>
+  <script src="spells.js"></script>
+  <script src="monsters.js"></script>
+  <script src="maps.js"></script>
+  <script src="premade.js"></script>
+  <script>
+    const el = function (id) { return document.getElementById(id); };
+    function make(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+
+    // ---------- Maps: how many there are ----------
+    el("premadeMapCount").textContent = "📦 " + (PREMADE_MAPS.length + SOLO_MAPS.length) + " pre-made maps";
+    let savedMaps = [];
+    try { savedMaps = JSON.parse(localStorage.getItem("savedMaps") || "[]"); } catch (error) { savedMaps = []; }
+    if (!Array.isArray(savedMaps)) savedMaps = [];
+    el("savedMapCount").textContent = "💾 Your saved maps: " + savedMaps.length;
+    if (savedMaps.length) el("savedMapNames").textContent = savedMaps.slice(0, 5).map(function (m) { return m.name; }).join(", ") + (savedMaps.length > 5 ? "…" : "");
+
+    // ---------- Battles ----------
+    function renderBattles() {
+      const box = el("battleList");
+      box.innerHTML = "";
+      const saved = loadSavedBattles();
+      for (const battle of saved.concat(PREMADE_BATTLES)) {
+        const card = make("div", "premade-card");
+        card.append(make("strong", "", battle.name));
+        card.append(make("span", "hint", (battle.about ? battle.about + " " : "") + (battle.level ? "Party of 4, level " + battle.level + ". " : "") +
+          battle.monsters.map(function (m) { return m.count + " " + m.n; }).join(", ") + " (" + battleXp(battle) + " XP)."));
+        const buttons = make("div", "");
+        const open = make("a", "small-button plain-button", "⚔️ Battle Simulator");
+        open.href = "battle.html?battle=" + encodeURIComponent(battle.key);
+        const toMap = make("button", "small-button", "🗺️ Put on the map");
+        toMap.addEventListener("click", function () {
+          try {
+            localStorage.setItem("battleMapImport", JSON.stringify({ heroes: [], monsters: battle.monsters }));   // map.html picks this up
+          } catch (error) { return; }
+          location.href = "map.html";
+        });
+        buttons.append(open, toMap);
+        card.append(buttons);
+        box.append(card);
+      }
+    }
+
+    // ---------- Ready-made heroes ----------
+    function renderHeroes() {
+      const level = Number(el("heroLevel").value);
+      const box = el("heroList");
+      box.innerHTML = "";
+      for (const def of PREMADE_HEROES) {
+        const hero = buildPremadeHero(def, level, -1);
+        const card = make("div", "premade-card");
+        card.append(make("strong", "", def.name));
+        card.append(make("span", "", "Level " + level + " " + def.species + " " + def.className));
+        card.append(make("span", "hint", def.about));
+        const spells = hero.spellbook ? Object.values(hero.spellbook).reduce(function (n, b) { return n + b.cantrips.length + b.prepared.length; }, 0) : 0;
+        card.append(make("span", "hint", "❤️ " + hero.hp + " HP · 🛡️ AC " + hero.ac + " · 🗡️ " + hero.weapons.join(", ") + (spells ? " · ✨ " + spells + " spells" : "")));
+        const status = make("span", "hint");
+        const add = make("button", "small-button", "➕ Add to my characters");
+        add.addEventListener("click", function () {
+          const added = addPremadeHero(def, level);
+          status.textContent = "";
+          status.append("✅ Added as \"" + added.name + "\". ");
+          const sheet = make("a", "", "📄 Printable sheet");
+          sheet.href = "sheet.html?hero=" + added.id;
+          status.append(sheet, " · ");
+          const chars = make("a", "", "🧙 Characters");
+          chars.href = "character.html";
+          status.append(chars);
+        });
+        card.append(add, status);
+        box.append(card);
+      }
+    }
+
+    el("heroLevel").addEventListener("change", renderHeroes);
+    renderBattles();
+    renderHeroes();
+  </script>
+  <script src="pwa.js"></script>
+  <script src="feedback.js"></script>
+</body>
+</html>

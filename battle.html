@@ -50,6 +50,16 @@
     </div>
     <div id="monsterInfo" class="info-box"></div>
     <ul id="encounter" class="request-list"></ul>
+
+    <!-- Pre-made battles, and the GM's own saved ones (premade.js) -->
+    <h3 class="section-label">📦 Pre-made &amp; saved battles</h3>
+    <p class="hint">Load one to fill in the monsters (it replaces the list above).</p>
+    <div id="battleList" class="premade-list"></div>
+    <div class="settings add-form">
+      <input id="saveBattleName" type="text" maxlength="40" placeholder="Name this battle, e.g. Dragon's Lair">
+      <button class="small-button" id="saveBattleBtn">💾 Save this battle</button>
+    </div>
+    <p id="saveBattleStatus" class="hint"></p>
   </div>
 
   <!-- ===== 3. HOW HARD IS IT? (SRD "Combat Encounters") ===== -->
@@ -80,6 +90,7 @@
   <script src="rules.js"></script>
   <script src="spells.js"></script>
   <script src="monsters.js"></script>
+  <script src="premade.js"></script>
   <script src="voice.js"></script>
 
   <script>
@@ -92,8 +103,7 @@
     // =====================================================================
     const DIFFICULTY_NAMES = ["Low", "Moderate", "High"];
 
-    // Fighters, Barbarians, Monks, Paladins and Rangers get Extra Attack at level 5.
-    const EXTRA_ATTACK_CLASSES = ["Barbarian", "Fighter", "Monk", "Paladin", "Ranger"];
+    // Extra Attack (Fighters, Barbarians, Monks, Paladins and Rangers) is in rules.js: getAttacksPerAction.
 
     // =====================================================================
     // STATE
@@ -147,7 +157,6 @@
       const str = getModifier(getAbilityScore(c, "str"));
       const dex = getModifier(getAbilityScore(c, "dex"));
       const best = Math.max(str, dex);
-      const martial = EXTRA_ATTACK_CLASSES.includes(c.className) || (c.secondClass && EXTRA_ATTACK_CLASSES.includes(c.secondClass));
       // Use the hero's best real weapon if they have any (Weapons & Armor on the sheet).
       // Two-handed (Versatile) damage only if their other hand isn't holding a Shield.
       const handsFree = !(usesArmorRules(c) && c.shield);
@@ -179,7 +188,7 @@
         weaponName: useCantrip ? cantrip.name : (bestWeapon ? bestWeapon.name : ""),
         attack: useCantrip ? cantrip.toHit : (bestWeapon ? bestWeapon.toHit : getProficiencyBonus(c.level) + best),
         dice: useCantrip ? cantrip.dice : bestWeapon ? bestDice(bestWeapon) : "1d8" + (best >= 0 ? "+" : "") + best,
-        attacks: useCantrip ? cantrip.beams : (martial && c.level >= 5 ? 2 : 1),
+        attacks: useCantrip ? cantrip.beams : getAttacksPerAction(c),   // Extra Attack, by class level (rules.js)
         init: getModifier(getAbilityScore(c, "dex")),
         on: true
       };
@@ -551,9 +560,80 @@
     // START UP
     // =====================================================================
     loadHeroes();
+    // ---------- Pre-made and saved battles ----------
+    function loadBattle(battle) {
+      encounter = [];
+      for (const entry of battle.monsters) {
+        const monster = monsterByName(entry.n);
+        if (monster) encounter.push({ monster: monster, count: Math.min(Math.max(Number(entry.count) || 1, 1), 30) });
+      }
+      renderEncounter();
+      el("saveBattleStatus").textContent = "Loaded \"" + battle.name.replace(/^\S+\s/, "") + "\". Check how hard it is below, then fight!";
+    }
+
+    function battleCard(battle, saved) {
+      const card = document.createElement("div");
+      card.className = "premade-card";
+      const title = document.createElement("strong");
+      title.textContent = battle.name;
+      const about = document.createElement("span");
+      about.className = "hint";
+      about.textContent = (battle.about ? battle.about + " " : "") + (battle.level ? "Party of 4, level " + battle.level + ". " : "") +
+        battle.monsters.map(function (m) { return m.count + " " + m.n; }).join(", ") + " (" + battleXp(battle) + " XP).";
+      const buttons = document.createElement("div");
+      const load = document.createElement("button");
+      load.className = "small-button";
+      load.textContent = "📂 Load";
+      load.addEventListener("click", function () { loadBattle(battle); });
+      buttons.append(load);
+      if (saved) {
+        const remove = document.createElement("button");
+        remove.className = "small-button";
+        remove.textContent = "🗑️ Delete";
+        remove.addEventListener("click", function () {
+          if (!confirm("Delete your saved battle \"" + battle.name + "\"? This can't be undone.")) return;
+          storeSavedBattles(loadSavedBattles().filter(function (b) { return b.key !== battle.key; }));
+          renderBattleList();
+        });
+        buttons.append(remove);
+      }
+      card.append(title, about, buttons);
+      return card;
+    }
+
+    function renderBattleList() {
+      const box = el("battleList");
+      box.innerHTML = "";
+      for (const battle of loadSavedBattles()) box.append(battleCard(battle, true));
+      for (const battle of PREMADE_BATTLES) box.append(battleCard(battle, false));
+    }
+
+    el("saveBattleBtn").addEventListener("click", function () {
+      const name = el("saveBattleName").value.trim();
+      const status = el("saveBattleStatus");
+      if (!name) { status.textContent = "Give your battle a name first."; return; }
+      if (!encounter.length) { status.textContent = "Add some monsters first."; return; }
+      const list = loadSavedBattles();
+      const existing = list.find(function (b) { return b.name.toLowerCase() === "⚔️ " + name.toLowerCase() || b.name.toLowerCase() === name.toLowerCase(); });
+      if (existing && !confirm("You already have a battle called \"" + existing.name + "\". Replace it?")) return;
+      const battle = { key: existing ? existing.key : "my-" + Date.now(), name: "⚔️ " + name.replace(/^⚔️\s*/, ""),
+                       about: "Your own battle.", monsters: encounter.map(function (e) { return { n: e.monster.n, count: e.count }; }) };
+      if (existing) list[list.indexOf(existing)] = battle; else list.unshift(battle);
+      if (list.length > 40) { status.textContent = "You have 40 saved battles. Delete one to make room."; return; }
+      status.textContent = storeSavedBattles(list) ? "💾 Saved \"" + name + "\". Find it in the list above, or on the Create page." : "⚠️ This browser wouldn't save it.";
+      renderBattleList();
+    });
+
     renderHeroes();
     fillMonsterPick();
     renderEncounter();
+    renderBattleList();
+    // battle.html?battle=goblin-ambush (from the Create page) opens with that battle loaded
+    {
+      const wanted = new URLSearchParams(location.search).get("battle");
+      const found = wanted && PREMADE_BATTLES.concat(loadSavedBattles()).find(function (b) { return b.key === wanted; });
+      if (found) loadBattle(found);
+    }
     el("monsterSearch").addEventListener("input", fillMonsterPick);
     Voice.micButton(el("monsterSearch"));   // a microphone: say a monster's name
     el("monsterPick").addEventListener("change", showMonsterInfo);

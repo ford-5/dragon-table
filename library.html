@@ -371,31 +371,7 @@
     // =====================================================================
     // RULES IN BRIEF (written in our own words; the SRD has the full rules)
     // =====================================================================
-    const RULES_BRIEF = [
-      { title: "How a turn works", lines: [
-        "Fights are played in rounds of about 6 seconds. At the start, everyone rolls Initiative (a Dexterity check) to set the turn order.",
-        "On your turn you can move up to your Speed and take one action. Some features add a bonus action. You also get one reaction per round, such as an opportunity attack when an enemy leaves your reach." ] },
-      { title: "Ability checks, saves and Difficulty Classes", lines: [
-        "To try something risky, roll a d20 and add the right ability modifier (and your proficiency bonus if you're trained). Meet or beat the Difficulty Class (DC) to succeed.",
-        "Typical DCs: Very easy 5, Easy 10, Medium 15, Hard 20, Very hard 25, Nearly impossible 30.",
-        "A saving throw works the same way: you roll to resist something, like a fireball or poison. Your Passive Perception is 10 plus your Perception bonus." ] },
-      { title: "Advantage and Disadvantage", lines: [
-        "With Advantage you roll two d20s and take the higher. With Disadvantage you take the lower.",
-        "Several sources of Advantage still only give you one extra die, and if you have both Advantage and Disadvantage they cancel out." ] },
-      { title: "Attacks, damage and Armor Class", lines: [
-        "To attack, roll a d20 and add your attack bonus. If the total meets or beats the target's Armor Class (AC), you hit and roll damage.",
-        "A natural 20 always hits and is a critical hit: roll the damage dice twice. A natural 1 always misses." ] },
-      { title: "Actions you can take", lines: [
-        "Attack: make an attack. Dash: gain extra movement equal to your Speed. Disengage: your movement doesn't provoke opportunity attacks. Dodge: attacks against you are at a disadvantage until your next turn.",
-        "Help: give an ally Advantage on a check or attack. Hide: try to slip out of sight. Influence: persuade or scare someone. Magic: cast a spell or use a magic item.",
-        "Ready: prepare a reaction to a trigger. Search: look for something. Study: recall lore or investigate. Utilize: use an object." ] },
-      { title: "Hit Points, resting and dying", lines: [
-        "Damage lowers your Hit Points (HP). At 0 HP you fall unconscious and make death saving throws on your turns: roll a d20, 10 or more is a success, and three successes make you stable. Three failures mean death. A natural 20 brings you back with 1 HP, and a natural 1 counts as two failures.",
-        "A Short Rest (about an hour) lets you spend Hit Point Dice to heal. A Long Rest (about 8 hours) restores all your HP, some Hit Dice, and your spell slots." ] },
-      { title: "Moving on a grid", lines: [
-        "Each square is 5 feet. Moving costs 1 square per step, including diagonals. Difficult terrain costs 2 squares to enter. You can't cut the corner of a wall diagonally.",
-        "To measure the range between two creatures, count the squares between them by the shortest route." ] }
-    ];
+    // RULES_BRIEF now lives in rules.js (the GM Screen's books use it too).
 
     function renderRules(box) {
       const panel = make("div", "panel");

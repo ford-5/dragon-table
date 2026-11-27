@@ -42,7 +42,14 @@
     <p id="noHeroes" class="hint hidden">You have no heroes yet. <a href="character.html?return=solo.html">🧙 Make one first</a>.</p>
     <button class="small-button hidden" id="restBtn">🛌 Take a long rest (full HP and spell slots)</button>
 
-    <h2>2. Where to?</h2>
+    <h2>2. How hard?</h2>
+    <div class="difficulty-pick">
+      <label><input type="radio" name="difficulty" value="easy" checked> 🙂 <strong>Easy</strong>: your hero has double HP in the adventure, and gets back up once if they fall.</label>
+      <label><input type="radio" name="difficulty" value="normal"> ⚔️ <strong>Normal</strong>: the real rules. A level 1 hero can fall in two or three hits!</label>
+    </div>
+    <p class="hint">Easy is a Dragon Table solo rule (not from the rulebook), because the real rules expect a whole party of heroes helping each other.</p>
+
+    <h2>3. Where to?</h2>
     <div id="adventureList" class="premade-list"></div>
 
     <h3 class="section-label">🎯 Training arena</h3>
@@ -137,6 +144,17 @@
       return loadCharacters().find(function (c) { return c.id === id; }) || null;
     }
 
+    // The hero's HP as it goes back on the character sheet (Easy mode's double HP is halved again).
+    function sheetHp(c) {
+      const scale = game.hpScale || 1;
+      return Math.min(Math.ceil(game.hero.hp / scale), getMaxHp(c));
+    }
+
+    function chosenDifficulty() {
+      const picked = document.querySelector('input[name="difficulty"]:checked');
+      return picked ? picked.value : "easy";
+    }
+
     // Save HP / spell slots back onto the character, so the adventure counts.
     function updateHeroRecord(change) {
       const list = loadCharacters();
@@ -190,13 +208,17 @@
     };
 
     function soloMaps() {
-      const tutorial = { name: TUTORIAL_MAP.name, tutorial: true, fog: true,
+      const tutorial = { name: TUTORIAL_MAP.name, tutorial: true, fog: true, group: "solo",
                          about: "Start here! A short, gentle dungeon. A coach explains every step as you play.",
                          build: function () { return parsePremade(TUTORIAL_MAP); } };
-      const list = [tutorial].concat(PREMADE_MAPS.map(function (p) {
-        const parsed = parsePremade(p);
-        return { name: p.name, about: p.about + " " + p.level + ".", fog: p.fog, build: function () { return parsed; } };
-      }));
+      // group: "solo" = made for one hero; "party" = made for 3–5 heroes (very hard alone); "mine" = the GM's own maps
+      const forOne = SOLO_MAPS.map(function (p) {
+        return { name: p.name, about: p.about + " " + p.level + ".", fog: p.fog, group: "solo", build: function () { return parsePremade(p); } };
+      });
+      const forParty = PREMADE_MAPS.map(function (p) {
+        return { name: p.name, about: p.about + " " + p.level + ".", fog: p.fog, group: "party", build: function () { return parsePremade(p); } };
+      });
+      const list = [tutorial].concat(forOne, forParty);
       // The GM's own saved maps (Battle Map page) that allow solo play and have monsters
       let saved = [];
       try { saved = JSON.parse(localStorage.getItem("savedMaps") || "[]"); } catch (error) { saved = []; }
@@ -206,7 +228,7 @@
         if (!monsters.length) continue;
         const hero = entry.map.tokens.find(function (t) { return t.side === "hero"; });
         list.push({
-          name: "🗺️ " + entry.name, about: "Your own saved map (" + monsters.length + " monsters).",
+          name: "🗺️ " + entry.name, about: "Your own saved map (" + monsters.length + " monsters).", group: "mine",
           fog: Object.keys(entry.map.fog || {}).length > 0,
           build: function () {
             return {
@@ -224,7 +246,26 @@
     function fillAdventures() {
       const box = el("adventureList");
       box.innerHTML = "";
+      const headings = {
+        solo: ["⭐ Made for one hero", "Fair fights for a single level 1–2 hero, one room at a time, with healing potions to find."],
+        party: ["👥 Made for a party", "Built for 3–5 heroes. Very hard alone: try them with a strong hero, or with friends on the GM Screen."],
+        mine: ["🗺️ Your own maps", "Maps you saved on the Battle Map page."]
+      };
+      let lastGroup = "";
       for (const adventure of soloMaps()) {
+        if (adventure.group !== lastGroup) {
+          lastGroup = adventure.group;
+          const head = document.createElement("div");
+          head.className = "solo-group";
+          const h = document.createElement("h3");
+          h.className = "section-label";
+          h.textContent = headings[lastGroup][0];
+          const hint = document.createElement("p");
+          hint.className = "hint";
+          hint.textContent = headings[lastGroup][1];
+          head.append(h, hint);
+          box.append(head);
+        }
         const card = document.createElement("button");
         card.className = "premade-card";
         const title = document.createElement("strong");
@@ -281,8 +322,16 @@
         terrain: layout.terrain, fogOn: fogOn, fog: {}, round: 0, inCombat: false, order: [], turn: 0,
         moveLeft: Infinity, actionUsed: false, over: null, xp: 0, log: [],
         tutorial: Boolean(tutorial), coached: {}, revived: false,
+        potions: (layout.potions || []).map(function (p) { return { x: p.x, y: p.y }; }),   // still on the floor
+        potionsHeld: 0, bonusUsed: false,
+        // Hit Dice for Short Rests: one per level, the class's die (d10 for a Fighter), + Constitution
+        hitDiceLeft: c.level, hitDie: (findByName(CLASSES, c.className) || { hitDie: 8 }).hitDie,
+        conMod: getModifier(getAbilityScore(c, "con")),
+        // Easy: double HP for this adventure (hpScale 2). The character sheet keeps its real HP.
+        easy: chosenDifficulty() === "easy", hpScale: chosenDifficulty() === "easy" ? 2 : 1,
         hero: { id: "hero", side: "hero", name: c.name, label: shortLabel(c.name), x: layout.start.x, y: layout.start.y, size: 1,
-                hp: hp, maxHp: maxHp, ac: getAc(c), speed: Math.floor(getSpeed(c) / 5) },
+                hp: hp * (chosenDifficulty() === "easy" ? 2 : 1), maxHp: maxHp * (chosenDifficulty() === "easy" ? 2 : 1),
+                ac: getAc(c), speed: Math.floor(getSpeed(c) / 5) },
         monsters: []
       };
       const counts = {};
@@ -456,6 +505,7 @@
       if (who === game.hero) {
         game.moveLeft = game.hero.speed;
         game.actionUsed = false;
+        game.bonusUsed = false;
         picked = null;
         const hasSpells = heroActionsWithRange().some(function (o) { return o.action.kind === "spell"; });
         coach("yourTurn", "🎯 It's your turn! Pick an attack" + (hasSpells ? " or a spell" : "") + " from the buttons above the map, then tap the monster. " +
@@ -493,14 +543,15 @@
     // Everyone awake and alive is gone: the fight is over.
     function checkFightOver() {
       if (game.over) return true;
-      if (game.hero.hp <= 0 && game.tutorial && !game.revived) {
+      if (game.hero.hp <= 0 && (game.tutorial || game.easy) && !game.revived) {
         // The tutorial gives you a second chance
         game.revived = true;
         game.hero.hp = Math.max(Math.floor(game.hero.maxHp / 2), 1);
-        updateHeroRecord(function (c) { c.hp = game.hero.hp; });
+        updateHeroRecord(function (c) { c.hp = sheetHp(c); });
         coach("fell", "💫 You fell! In a real game you'd now make death saving throws (lesson 8 of Learn to Play) and hope a friend helps. " +
           "Because this is the tutorial, you get back up with half your HP. Try again!");
-        log("💫 Tutorial: " + game.hero.name + " gets back up with " + game.hero.hp + " HP.");
+        log("💫 " + (game.tutorial ? "Tutorial" : "Easy mode") + ": " + game.hero.name + " gets back up with " + game.hero.hp +
+          " HP! (This only happens once per adventure.)");
         return false;
       }
       if (game.hero.hp <= 0) {
@@ -526,7 +577,8 @@
         game.moveLeft = Infinity;
         game.actionUsed = false;
         log("😮‍💨 The fight is over. Explore on: more monsters may be waiting.");
-        coach("fightOver", "🏆 You won the fight! You're exploring again, so you can move freely. " +
+        if (game.hero.hp < game.hero.maxHp && game.hitDiceLeft > 0) log("🛌 Tip: hurt? Take a Short Rest (the button above the map) before the next room.");
+        coach("fightOver", "🏆 You won the fight! You're exploring again, so you can move freely. Hurt? Press Short rest to heal a little. " +
           (game.tutorial ? "There's one more room to the south: go through the gap in the bottom wall." : ""));
       }
       return false;
@@ -552,7 +604,7 @@
           log("☠️ " + target.name + " is defeated!");
         }
       }
-      updateHeroRecord(function (c) { c.hp = game.hero.hp; });
+      updateHeroRecord(function (c) { c.hp = sheetHp(c); });
     }
 
     // =====================================================================
@@ -767,6 +819,7 @@
       for (const s of steps) {
         const [sx, sy] = s.split(",").map(Number);
         lightAround({ x: sx, y: sy, size: 1 });
+        pickUpPotion(sx, sy);
       }
       hero.x = x;
       hero.y = y;
@@ -787,6 +840,48 @@
       }
       if (picked) { picked = null; render(); return; }   // tapping the floor cancels the aim
       moveHeroTo(x, y);
+    }
+
+    // =====================================================================
+    // HEALING POTIONS (SRD 5.2.1 "Potion of Healing": regain 2d4 + 2 HP;
+    // drinking one is a Bonus Action, so it doesn't use up your action)
+    // =====================================================================
+    function pickUpPotion(x, y) {
+      if (!game.potions) game.potions = [];
+      const i = game.potions.findIndex(function (p) { return p.x === x && p.y === y; });
+      if (i < 0) return;
+      game.potions.splice(i, 1);
+      game.potionsHeld = (game.potionsHeld || 0) + 1;
+      log("🧪 You found a Potion of Healing! (You have " + game.potionsHeld + ".)");
+      coach("potion", "🧪 A healing potion! Drinking one heals 2d4 + 2 HP. In a fight it's a Bonus Action, so you can still attack on the same turn.");
+    }
+
+    function drinkPotion() {
+      if (!game || game.over || busy || !game.potionsHeld) return;
+      if (game.inCombat && (current() !== game.hero || game.bonusUsed)) return;
+      const heal = rollDiceText("2d4+2", false);
+      const before = game.hero.hp;
+      game.hero.hp = Math.min(game.hero.hp + heal.total, game.hero.maxHp);
+      game.potionsHeld--;
+      if (game.inCombat) game.bonusUsed = true;
+      updateHeroRecord(function (c) { c.hp = sheetHp(c); });
+      log("🧪 " + game.hero.name + " drinks a Potion of Healing: +" + heal.total + " " + heal.text + " → " + game.hero.hp + "/" + game.hero.maxHp + " HP" +
+        (game.hero.hp - before < heal.total ? " (can't go above your maximum)" : "") + ".");
+      render();
+    }
+
+    // A Short Rest (SRD 5.2.1: about an hour): spend a Hit Die, roll it and add your
+    // Constitution modifier, and heal that much. You can't rest while monsters are after you.
+    function shortRest() {
+      if (!game || game.over || busy || game.inCombat || !game.hitDiceLeft) return;
+      const roll = rollOneDie(game.hitDie);
+      const healed = Math.max(roll + game.conMod, 1);
+      game.hitDiceLeft--;
+      game.hero.hp = Math.min(game.hero.hp + healed, game.hero.maxHp);
+      updateHeroRecord(function (c) { c.hp = sheetHp(c); });
+      log("🛌 Short rest: you spend a Hit Die. 🎲 " + roll + " " + formatBonus(game.conMod) + " = +" + healed + " HP → " +
+        game.hero.hp + "/" + game.hero.maxHp + ". (" + game.hitDiceLeft + " Hit Dice left for this adventure.)");
+      render();
     }
 
     // =====================================================================
@@ -953,6 +1048,17 @@
         }
       }
 
+      for (const p of game.potions || []) {
+        if (game.fogOn && game.fog[p.x + "," + p.y] === 1) continue;   // not found yet: it's dark there
+        const flask = document.createElement("div");
+        flask.className = "solo-potion";
+        flask.style.left = p.x * cell + "px";
+        flask.style.top = p.y * cell + "px";
+        flask.textContent = "🧪";
+        flask.title = "A Potion of Healing: walk onto it to pick it up";
+        board.append(flask);
+      }
+
       for (const w of [game.hero].concat(game.monsters)) {
         if (w.side === "monster" && (w.hp <= 0 || isHidden(w))) continue;
         const piece = document.createElement("div");
@@ -981,8 +1087,8 @@
       const hero = game.hero;
       const c = heroRecord();
       const slots = c ? getSpellSlotsLeft(c).map(function (n, i) { return n ? "L" + (i + 1) + "×" + n : ""; }).filter(Boolean) : [];
-      el("heroStatus").textContent = game.name + " · " + hero.name + ": ❤️ " + hero.hp + "/" + hero.maxHp + " · 🛡️ AC " + hero.ac +
-        (slots.length ? " · 🔮 " + slots.join(" ") : "") + (game.xp ? " · ⭐ " + game.xp + " XP" : "");
+      el("heroStatus").textContent = game.name + (game.easy ? " (🙂 Easy)" : "") + " · " + hero.name + ": ❤️ " + hero.hp + "/" + hero.maxHp + " · 🛡️ AC " + hero.ac +
+        (slots.length ? " · 🔮 " + slots.join(" ") : "") + (game.potionsHeld ? " · 🧪 ×" + game.potionsHeld : "") + (game.xp ? " · ⭐ " + game.xp + " XP" : "");
 
       // Turn order cards (during a fight)
       const row = el("turnCards");
@@ -1016,6 +1122,20 @@
 
       const buttons = el("actionButtons");
       buttons.innerHTML = "";
+      if (myTurn && !game.inCombat && game.hitDiceLeft > 0 && hero.hp < hero.maxHp) {
+        const rest = document.createElement("button");
+        rest.className = "small-button potion-btn";
+        rest.textContent = "🛌 Short rest (spend a Hit Die: 1d" + game.hitDie + " " + formatBonus(game.conMod) + " HP, " + game.hitDiceLeft + " left)";
+        rest.addEventListener("click", shortRest);
+        buttons.append(rest);
+      }
+      if (myTurn && game.potionsHeld > 0 && hero.hp < hero.maxHp && !(game.inCombat && game.bonusUsed)) {
+        const drink = document.createElement("button");
+        drink.className = "small-button potion-btn";
+        drink.textContent = "🧪 Drink a potion (+2d4+2 HP" + (game.inCombat ? ", bonus action" : "") + ")";
+        drink.addEventListener("click", drinkPotion);
+        buttons.append(drink);
+      }
       if (myTurn && !game.actionUsed) {
         for (const option of heroActionsWithRange()) {
           const b = document.createElement("button");
@@ -1032,6 +1152,17 @@
     // BUTTONS
     // =====================================================================
     el("heroPick").addEventListener("change", showHeroInfo);
+    // Remember Easy / Normal for next time
+    try {
+      const savedDifficulty = localStorage.getItem("soloDifficulty");
+      const radio = document.querySelector('input[name="difficulty"][value="' + (savedDifficulty === "normal" ? "normal" : "easy") + '"]');
+      if (radio) radio.checked = true;
+    } catch (error) { /* Easy */ }
+    for (const radio of document.querySelectorAll('input[name="difficulty"]')) {
+      radio.addEventListener("change", function () {
+        try { localStorage.setItem("soloDifficulty", chosenDifficulty()); } catch (error) { /* fine */ }
+      });
+    }
     el("arenaBtn").addEventListener("click", startArena);
     el("endTurnBtn").addEventListener("click", endHeroTurn);
     el("soloZoom").addEventListener("change", render);

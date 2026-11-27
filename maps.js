@@ -144,17 +144,120 @@ const PREMADE_MAPS = [
   }
 ];
 
+// =====================================================================
+// SOLO DUNGEONS: made for ONE hero of level 1–2 (Solo Adventures page).
+// Each fight is ONE monster of 25–50 XP: within the rules' "Low" XP budget for one
+// level 1 hero (50 XP). The rooms are apart so you meet one fight at a time, and
+// "+" is a Potion of Healing to find (2d4 + 2 HP, a Bonus Action to drink).
+// Between fights you can take a Short Rest and spend Hit Dice to heal.
+// =====================================================================
+const SOLO_MAPS = [
+  {
+    key: "rat-cellar", name: "🐀 The Rat Cellar", ground: "stone", fog: true,
+    about: "Rats in the inn's cellar: lots of small fights, and a whole swarm behind the barrels.",
+    level: "Level 1, one hero",
+    monsters: { r: "Giant Rat", R: "Swarm of Rats" },
+    rows: [
+      "################",
+      "#S..#.....r.#..#",
+      "#...#.......#..#",
+      "#..+..........R#",
+      "#...#.......#..#",
+      "##.##########.##",
+      "#.....#........#",
+      "#.r...#..~~.+..#",
+      "#.....+..~~..r.#",
+      "################"
+    ]
+  },
+  {
+    key: "quiet-tomb", name: "🦴 The Quiet Tomb", ground: "stone", fog: true,
+    about: "A small family tomb where the dead have started to wander. Zombies are tough, but easy to hit.",
+    level: "Level 1–2, one hero",
+    monsters: { z: "Zombie", r: "Giant Rat" },
+    rows: [
+      "################",
+      "#S.....#.....z.#",
+      "#......#.......#",
+      "#...+..........#",
+      "#......#.......#",
+      "####.#######.###",
+      "#.r....#.......#",
+      "#......+....z..#",
+      "#......#.......#",
+      "################"
+    ]
+  },
+  {
+    key: "wolf-den", name: "🐺 The Wolf Den", ground: "grass", fog: false,
+    about: "A wooded valley where wild animals have been scaring the sheep.",
+    level: "Level 1–2, one hero",
+    monsters: { w: "Wolf", b: "Giant Badger", m: "Mastiff" },
+    rows: [
+      "TTTTTTTTTTTTTTTTTT",
+      "TS.....TTT.......T",
+      "T......TTT...m...T",
+      "T..+...TTT.......T",
+      "T................T",
+      "TTTTT..TTTTTTT..TT",
+      "TTTTT..TTTTTTT..TT",
+      "T......TT........T",
+      "T..w...TT.....b..T",
+      "T.........+......T",
+      "T......TT........T",
+      "TTTTTTTTTTTTTTTTTT"
+    ]
+  },
+  {
+    key: "goblin-lookout", name: "👺 The Goblin Lookout", ground: "stone", fog: true,
+    about: "A few goblins guard an old watch post. Their leader has a bow.",
+    level: "Level 1–2, one hero",
+    monsters: { g: "Goblin Minion", G: "Goblin Warrior" },
+    rows: [
+      "################",
+      "#S...#.....g...#",
+      "#....#.........#",
+      "#..+.....:.....#",
+      "#....#.........#",
+      "###.######.#####",
+      "#....#.....G...#",
+      "#.g..+.........#",
+      "#....#....:....#",
+      "################"
+    ]
+  },
+  {
+    key: "cultist-hideout", name: "🕯️ The Cultist Hideout", ground: "stone", fog: true,
+    about: "A hooded cultist, a giant centipede, and a priest who throws radiant fire.",
+    level: "Level 2, one hero",
+    monsters: { c: "Cultist", C: "Giant Centipede", p: "Priest Acolyte" },
+    rows: [
+      "################",
+      "#S..#......c...#",
+      "#...#..........#",
+      "#.+.....:......#",
+      "#...#..........#",
+      "##.#####.#######",
+      "#.....#........#",
+      "#..C..+...p....#",
+      "#.....#........#",
+      "################"
+    ]
+  }
+];
+
 // Turn a drawn map into its parts (used by the Solo Adventures page):
-// { cols, rows, ground, terrain: { "x,y": "wall" ... }, start: { x, y }, monsters: [{ name, x, y }] }
+// { cols, rows, ground, terrain: { "x,y": "wall" ... }, start: { x, y }, monsters: [{ name, x, y }], potions: [{ x, y }] }
 const MAP_LETTER_TERRAIN = { "#": "wall", "T": "tree", ":": "rubble", "~": "water" };
 function parsePremade(preset) {
   const result = { cols: preset.rows[0].length, rows: preset.rows.length, ground: preset.ground,
-                   terrain: {}, start: null, monsters: [] };
+                   terrain: {}, start: null, monsters: [], potions: [] };
   preset.rows.forEach(function (row, y) {
     for (let x = 0; x < row.length; x++) {
       const letter = row[x];
       if (MAP_LETTER_TERRAIN[letter]) result.terrain[x + "," + y] = MAP_LETTER_TERRAIN[letter];
       else if (letter === "S") { if (!result.start) result.start = { x: x, y: y }; }
+      else if (letter === "+") result.potions.push({ x: x, y: y });
       else if (preset.monsters[letter]) result.monsters.push({ name: preset.monsters[letter], x: x, y: y });
     }
   });

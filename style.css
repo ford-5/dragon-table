@@ -2607,3 +2607,37 @@ details.by-hand > summary {
 .death-marks {
   font-size: 18px;
 }
+
+/* Solo: headings between groups of dungeons, potions on the floor */
+.solo-group {
+  grid-column: 1 / -1;          /* a full row of the card grid */
+  text-align: left;
+}
+
+.solo-group p {
+  margin: 0;
+}
+
+.solo-potion {
+  position: absolute;
+  width: var(--cell);
+  height: var(--cell);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--cell) * 0.6);
+  pointer-events: none;         /* taps go to the square underneath */
+}
+
+.potion-btn {
+  background-color: #2f5e34;
+  border-color: #6fbf73;
+}
+
+/* Solo: Easy / Normal */
+.difficulty-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}

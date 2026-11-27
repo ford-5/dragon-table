@@ -652,6 +652,23 @@ function getClassLevels(character) {
   return list;
 }
 
+// How many attacks a character makes when they take the Attack action (SRD 5.2.1 class
+// features): Extra Attack at level 5 for Barbarians, Fighters, Monks, Paladins and Rangers
+// (2 attacks); a Fighter gets 3 at level 11 and 4 at level 20. With two classes they
+// don't add up: you use the best one.
+const EXTRA_ATTACK_CLASSES = ["Barbarian", "Fighter", "Monk", "Paladin", "Ranger"];
+function getAttacksPerAction(character) {
+  let best = 1;
+  for (const entry of getClassLevels(character)) {
+    if (!EXTRA_ATTACK_CLASSES.includes(entry.name)) continue;
+    let n = entry.levels >= 5 ? 2 : 1;
+    if (entry.name === "Fighter" && entry.levels >= 11) n = 3;
+    if (entry.name === "Fighter" && entry.levels >= 20) n = 4;
+    best = Math.max(best, n);
+  }
+  return best;
+}
+
 // "Fighter" or "Fighter 2 / Rogue 1"
 function classSummary(character) {
   const list = getClassLevels(character);

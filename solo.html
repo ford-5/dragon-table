@@ -213,7 +213,8 @@
                          build: function () { return parsePremade(TUTORIAL_MAP); } };
       // group: "solo" = made for one hero; "party" = made for 3–5 heroes (very hard alone); "mine" = the GM's own maps
       const forOne = SOLO_MAPS.map(function (p) {
-        return { name: p.name, about: p.about + " " + p.level + ".", fog: p.fog, group: "solo", build: function () { return parsePremade(p); } };
+        return { name: p.name, about: p.about + " " + p.level + ".", fog: p.fog, group: "solo", minLevel: p.minLevel, maxLevel: p.maxLevel,
+                 build: function () { return parsePremade(p); } };
       });
       const forParty = PREMADE_MAPS.map(function (p) {
         return { name: p.name, about: p.about + " " + p.level + ".", fog: p.fog, group: "party", build: function () { return parsePremade(p); } };
@@ -247,7 +248,7 @@
       const box = el("adventureList");
       box.innerHTML = "";
       const headings = {
-        solo: ["⭐ Made for one hero", "Fair fights for a single level 1–2 hero, one room at a time, with healing potions to find."],
+        solo: ["⭐ Made for one hero", "Fair fights for a single hero of level 1 to 10, one room at a time, with healing potions to find. Pick one marked ✅ for your hero."],
         party: ["👥 Made for a party", "Built for 3–5 heroes. Very hard alone: try them with a strong hero, or with friends on the GM Screen."],
         mine: ["🗺️ Your own maps", "Maps you saved on the Battle Map page."]
       };
@@ -275,6 +276,16 @@
         about.textContent = adventure.about + (adventure.fog ? " Starts in darkness." : "");
         card.append(title, about);
         if (adventure.tutorial) card.classList.add("tutorial-card");
+        // How well does it suit the chosen hero's level?
+        const h = heroRecord();
+        if (h && adventure.minLevel) {
+          const badge = document.createElement("span");
+          badge.className = "level-badge";
+          if (h.level < adventure.minLevel) { badge.textContent = "⚠️ Tough for " + h.name + " (level " + h.level + ")"; badge.classList.add("tough"); }
+          else if (h.level > adventure.maxLevel + 1) { badge.textContent = "😴 Easy for " + h.name; badge.classList.add("easy"); }
+          else { badge.textContent = "✅ Good for " + h.name + " (level " + h.level + ")"; badge.classList.add("good"); }
+          card.append(badge);
+        }
         card.addEventListener("click", function () { startAdventure(adventure.name, adventure.build(), adventure.fog, adventure.tutorial); });
         box.append(card);
       }
@@ -322,8 +333,8 @@
         terrain: layout.terrain, fogOn: fogOn, fog: {}, round: 0, inCombat: false, order: [], turn: 0,
         moveLeft: Infinity, actionUsed: false, over: null, xp: 0, log: [],
         tutorial: Boolean(tutorial), coached: {}, revived: false,
-        potions: (layout.potions || []).map(function (p) { return { x: p.x, y: p.y }; }),   // still on the floor
-        potionsHeld: 0, bonusUsed: false,
+        potions: (layout.potions || []).map(function (p) { return { x: p.x, y: p.y, kind: p.kind || "healing" }; }),   // still on the floor
+        potionBag: [], bonusUsed: false,   // potions picked up, by kind ("healing", "greater", "superior")
         // Hit Dice for Short Rests: one per level, the class's die (d10 for a Fighter), + Constitution
         hitDiceLeft: c.level, hitDie: (findByName(CLASSES, c.className) || { hitDie: 8 }).hitDie,
         conMod: getModifier(getAbilityScore(c, "con")),
@@ -846,26 +857,45 @@
     // HEALING POTIONS (SRD 5.2.1 "Potion of Healing": regain 2d4 + 2 HP;
     // drinking one is a Bonus Action, so it doesn't use up your action)
     // =====================================================================
+    // The three potions of healing in the SRD 5.2.1 (drinking one is a Bonus Action).
+    const POTIONS = {
+      healing:  { name: "Potion of Healing",          dice: "2d4+2",  icon: "🧪" },
+      greater:  { name: "Potion of Greater Healing",  dice: "4d4+4",  icon: "🧪" },
+      superior: { name: "Potion of Superior Healing", dice: "8d4+8",  icon: "⚗️" }
+    };
+
+    // Saved games from before there were three kinds kept just a number.
+    function bag() {
+      if (!Array.isArray(game.potionBag)) game.potionBag = [];
+      if (game.potionsHeld) {
+        for (let i = 0; i < game.potionsHeld; i++) game.potionBag.push("healing");
+        game.potionsHeld = 0;
+      }
+      return game.potionBag;
+    }
+
     function pickUpPotion(x, y) {
       if (!game.potions) game.potions = [];
       const i = game.potions.findIndex(function (p) { return p.x === x && p.y === y; });
       if (i < 0) return;
+      const kind = POTIONS[game.potions[i].kind] ? game.potions[i].kind : "healing";
       game.potions.splice(i, 1);
-      game.potionsHeld = (game.potionsHeld || 0) + 1;
-      log("🧪 You found a Potion of Healing! (You have " + game.potionsHeld + ".)");
+      bag().push(kind);
+      log(POTIONS[kind].icon + " You found a " + POTIONS[kind].name + " (heals " + POTIONS[kind].dice + ")! You have " + bag().length + " potion" + (bag().length === 1 ? "" : "s") + ".");
       coach("potion", "🧪 A healing potion! Drinking one heals 2d4 + 2 HP. In a fight it's a Bonus Action, so you can still attack on the same turn.");
     }
 
-    function drinkPotion() {
-      if (!game || game.over || busy || !game.potionsHeld) return;
+    function drinkPotion(kind) {
+      if (!game || game.over || busy || !bag().includes(kind)) return;
       if (game.inCombat && (current() !== game.hero || game.bonusUsed)) return;
-      const heal = rollDiceText("2d4+2", false);
+      const potion = POTIONS[kind];
+      const heal = rollDiceText(potion.dice, false);
       const before = game.hero.hp;
       game.hero.hp = Math.min(game.hero.hp + heal.total, game.hero.maxHp);
-      game.potionsHeld--;
+      bag().splice(bag().indexOf(kind), 1);
       if (game.inCombat) game.bonusUsed = true;
       updateHeroRecord(function (c) { c.hp = sheetHp(c); });
-      log("🧪 " + game.hero.name + " drinks a Potion of Healing: +" + heal.total + " " + heal.text + " → " + game.hero.hp + "/" + game.hero.maxHp + " HP" +
+      log(potion.icon + " " + game.hero.name + " drinks a " + potion.name + ": +" + heal.total + " " + heal.text + " → " + game.hero.hp + "/" + game.hero.maxHp + " HP" +
         (game.hero.hp - before < heal.total ? " (can't go above your maximum)" : "") + ".");
       render();
     }
@@ -1054,8 +1084,9 @@
         flask.className = "solo-potion";
         flask.style.left = p.x * cell + "px";
         flask.style.top = p.y * cell + "px";
-        flask.textContent = "🧪";
-        flask.title = "A Potion of Healing: walk onto it to pick it up";
+        const kind = POTIONS[p.kind] ? p.kind : "healing";
+        flask.textContent = POTIONS[kind].icon;
+        flask.title = "A " + POTIONS[kind].name + ": walk onto it to pick it up";
         board.append(flask);
       }
 
@@ -1088,7 +1119,7 @@
       const c = heroRecord();
       const slots = c ? getSpellSlotsLeft(c).map(function (n, i) { return n ? "L" + (i + 1) + "×" + n : ""; }).filter(Boolean) : [];
       el("heroStatus").textContent = game.name + (game.easy ? " (🙂 Easy)" : "") + " · " + hero.name + ": ❤️ " + hero.hp + "/" + hero.maxHp + " · 🛡️ AC " + hero.ac +
-        (slots.length ? " · 🔮 " + slots.join(" ") : "") + (game.potionsHeld ? " · 🧪 ×" + game.potionsHeld : "") + (game.xp ? " · ⭐ " + game.xp + " XP" : "");
+        (slots.length ? " · 🔮 " + slots.join(" ") : "") + (bag().length ? " · 🧪 ×" + bag().length : "") + (game.xp ? " · ⭐ " + game.xp + " XP" : "");
 
       // Turn order cards (during a fight)
       const row = el("turnCards");
@@ -1129,12 +1160,17 @@
         rest.addEventListener("click", shortRest);
         buttons.append(rest);
       }
-      if (myTurn && game.potionsHeld > 0 && hero.hp < hero.maxHp && !(game.inCombat && game.bonusUsed)) {
-        const drink = document.createElement("button");
-        drink.className = "small-button potion-btn";
-        drink.textContent = "🧪 Drink a potion (+2d4+2 HP" + (game.inCombat ? ", bonus action" : "") + ")";
-        drink.addEventListener("click", drinkPotion);
-        buttons.append(drink);
+      if (myTurn && hero.hp < hero.maxHp && !(game.inCombat && game.bonusUsed)) {
+        for (const kind of Object.keys(POTIONS)) {
+          const count = bag().filter(function (k) { return k === kind; }).length;
+          if (!count) continue;
+          const drink = document.createElement("button");
+          drink.className = "small-button potion-btn";
+          drink.textContent = POTIONS[kind].icon + " Drink " + POTIONS[kind].name + " (+" + POTIONS[kind].dice + " HP" +
+            (game.inCombat ? ", bonus action" : "") + ")" + (count > 1 ? " ×" + count : "");
+          drink.addEventListener("click", function () { drinkPotion(kind); });
+          buttons.append(drink);
+        }
       }
       if (myTurn && !game.actionUsed) {
         for (const option of heroActionsWithRange()) {
@@ -1151,7 +1187,10 @@
     // =====================================================================
     // BUTTONS
     // =====================================================================
-    el("heroPick").addEventListener("change", showHeroInfo);
+    el("heroPick").addEventListener("change", function () {
+      showHeroInfo();
+      fillAdventures();   // the level labels follow the hero
+    });
     // Remember Easy / Normal for next time
     try {
       const savedDifficulty = localStorage.getItem("soloDifficulty");

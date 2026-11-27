@@ -145,15 +145,17 @@ const PREMADE_MAPS = [
 ];
 
 // =====================================================================
-// SOLO DUNGEONS: made for ONE hero of level 1–2 (Solo Adventures page).
-// Each fight is ONE monster of 25–50 XP: within the rules' "Low" XP budget for one
-// level 1 hero (50 XP). The rooms are apart so you meet one fight at a time, and
-// "+" is a Potion of Healing to find (2d4 + 2 HP, a Bonus Action to drink).
+// SOLO DUNGEONS: made for ONE hero (Solo Adventures page). minLevel / maxLevel: the
+// hero levels each one is made for (levels 1–2 first, then stronger ones up to level 10).
+// Each fight is ONE monster, at or under the rules' "Low" XP budget for one hero of
+// that level (level 1: 50 XP; level 5: 500 XP; level 9: 1,300 XP; a boss can be a bit more). The rooms are apart so you meet one fight at a time, and
+// "+" is a Potion of Healing (2d4 + 2 HP), "*" a Potion of Greater Healing (4d4 + 4) and
+// "%" a Potion of Superior Healing (8d4 + 8). Drinking one is a Bonus Action.
 // Between fights you can take a Short Rest and spend Hit Dice to heal.
 // =====================================================================
 const SOLO_MAPS = [
   {
-    key: "rat-cellar", name: "🐀 The Rat Cellar", ground: "stone", fog: true,
+    key: "rat-cellar", name: "🐀 The Rat Cellar", ground: "stone", fog: true, minLevel: 1, maxLevel: 1,
     about: "Rats in the inn's cellar: lots of small fights, and a whole swarm behind the barrels.",
     level: "Level 1, one hero",
     monsters: { r: "Giant Rat", R: "Swarm of Rats" },
@@ -171,7 +173,7 @@ const SOLO_MAPS = [
     ]
   },
   {
-    key: "quiet-tomb", name: "🦴 The Quiet Tomb", ground: "stone", fog: true,
+    key: "quiet-tomb", name: "🦴 The Quiet Tomb", ground: "stone", fog: true, minLevel: 1, maxLevel: 2,
     about: "A small family tomb where the dead have started to wander. Zombies are tough, but easy to hit.",
     level: "Level 1–2, one hero",
     monsters: { z: "Zombie", r: "Giant Rat" },
@@ -189,7 +191,7 @@ const SOLO_MAPS = [
     ]
   },
   {
-    key: "wolf-den", name: "🐺 The Wolf Den", ground: "grass", fog: false,
+    key: "wolf-den", name: "🐺 The Wolf Den", ground: "grass", fog: false, minLevel: 1, maxLevel: 2,
     about: "A wooded valley where wild animals have been scaring the sheep.",
     level: "Level 1–2, one hero",
     monsters: { w: "Wolf", b: "Giant Badger", m: "Mastiff" },
@@ -209,7 +211,7 @@ const SOLO_MAPS = [
     ]
   },
   {
-    key: "goblin-lookout", name: "👺 The Goblin Lookout", ground: "stone", fog: true,
+    key: "goblin-lookout", name: "👺 The Goblin Lookout", ground: "stone", fog: true, minLevel: 1, maxLevel: 2,
     about: "A few goblins guard an old watch post. Their leader has a bow.",
     level: "Level 1–2, one hero",
     monsters: { g: "Goblin Minion", G: "Goblin Warrior" },
@@ -227,7 +229,7 @@ const SOLO_MAPS = [
     ]
   },
   {
-    key: "cultist-hideout", name: "🕯️ The Cultist Hideout", ground: "stone", fog: true,
+    key: "cultist-hideout", name: "🕯️ The Cultist Hideout", ground: "stone", fog: true, minLevel: 2, maxLevel: 2,
     about: "A hooded cultist, a giant centipede, and a priest who throws radiant fire.",
     level: "Level 2, one hero",
     monsters: { c: "Cultist", C: "Giant Centipede", p: "Priest Acolyte" },
@@ -243,12 +245,132 @@ const SOLO_MAPS = [
       "#.....#........#",
       "################"
     ]
+  },
+  {
+    key: "spider-woods", name: "🕸️ The Spider Woods", ground: "grass", fog: true, minLevel: 3, maxLevel: 4,
+    about: "A dark wood at night, where a giant wasp, a worg and a huge spider hunt.",
+    level: "Level 3–4, one hero",
+    monsters: { a: "Giant Wasp", W: "Worg", P: "Giant Spider" },
+    rows: [
+      "TTTTTTTTTTTTTTTTTTTT",
+      "TS.....TTTT........T",
+      "T......TTTT...a....T",
+      "T..+...TTTT........T",
+      "T..................T",
+      "T..................T",
+      "TTTTTT..TTTTTTT..TTT",
+      "TTTTTT..TTTTTTT..TTT",
+      "T...........TT.....T",
+      "T..W........TT...P.T",
+      "T......+...........T",
+      "T..............TT..T",
+      "TTTTTTTTTTTTTTTTTTTT"
+    ]
+  },
+  {
+    key: "bandit-fort", name: "🏚️ The Bandit Fort", ground: "stone", fog: true, minLevel: 4, maxLevel: 5,
+    about: "Bandits hold an old fort: a bruiser, a scout with a longbow, and their bugbear boss.",
+    level: "Level 4–5, one hero",
+    monsters: { t: "Tough", s: "Scout", B: "Bugbear Warrior" },
+    rows: [
+      "####################",
+      "#S...#.......#.....#",
+      "#....#...t...#..s..#",
+      "#.+.........:#.....#",
+      "#....#.......#.....#",
+      "###.#####..#####.###",
+      "#.......#.........##",
+      "#...+...#....B....##",
+      "#...............:.##",
+      "#.......#.........##",
+      "#.......#.........##",
+      "####################"
+    ]
+  },
+  {
+    key: "ghoul-crypt", name: "💀 The Ghoul Crypt", ground: "stone", fog: true, minLevel: 5, maxLevel: 6,
+    about: "Hungry undead: a ghoul, a cold specter, and a ghast that smells of the grave.",
+    level: "Level 5–6, one hero",
+    monsters: { g: "Ghoul", p: "Specter", G: "Ghast" },
+    rows: [
+      "####################",
+      "#S.....#......g....#",
+      "#......#...........#",
+      "#..*.........:.....#",
+      "#......#...........#",
+      "####.#######.#######",
+      "#.p....#..........##",
+      "#......*.....G....##",
+      "#......#..........##",
+      "####################"
+    ]
+  },
+  {
+    key: "owlbear-hollow", name: "🦉 The Owlbear Hollow", ground: "grass", fog: true, minLevel: 6, maxLevel: 7,
+    about: "A wild valley at dusk, with a dire wolf, a giant boar, and an owlbear's nest.",
+    level: "Level 6–7, one hero",
+    monsters: { d: "Dire Wolf", b: "Giant Boar", O: "Owlbear" },
+    rows: [
+      "TTTTTTTTTTTTTTTTTTTTTT",
+      "TS......TTTT.........T",
+      "T.......TTTT....d....T",
+      "T..*....TTTT.........T",
+      "T....................T",
+      "T....................T",
+      "TTTTTT...TTTTTTTT...TT",
+      "TTTTTT...TTTTTTTT...TT",
+      "T..........TTT.......T",
+      "T..b.......TTT.......T",
+      "T..........*.....O...T",
+      "T....................T",
+      "TTTTTTTTTTTTTTTTTTTTTT"
+    ]
+  },
+  {
+    key: "hellhound-forge", name: "🔥 The Hell Hound Forge", ground: "stone", fog: true, minLevel: 7, maxLevel: 8,
+    about: "An old forge: a stone gargoyle, a minotaur in the great hall, and a fire-breathing hound by the furnace.",
+    level: "Level 7–8, one hero",
+    monsters: { G: "Gargoyle", h: "Hell Hound", M: "Minotaur of Baphomet" },
+    rows: [
+      "######################",
+      "#S....#.......#......#",
+      "#.....#...G...#...h..#",
+      "#..*..........#......#",
+      "#.............#......#",
+      "#######..######..#####",
+      "#....................#",
+      "#..M.................#",
+      "#.............*......#",
+      "#....................#",
+      "######################"
+    ]
+  },
+  {
+    key: "troll-river", name: "🌊 The Giant's River", ground: "grass", fog: true, minLevel: 9, maxLevel: 10,
+    about: "Cross the river by moonlight, past an ogre and a winter wolf, to the two-headed ettin who rules the far bank.",
+    level: "Level 9–10, one hero",
+    monsters: { o: "Ogre", w: "Winter Wolf", R: "Ettin" },
+    rows: [
+      "TTTTTTTTTTTTTTTTTTTTTT",
+      "TS.......~~~~.......TT",
+      "T........~~~~...o...TT",
+      "T..%.....~~~~.......TT",
+      "T........~~~~TTTTTTTTT",
+      "T...TT..............TT",
+      "T...TT..............TT",
+      "T........~~~~TTTTTTTTT",
+      "T..w.....~~~~....R..TT",
+      "T........~~~~.......TT",
+      "T....%...~~~~.......TT",
+      "TTTTTTTTTTTTTTTTTTTTTT"
+    ]
   }
 ];
 
 // Turn a drawn map into its parts (used by the Solo Adventures page):
 // { cols, rows, ground, terrain: { "x,y": "wall" ... }, start: { x, y }, monsters: [{ name, x, y }], potions: [{ x, y }] }
 const MAP_LETTER_TERRAIN = { "#": "wall", "T": "tree", ":": "rubble", "~": "water" };
+const POTION_LETTERS = { "+": "healing", "*": "greater", "%": "superior" };
 function parsePremade(preset) {
   const result = { cols: preset.rows[0].length, rows: preset.rows.length, ground: preset.ground,
                    terrain: {}, start: null, monsters: [], potions: [] };
@@ -257,7 +379,7 @@ function parsePremade(preset) {
       const letter = row[x];
       if (MAP_LETTER_TERRAIN[letter]) result.terrain[x + "," + y] = MAP_LETTER_TERRAIN[letter];
       else if (letter === "S") { if (!result.start) result.start = { x: x, y: y }; }
-      else if (letter === "+") result.potions.push({ x: x, y: y });
+      else if (POTION_LETTERS[letter]) result.potions.push({ x: x, y: y, kind: POTION_LETTERS[letter] });
       else if (preset.monsters[letter]) result.monsters.push({ name: preset.monsters[letter], x: x, y: y });
     }
   });

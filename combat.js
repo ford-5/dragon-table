@@ -35,6 +35,7 @@ function makeCombatProfile(character) {
   const pact = getPactSlots(character);
   return {
     level: character.level,
+    attacksPerAction: getAttacksPerAction(character),   // Extra Attack (rules.js)
     attacks: attacks,
     spells: spells,
     saves: saves,
@@ -95,7 +96,10 @@ function cleanCombatProfile(raw) {
   for (const key of ABILITY_KEYS) saves[key] = cleanNumber(rawSaves[key], -5, maxBonus, 0);
   const slots = [];
   for (let i = 0; i < 9; i++) slots.push(cleanNumber(Array.isArray(raw.slots) ? raw.slots[i] : 0, 0, maxSlots[i], 0));
-  return { level: level, attacks: attacks, spells: spells, saves: saves, slots: slots, pact: pact };
+  // Extra Attack: never more than a level 20 Fighter's 4, and 1 below level 5
+  const extra = level >= 20 ? 4 : level >= 11 ? 3 : level >= 5 ? 2 : 1;
+  const attacksPerAction = cleanNumber(raw.attacksPerAction, 1, extra, 1);
+  return { level: level, attacksPerAction: attacksPerAction, attacks: attacks, spells: spells, saves: saves, slots: slots, pact: pact };
 }
 
 // ---------------------------------------------------------------------
@@ -115,9 +119,10 @@ function spellShortInfo(spell) {
 function heroActions(profile) {
   const list = [];
   if (!profile) return list;
+  const times = Math.max(Number(profile.attacksPerAction) || 1, 1);   // Extra Attack
   for (const a of profile.attacks) {
-    list.push({ key: "w:" + a.n, kind: "weapon", name: a.n, attack: a,
-                label: "🗡️ " + a.n + " (" + formatBonus(a.toHit) + ", " + a.dmg + ")" });
+    list.push({ key: "w:" + a.n, kind: "weapon", name: a.n, attack: a, times: times,
+                label: "🗡️ " + a.n + (times > 1 ? " ×" + times : "") + " (" + formatBonus(a.toHit) + ", " + a.dmg + ")" });
   }
   for (const s of profile.spells) {
     const spell = findSpell(s.n);

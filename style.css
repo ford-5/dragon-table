@@ -2641,3 +2641,17 @@ details.by-hand > summary {
   gap: 6px;
   text-align: left;
 }
+
+/* Solo: how well a dungeon suits the chosen hero */
+.level-badge {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.level-badge.good  { background-color: rgba(111, 191, 115, 0.25); }
+.level-badge.tough { background-color: rgba(224, 102, 102, 0.25); }
+.level-badge.easy  { background-color: rgba(201, 162, 39, 0.2); }

@@ -27,6 +27,14 @@
   <p class="hint">Take your hero into a dungeon on your own. The monsters fight back by the rules: no Game Master and no AI needed. Great for practice!</p>
 
   <!-- ===================== SETUP ===================== -->
+  <!-- A saved adventure to carry on with (saved automatically as you play) -->
+  <div class="panel hidden" id="continuePanel">
+    <h2>💾 Continue your adventure</h2>
+    <p id="continueText"></p>
+    <button id="continueBtn">▶️ Continue</button>
+    <button class="small-button" id="forgetBtn">🗑️ Delete this save</button>
+  </div>
+
   <div class="panel" id="setupPanel">
     <h2>1. Your hero</h2>
     <select id="heroPick" aria-label="Your hero"></select>
@@ -51,6 +59,11 @@
   <!-- ===================== PLAYING ===================== -->
   <div class="hidden" id="playArea">
     <div class="panel solo-status">
+      <!-- The tutorial coach: tips that appear as you play -->
+      <div id="coachBox" class="coach-box hidden" role="status">
+        <p id="coachText"></p>
+        <button class="small-button" id="coachOk">👍 Got it</button>
+      </div>
       <div id="heroStatus"></div>
       <div id="turnCards" class="turn-cards player-turns"></div>
       <p id="turnHint" class="solo-hint"></p>
@@ -64,7 +77,8 @@
             <option value="46">Big</option>
           </select>
         </label>
-        <button class="small-button" id="quitBtn">🚪 Leave the adventure</button>
+        <button class="small-button save-session" id="saveQuitBtn">💾 Save &amp; quit</button>
+        <button class="small-button" id="quitBtn">🚪 Give up</button>
       </div>
     </div>
 
@@ -75,6 +89,7 @@
     <div class="panel">
       <h3 class="section-label">📜 What happened</h3>
       <div id="soloLog" class="chat-log short-log" aria-live="polite"></div>
+      <p class="hint">💾 Your adventure saves itself after every move, so closing the app by accident loses nothing.</p>
     </div>
   </div>
 
@@ -156,11 +171,32 @@
     }
 
     // ---------- Where to go ----------
+    // The tutorial: a small, gentle dungeon where a coach explains each new thing as it happens.
+    const TUTORIAL_MAP = {
+      name: "🎓 Tutorial dungeon", ground: "stone", fog: true,
+      monsters: { r: "Giant Rat", k: "Kobold Warrior" },
+      rows: [
+        "################",
+        "#S.....#.......#",
+        "#......#...r...#",
+        "#..:..........##",
+        "#......#.......#",
+        "####.#####.#####",
+        "#....#.........#",
+        "#.~~.#....k....#",
+        "#.~~...........#",
+        "################"
+      ]
+    };
+
     function soloMaps() {
-      const list = PREMADE_MAPS.map(function (p) {
+      const tutorial = { name: TUTORIAL_MAP.name, tutorial: true, fog: true,
+                         about: "Start here! A short, gentle dungeon. A coach explains every step as you play.",
+                         build: function () { return parsePremade(TUTORIAL_MAP); } };
+      const list = [tutorial].concat(PREMADE_MAPS.map(function (p) {
         const parsed = parsePremade(p);
         return { name: p.name, about: p.about + " " + p.level + ".", fog: p.fog, build: function () { return parsed; } };
-      });
+      }));
       // The GM's own saved maps (Battle Map page) that allow solo play and have monsters
       let saved = [];
       try { saved = JSON.parse(localStorage.getItem("savedMaps") || "[]"); } catch (error) { saved = []; }
@@ -197,13 +233,16 @@
         about.className = "hint";
         about.textContent = adventure.about + (adventure.fog ? " Starts in darkness." : "");
         card.append(title, about);
-        card.addEventListener("click", function () { startAdventure(adventure.name, adventure.build(), adventure.fog); });
+        if (adventure.tutorial) card.classList.add("tutorial-card");
+        card.addEventListener("click", function () { startAdventure(adventure.name, adventure.build(), adventure.fog, adventure.tutorial); });
         box.append(card);
       }
       const pick = el("arenaMonster");
+      const keep = pick.value;
+      pick.innerHTML = "";
       const sorted = MONSTERS.slice().sort(function (a, b) { return a.xp - b.xp || a.n.localeCompare(b.n); });
       for (const m of sorted) pick.append(new Option(m.n + " (CR " + m.cr + ")", m.n));
-      pick.value = "Goblin Warrior";
+      pick.value = keep || "Goblin Warrior";
     }
 
     function startArena() {
@@ -229,7 +268,8 @@
       return Math.max(Math.floor((parseInt(text, 10) || 30) / 5), 1);
     }
 
-    function startAdventure(name, layout, fogOn) {
+    function startAdventure(name, layout, fogOn, tutorial) {
+      if (savedGame() && !confirm("Start a new adventure? Your saved one will be replaced.")) return;
       const c = heroRecord();
       if (!c) { alert("Choose a hero first (or make one on the Characters page)."); return; }
       const maxHp = getMaxHp(c);
@@ -240,6 +280,7 @@
         name: name, heroId: c.id, cols: layout.cols, rows: layout.rows, ground: layout.ground,
         terrain: layout.terrain, fogOn: fogOn, fog: {}, round: 0, inCombat: false, order: [], turn: 0,
         moveLeft: Infinity, actionUsed: false, over: null, xp: 0, log: [],
+        tutorial: Boolean(tutorial), coached: {}, revived: false,
         hero: { id: "hero", side: "hero", name: c.name, label: shortLabel(c.name), x: layout.start.x, y: layout.start.y, size: 1,
                 hp: hp, maxHp: maxHp, ac: getAc(c), speed: Math.floor(getSpeed(c) / 5) },
         monsters: []
@@ -251,6 +292,7 @@
         if (!monster) continue;
         counts[monster.n] = (counts[monster.n] || 0) + 1;
         const fullName = monster.n + " " + counts[monster.n];
+        // (the tutorial's monsters are the same as anywhere else: weak ones, by the rules)
         game.monsters.push({ id: nextId++, side: "monster", name: fullName, label: shortLabel(fullName), monster: monster,
                              x: spot.x, y: spot.y, size: SIZE_OF[monster.size] || 1, hp: monster.hp, maxHp: monster.hp,
                              ac: monster.ac, speed: speedSquares(monster.speed), awake: false });
@@ -262,6 +304,8 @@
       el("setupPanel").classList.add("hidden");
       el("playArea").classList.remove("hidden");
       log("🗺️ " + name + ". " + (fogOn ? "It's dark. Your light shows only what's near you." : "Look around: danger is near."));
+      coach("start", "👋 Welcome to your first adventure! The yellow token is your hero. Tap a square near you to walk there. " +
+        "The dark parts are unexplored: your light shows what's close by. Try walking toward the gap in the wall on the right.");
       lightAround(game.hero);
       checkWakeUps();
       render();
@@ -394,6 +438,8 @@
       game.round = 1;
       game.turn = 0;
       log("⚔️ Roll for initiative! " + everyone.map(function (w) { return w.name + " " + w.init; }).join(", ") + ".");
+      coach("combat", "⚔️ A monster spotted you, so a fight starts! Everyone rolled initiative (a d20 + Dexterity): the cards above show " +
+        "who goes first. On your turn you can MOVE up to your Speed (the glowing squares) and take ONE ACTION, like an attack.");
       beginTurn();
     }
 
@@ -411,6 +457,9 @@
         game.moveLeft = game.hero.speed;
         game.actionUsed = false;
         picked = null;
+        const hasSpells = heroActionsWithRange().some(function (o) { return o.action.kind === "spell"; });
+        coach("yourTurn", "🎯 It's your turn! Pick an attack" + (hasSpells ? " or a spell" : "") + " from the buttons above the map, then tap the monster. " +
+          "Swords and other melee weapons need you right next to it, so move first. Bows" + (hasSpells ? " and most spells" : "") + " can hit from far away.");
         render();
         return;
       }
@@ -444,15 +493,31 @@
     // Everyone awake and alive is gone: the fight is over.
     function checkFightOver() {
       if (game.over) return true;
+      if (game.hero.hp <= 0 && game.tutorial && !game.revived) {
+        // The tutorial gives you a second chance
+        game.revived = true;
+        game.hero.hp = Math.max(Math.floor(game.hero.maxHp / 2), 1);
+        updateHeroRecord(function (c) { c.hp = game.hero.hp; });
+        coach("fell", "💫 You fell! In a real game you'd now make death saving throws (lesson 8 of Learn to Play) and hope a friend helps. " +
+          "Because this is the tutorial, you get back up with half your HP. Try again!");
+        log("💫 Tutorial: " + game.hero.name + " gets back up with " + game.hero.hp + " HP.");
+        return false;
+      }
       if (game.hero.hp <= 0) {
         game.over = "lost";
         log("💀 " + game.hero.name + " falls! The adventure is over. Take a long rest and try again.");
+        forgetSave();
         render();
         return true;
       }
       if (!living().length) {
         game.over = "won";
         log("🏆 Victory! Every monster is defeated. You earned " + game.xp + " XP.");
+        if (game.tutorial) {
+          coach("won", "🎓 Tutorial complete! You can explore, fight, and use your turn like a real player. Next, try the Training arena or a real dungeon.");
+          markLessonDone("final");
+        }
+        forgetSave();   // a finished adventure doesn't need a save
         render();
         return true;
       }
@@ -461,6 +526,8 @@
         game.moveLeft = Infinity;
         game.actionUsed = false;
         log("😮‍💨 The fight is over. Explore on: more monsters may be waiting.");
+        coach("fightOver", "🏆 You won the fight! You're exploring again, so you can move freely. " +
+          (game.tutorial ? "There's one more room to the south: go through the gap in the bottom wall." : ""));
       }
       return false;
     }
@@ -474,6 +541,12 @@
         const before = target.hp;
         target.hp = Math.min(Math.max(target.hp + change.amount, 0), target.maxHp);
         if (target.side === "monster" && change.amount < 0) target.awake = true;   // you hit it: it knows you're there
+        if (target === game.hero && change.amount < 0) {
+          coach("hurt", "Ouch! Monsters attack too: they roll against YOUR Armor Class. Your HP is at the top. At 0 HP you fall.");
+          if (target.hp > 0 && target.hp * 2 <= target.maxHp) {
+            coach("lowHp", "❤️ You're below half your HP. In a real game you could drink a potion or a friend could heal you. Be careful!");
+          }
+        }
         if (target.side === "monster" && before > 0 && target.hp === 0) {
           game.xp += target.monster.xp;
           log("☠️ " + target.name + " is defeated!");
@@ -608,6 +681,7 @@
         return;
       }
       picked = option;
+      coach("aim", "Now tap the monster you want to hit. (Changed your mind? Tap an empty floor square.)");
       render();
     }
 
@@ -668,6 +742,12 @@
       if (slot) updateHeroRecord(function (h) { spendSpellSlot(h, slot.kind, slot.level); });
       applyChanges(result);
       picked = null;
+      if (action.kind === "weapon" || (spell && spell.atk)) {
+        coach("attacked", "🎲 That's how attacks work: a d20 plus your attack bonus. If the total meets or beats the monster's Armor Class (AC), " +
+          "you hit and roll damage. You've used your action, but you can still move. Press \"End my turn\" when you're done.");
+      } else if (spell && spell.save) {
+        coach("savedSpell", "✨ This spell made the monsters roll a saving throw against your spell's DC. Failing hurts more!");
+      }
       if (game.inCombat) game.actionUsed = true;
       checkWakeUps();   // the noise wakes up anyone who can see you
       if (!checkFightOver()) render();
@@ -691,6 +771,7 @@
       hero.x = x;
       hero.y = y;
       if (game.inCombat) game.moveLeft -= cost;
+      else coach("moved", "Nice walking! Out of a fight you can go as far as you like. Keep exploring, and watch out for monsters.");
       checkWakeUps();
       render();
     }
@@ -706,6 +787,116 @@
       }
       if (picked) { picked = null; render(); return; }   // tapping the floor cancels the aim
       moveHeroTo(x, y);
+    }
+
+    // =====================================================================
+    // THE TUTORIAL COACH (only in the tutorial dungeon; each tip shows once)
+    // =====================================================================
+    function coach(key, text) {
+      if (!game || !game.tutorial || game.coached[key]) return;
+      game.coached[key] = true;
+      el("coachText").textContent = text;
+      el("coachBox").classList.remove("hidden");
+      log("🎓 " + text);
+    }
+
+    // The Learn to Play course (learn-play.html) keeps its progress in "playLessonsDone".
+    function markLessonDone(id) {
+      try {
+        const done = JSON.parse(localStorage.getItem("playLessonsDone") || "[]");
+        if (Array.isArray(done) && !done.includes(id)) {
+          done.push(id);
+          localStorage.setItem("playLessonsDone", JSON.stringify(done));
+        }
+      } catch (error) { /* storage blocked */ }
+    }
+
+    // =====================================================================
+    // SAVING (localStorage key "soloSave": one adventure in progress)
+    // The adventure saves itself after every change. Monsters are saved by their SRD
+    // name and looked up again when you continue. The hero's HP and spell slots are
+    // already saved on the character itself.
+    // =====================================================================
+    function saveGameNow() {
+      if (!game || game.over) return;
+      try {
+        const copy = JSON.stringify(game, function (key, value) {
+          if (key === "monster" && value && value.n) return value.n;   // just the name
+          if (value === Infinity) return "Infinity";
+          return value;
+        });
+        localStorage.setItem("soloSave", JSON.stringify({ savedAt: new Date().toLocaleString(), game: copy }));
+      } catch (error) { /* storage full or blocked: you can still play */ }
+    }
+
+    function savedGame() {
+      try {
+        const saved = JSON.parse(localStorage.getItem("soloSave") || "null");
+        return saved && typeof saved.game === "string" ? saved : null;
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function forgetSave() {
+      try { localStorage.removeItem("soloSave"); } catch (error) { /* nothing to do */ }
+    }
+
+    function continueGame() {
+      const saved = savedGame();
+      if (!saved) return;
+      let loaded;
+      try {
+        loaded = JSON.parse(saved.game, function (key, value) { return value === "Infinity" ? Infinity : value; });
+      } catch (error) {
+        alert("That save is damaged, sorry. It has been deleted.");
+        forgetSave();
+        renderContinue();
+        return;
+      }
+      for (const m of loaded.monsters || []) {
+        m.monster = MONSTERS.find(function (x) { return x.n === m.monster; });
+      }
+      loaded.monsters = (loaded.monsters || []).filter(function (m) { return m.monster; });
+      loaded.coached = loaded.coached || {};
+      game = loaded;
+      if (!heroRecord()) {
+        game = null;
+        alert("The hero from this adventure isn't saved in this browser any more.");
+        return;
+      }
+      picked = null;
+      busy = false;
+      el("setupPanel").classList.add("hidden");
+      el("continuePanel").classList.add("hidden");
+      el("playArea").classList.remove("hidden");
+      el("coachBox").classList.add("hidden");
+      log("💾 Welcome back! You carry on where you left off.");
+      if (game.inCombat && current() !== game.hero) beginTurn();   // a monster was about to act
+      else render();
+      el("playArea").scrollIntoView({ block: "start" });
+    }
+
+    function renderContinue() {
+      const saved = savedGame();
+      el("continuePanel").classList.toggle("hidden", !saved);
+      if (!saved) return;
+      let name = "your adventure";
+      try {
+        const g = JSON.parse(saved.game);
+        name = g.name + " with " + g.hero.name + (g.inCombat ? " (in the middle of a fight!)" : "");
+      } catch (error) { /* show the plain words */ }
+      el("continueText").textContent = name + " · saved " + saved.savedAt;
+    }
+
+    function backToMenu() {
+      game = null;
+      busy = false;
+      el("playArea").classList.add("hidden");
+      el("setupPanel").classList.remove("hidden");
+      fillHeroes();
+      fillAdventures();
+      renderContinue();
     }
 
     // =====================================================================
@@ -783,6 +974,7 @@
       }
 
       renderStatus(myTurn);
+      saveGameNow();   // every change is saved, so closing the app loses nothing
     }
 
     function renderStatus(myTurn) {
@@ -843,13 +1035,23 @@
     el("arenaBtn").addEventListener("click", startArena);
     el("endTurnBtn").addEventListener("click", endHeroTurn);
     el("soloZoom").addEventListener("change", render);
-    el("quitBtn").addEventListener("click", function () {
-      if (game && !game.over && !confirm("Leave this adventure? Your hero keeps their HP and spent spell slots.")) return;
-      game = null;
-      el("playArea").classList.add("hidden");
-      el("setupPanel").classList.remove("hidden");
-      fillHeroes();
+    el("saveQuitBtn").addEventListener("click", function () {
+      saveGameNow();
+      backToMenu();
+      el("continueText").textContent += " ✓ Saved. It's safe to close the app.";
     });
+    el("quitBtn").addEventListener("click", function () {
+      if (game && !game.over && !confirm("Give up this adventure? It won't be saved. (Your hero keeps their HP and spent spell slots.)")) return;
+      forgetSave();
+      backToMenu();
+    });
+    el("continueBtn").addEventListener("click", continueGame);
+    el("forgetBtn").addEventListener("click", function () {
+      if (!confirm("Delete your saved adventure? This can't be undone.")) return;
+      forgetSave();
+      renderContinue();
+    });
+    el("coachOk").addEventListener("click", function () { el("coachBox").classList.add("hidden"); });
     el("restBtn").addEventListener("click", function () {
       updateHeroRecord(function (c) {
         takeLongRest(c);
@@ -860,6 +1062,11 @@
 
     fillHeroes();
     fillAdventures();
+    renderContinue();
+    // solo.html?tutorial=1 (from Learn to Play) starts the tutorial straight away
+    if (new URLSearchParams(location.search).get("tutorial") === "1" && !savedGame() && heroRecord()) {
+      startAdventure(TUTORIAL_MAP.name, parsePremade(TUTORIAL_MAP), true, true);
+    }
   </script>
   <script src="pwa.js"></script>
   <script src="feedback.js"></script>

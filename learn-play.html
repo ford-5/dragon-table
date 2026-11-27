@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Learn to Play</title>
+  <meta name="description" content="A free, hands-on course for new fifth-edition players: abilities, checks, combat, spells and more, one step at a time.">
+  <link rel="stylesheet" href="style.css">
+  <!-- App icon, colors, and the file that makes Dragon Table installable -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#2b1d14">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <meta name="apple-mobile-web-app-title" content="Dragon Table">
+</head>
+
+<body>
+  <nav class="top-nav">
+    <a href="index.html">🏠 Home</a>
+    <a href="library.html">📚 Library</a>
+    <a href="character.html">🧙 Characters</a>
+    <a href="dm.html">🛡️ GM Screen</a>
+    <a href="equipment.html">🛒 Equipment</a>
+  </nav>
+
+  <h1>🎓 Learn to Play</h1>
+  <p class="hint">Nine hands-on lessons for new players. Each one builds on the last: finish a lesson's practice to unlock the next. The last lesson is a real (gentle) dungeon.</p>
+  <p class="hint">Want to run games instead? <a href="dm-learn.html">🛡️ Learn to be a Game Master</a></p>
+
+  <div class="panel">
+    <h2>Practice with...</h2>
+    <select id="heroPick" aria-label="Hero to practice with"></select>
+    <p id="heroLine" class="hint"></p>
+  </div>
+
+  <p id="progress" class="guide-banner"></p>
+  <div id="lessons" class="lesson-list"></div>
+
+  <p><a href="player.html" class="back-link">← Back</a></p>
+
+  <footer class="site-footer">
+    <p>Based on the System Reference Document 5.2.1 by Wizards of the Coast LLC, licensed under CC-BY-4.0 (see the Home page for the full notice). The lessons are written in our own words.</p>
+  </footer>
+
+  <script src="dice.js"></script>
+  <script src="rules.js"></script>
+  <script src="spells.js"></script>
+  <script src="monsters.js"></script>
+  <script src="play.js"></script>
+  <script src="combat.js"></script>
+  <script src="voice.js"></script>
+  <script>
+    // =====================================================================
+    // LEARN TO PLAY
+    // Each lesson: a reminder of what came before ("recap"), the lesson, examples,
+    // and a hands-on practice with a GOAL. Reaching the goal finishes the lesson and
+    // unlocks the next one. Progress is kept in localStorage key "playLessonsDone".
+    // Everything uses the real rules (rules.js, combat.js) and the chosen hero's real numbers.
+    // =====================================================================
+    const el = function (id) { return document.getElementById(id); };
+
+    function make(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+
+    // ---------- Two ready-made heroes for anyone without one ----------
+    const SAMPLE_FIGHTER = {
+      id: -1, name: "Rook", playerName: "", className: "Fighter", species: "Human", background: "Soldier", level: 1,
+      abilities: { str: 16, dex: 13, con: 15, int: 10, wis: 12, cha: 8 },
+      proficientSkills: ["Athletics", "Intimidation", "Perception", "Survival"],
+      inventory: "", armor: "Chain Mail", shield: true, weapons: ["Longsword", "Javelin"]
+    };
+    const SAMPLE_WIZARD = {
+      id: -2, name: "Mira", playerName: "", className: "Wizard", species: "Elf", background: "Sage", level: 1,
+      abilities: { str: 8, dex: 14, con: 13, int: 16, wis: 12, cha: 10 },
+      proficientSkills: ["Arcana", "History", "Insight", "Investigation", "Perception"],
+      inventory: "", armor: "none", shield: false, weapons: ["Dagger"],
+      spellbook: { Wizard: { cantrips: ["Fire Bolt", "Ray of Frost", "Mage Hand"], prepared: ["Magic Missile", "Burning Hands", "Shield"] } }
+    };
+    for (const sample of [SAMPLE_FIGHTER, SAMPLE_WIZARD]) sample.hp = getMaxHp(sample);
+
+    function allHeroes() {
+      return loadCharacters().concat([SAMPLE_FIGHTER, SAMPLE_WIZARD]);
+    }
+
+    function hero() {
+      const id = Number(el("heroPick").value);
+      return allHeroes().find(function (h) { return h.id === id; }) || SAMPLE_FIGHTER;
+    }
+
+    // The spell lesson needs a spellcaster: yours if your hero casts spells, otherwise Mira.
+    function caster() {
+      const h = hero();
+      return isSpellcaster(h) && makeCombatProfile(h).spells.length ? h : SAMPLE_WIZARD;
+    }
+
+    function fillHeroes() {
+      const pick = el("heroPick");
+      for (const h of allHeroes()) {
+        const label = h.id < 0 ? h.name + " (ready-made level 1 " + h.className + ")" : h.name + " (your level " + h.level + " " + classSummary(h) + ")";
+        pick.append(new Option(label, h.id));
+      }
+      try {
+        const saved = localStorage.getItem("playHero");
+        if (saved && allHeroes().some(function (h) { return String(h.id) === saved; })) pick.value = saved;
+      } catch (error) { /* use the first hero */ }
+      showHeroLine();
+    }
+
+    function showHeroLine() {
+      const h = hero();
+      const mods = ABILITIES.map(function (a) { return a.name.slice(0, 3) + " " + formatBonus(getModifier(getAbilityScore(h, a.key))); });
+      el("heroLine").textContent = "❤️ " + getMaxHp(h) + " HP · 🛡️ AC " + getAc(h) + " · " + mods.join(" · ");
+    }
+
+    // ---------- Progress ----------
+    let done = [];
+    try {
+      done = JSON.parse(localStorage.getItem("playLessonsDone") || "[]");
+      if (!Array.isArray(done)) done = [];
+    } catch (error) { done = []; }
+
+    function saveDone() {
+      try { localStorage.setItem("playLessonsDone", JSON.stringify(done)); } catch (error) { /* storage blocked */ }
+    }
+
+    function finishLesson(id) {
+      if (done.includes(id)) return;
+      done.push(id);
+      saveDone();
+      renderLessons(id);
+    }
+
+    // =====================================================================
+    // PRACTICE BUILDERS. Each gets "complete" (call it when the goal is reached).
+    // =====================================================================
+
+    // A list of questions where every one must be answered right.
+    function quizBlock(questions, complete) {
+      const box = make("div", "tutor-box learn-quiz");
+      const right = new Set();
+      questions.forEach(function (question, i) {
+        const block = make("div", "quiz-question");
+        block.append(make("p", "", (i + 1) + ". " + question.q));
+        const answers = make("div", "quiz-answers");
+        const feedback = make("p", "quiz-feedback");
+        feedback.setAttribute("aria-live", "polite");
+        for (const choice of question.choices) {
+          const button = make("button", "small-button", choice.t);
+          button.addEventListener("click", function () {
+            for (const other of answers.children) other.classList.remove("right", "wrong");
+            button.classList.add(choice.ok ? "right" : "wrong");
+            feedback.textContent = (choice.ok ? "✅ " : "❌ Not quite. ") + choice.why;
+            if (choice.ok) right.add(i);
+            if (right.size === questions.length) complete();
+          });
+          answers.append(button);
+        }
+        block.append(answers, feedback);
+        box.append(block);
+      });
+      return box;
+    }
+
+    // Lesson 1: which ability fits each situation?
+    const ABILITY_SITUATIONS = [
+      { q: "Shove a heavy boulder out of the way", a: "str", why: "Strength is raw muscle." },
+      { q: "Tiptoe along a narrow, slippery ledge", a: "dex", why: "Dexterity is balance, speed and aim." },
+      { q: "Keep marching all night without rest", a: "con", why: "Constitution is toughness and stamina." },
+      { q: "Remember an old legend about the castle", a: "int", why: "Intelligence is memory and knowledge." },
+      { q: "Notice someone quietly following you", a: "wis", why: "Wisdom is noticing things and good sense." },
+      { q: "Talk a grumpy guard into letting you pass", a: "cha", why: "Charisma is confidence and charm." }
+    ];
+
+    function abilityPractice(complete) {
+      const box = make("div", "tutor-box");
+      const h = hero();
+      box.append(make("strong", "", "🧩 Practice: " + h.name + "'s six abilities"));
+      const grid = make("div", "ability-mini");
+      for (const a of ABILITIES) {
+        const score = getAbilityScore(h, a.key);
+        const cell = make("div", "ability-mini-cell");
+        cell.append(make("strong", "", a.name), make("span", "", score + " → " + formatBonus(getModifier(score))));
+        grid.append(cell);
+      }
+      box.append(grid);
+      box.append(make("p", "hint", "Score → modifier: 10 or 11 is +0, and every 2 points more (or less) is +1 (or -1). The modifier is what you add to rolls."));
+      box.append(make("p", "", "Tap the ability you'd use for each situation:"));
+      const right = new Set();
+      ABILITY_SITUATIONS.forEach(function (sit, i) {
+        const block = make("div", "quiz-question");
+        block.append(make("p", "", (i + 1) + ". " + sit.q));
+        const answers = make("div", "ability-buttons");
+        const feedback = make("p", "quiz-feedback");
+        for (const a of ABILITIES) {
+          const b = make("button", "small-button", a.name);
+          b.addEventListener("click", function () {
+            for (const other of answers.children) other.classList.remove("right", "wrong");
+            const ok = a.key === sit.a;
+            b.classList.add(ok ? "right" : "wrong");
+            feedback.textContent = ok
+              ? "✅ " + sit.why + " " + h.name + " would add " + formatBonus(getModifier(getAbilityScore(h, a.key))) + "."
+              : "❌ Not quite. Think about what the hero is really doing.";
+            if (ok) right.add(i);
+            if (right.size === ABILITY_SITUATIONS.length) complete();
+          });
+          answers.append(b);
+        }
+        block.append(answers, feedback);
+        box.append(block);
+      });
+      return box;
+    }
+
+    // Lesson 2: the GM asks for a check; pick the skill, then roll with the hero's real bonus.
+    const CHECK_REQUESTS = [
+      { say: "\"Climb the slippery castle wall. It's a DC 12 check.\"", skill: "Athletics", dc: 12, options: ["Athletics", "Stealth", "History", "Persuasion"] },
+      { say: "\"Sneak past the sleeping guard dog. DC 13.\"", skill: "Stealth", dc: 13, options: ["Insight", "Stealth", "Medicine", "Athletics"] },
+      { say: "\"Look around the room for anything hidden. DC 10.\"", skill: "Perception", dc: 10, options: ["Persuasion", "Arcana", "Perception", "Survival"] }
+    ];
+
+    function checkPractice(complete) {
+      const box = make("div", "tutor-box");
+      const h = hero();
+      box.append(make("strong", "", "🎲 Practice: your GM asks " + h.name + " for three checks. Pick the right skill, then roll."));
+      const finished = new Set();
+      CHECK_REQUESTS.forEach(function (req, i) {
+        const block = make("div", "quiz-question");
+        block.append(make("p", "", (i + 1) + ". The GM says: " + req.say));
+        const answers = make("div", "ability-buttons");
+        const result = make("p", "quiz-feedback");
+        for (const name of req.options) {
+          const b = make("button", "small-button", name);
+          b.addEventListener("click", function () {
+            for (const other of answers.children) other.classList.remove("right", "wrong");
+            if (name !== req.skill) {
+              b.classList.add("wrong");
+              result.textContent = "❌ Not that one. Which skill fits " + req.say.replace(/"/g, "").split(".")[0].toLowerCase() + "?";
+              return;
+            }
+            b.classList.add("right");
+            const skill = SKILLS.find(function (s) { return s.name === name; });
+            const bonus = getSkillBonus(h, skill);
+            const trained = (h.proficientSkills || []).includes(name);
+            const die = rollOneDie(20);
+            const total = die + bonus;
+            result.textContent = "🎲 You rolled " + die + " " + formatBonus(bonus) + " (" + abilityName(skill.ability) + " modifier" +
+              (trained ? " + proficiency, because " + h.name + " is trained in " + name : "") + ") = " + total + " against DC " + req.dc + ": " +
+              (total >= req.dc ? "✅ success!" : "❌ not this time. The GM tells you what happens next.");
+            finished.add(i);
+            if (finished.size === CHECK_REQUESTS.length) complete();
+          });
+          answers.append(b);
+        }
+        block.append(answers, result);
+        box.append(block);
+      });
+      return box;
+    }
+
+    // Lesson 3: roll with Advantage and with Disadvantage.
+    function advantagePractice(complete) {
+      const box = make("div", "tutor-box");
+      const h = hero();
+      const skill = SKILLS.find(function (s) { return s.name === "Perception"; });
+      const bonus = getSkillBonus(h, skill);
+      box.append(make("strong", "", "🎲🎲 Practice: a Perception check (DC 13) for " + h.name + " (" + formatBonus(bonus) + "), with two dice."));
+      const result = make("p", "quiz-feedback");
+      const tried = new Set();
+      const roll = function (mode) {
+        const r = rollD20WithMode(mode);
+        const total = r.kept + bonus;
+        result.textContent = (mode === "advantage" ? "⬆️ Advantage" : "⬇️ Disadvantage") + ": you rolled " + r.rolls.join(" and ") +
+          ", so you keep the " + (mode === "advantage" ? "HIGHER" : "LOWER") + " one (" + r.kept + "). " + r.kept + " " + formatBonus(bonus) +
+          " = " + total + " vs DC 13: " + (total >= 13 ? "✅ success!" : "❌ fail.");
+        tried.add(mode);
+        if (tried.size === 2) complete();
+      };
+      const a = make("button", "small-button", "⬆️ Roll with Advantage (a friend is helping you look)");
+      const d = make("button", "small-button", "⬇️ Roll with Disadvantage (it's very dark)");
+      a.addEventListener("click", function () { roll("advantage"); });
+      d.addEventListener("click", function () { roll("disadvantage"); });
+      box.append(a, d, result);
+      box.append(make("p", "hint", "Goal: try both."));
+      return box;
+    }
+
+    // Lesson 5: roll initiative against two goblins.
+    function initiativePractice(complete, part) {
+      const box = make("div", "tutor-box");
+      const h = hero();
+      const goblin = MONSTERS.find(function (m) { return m.n === "Goblin Warrior"; });
+      const mine = getModifier(getAbilityScore(h, "dex"));
+      box.append(make("strong", "", "⚡ Practice: two goblins jump out! Roll initiative (d20 + Dexterity, " + formatBonus(mine) + " for " + h.name + ")."));
+      const list = make("ol", "budget-list");
+      const roll = make("button", "small-button", "🎲 Roll initiative");
+      roll.addEventListener("click", function () {
+        const order = [{ name: h.name + " (you)", n: rollOneDie(20) + mine },
+                       { name: "Goblin Warrior 1", n: rollOneDie(20) + goblin.init },
+                       { name: "Goblin Warrior 2", n: rollOneDie(20) + goblin.init }];
+        order.sort(function (x, y) { return y.n - x.n; });
+        list.innerHTML = "";
+        for (const o of order) list.append(make("li", "", o.n + " · " + o.name));
+        part("rolled");
+      });
+      box.append(roll, list, make("p", "hint", "Highest goes first. The order stays the same every round."));
+      return box;
+    }
+
+    // Lesson 6: attack a goblin with the hero's real weapons until it falls.
+    function attackPractice(complete) {
+      const box = make("div", "tutor-box");
+      const h = hero();
+      const goblin = MONSTERS.find(function (m) { return m.n === "Goblin Warrior"; });
+      let hp = goblin.hp;
+      const profile = makeCombatProfile(h);
+      const weapons = heroActions(profile).filter(function (a) { return a.kind === "weapon"; });
+      box.append(make("strong", "", "🗡️ Practice: " + h.name + " fights a Goblin Warrior (AC " + goblin.ac + ", " + goblin.hp + " HP). Pick a weapon and attack!"));
+      const status = make("p", "", "🧌 Goblin: " + hp + "/" + goblin.hp + " HP");
+      const result = make("p", "quiz-feedback");
+      const buttons = make("div", "ability-buttons");
+      for (const action of weapons) {
+        const b = make("button", "small-button", action.label);
+        b.addEventListener("click", function () {
+          if (hp <= 0) return;
+          const r = resolveAction(h.name, action, [{ id: 1, name: "the goblin", ac: goblin.ac, saves: {} }], {});
+          for (const change of r.changes) hp = Math.max(hp + change.amount, 0);
+          result.textContent = r.lines.join(" ") + (hp === 0 ? " 🏆 The goblin is defeated!" : "");
+          status.textContent = "🧌 Goblin: " + hp + "/" + goblin.hp + " HP";
+          if (hp === 0) complete();
+        });
+        buttons.append(b);
+      }
+      const again = make("button", "small-button", "🔁 New goblin");
+      again.addEventListener("click", function () {
+        hp = goblin.hp;
+        status.textContent = "🧌 Goblin: " + hp + "/" + goblin.hp + " HP";
+        result.textContent = "";
+      });
+      box.append(status, buttons, again, result);
+      box.append(make("p", "hint", "Goal: defeat the goblin. Each attack: d20 + your attack bonus vs its AC. A natural 20 doubles the damage dice."));
+      return box;
+    }
+
+    // Lesson 7: cast spells; cantrips are free, other spells use a slot.
+    function spellPractice(complete) {
+      const box = make("div", "tutor-box");
+      const c = caster();
+      const profile = makeCombatProfile(c);
+      const slots = profile.slots.slice();
+      const goals = { cantrip: false, slot: false };
+      const actions = heroActions(profile).filter(function (a) { return a.kind === "spell" && (a.spell.dmg || a.spell.heal); });
+      const hasLevelled = actions.some(function (a) { return a.spell.level > 0; });
+      box.append(make("strong", "", "✨ Practice: " + c.name + (c === hero() ? "" : " (a ready-made wizard, because your hero doesn't cast spells)") +
+        " faces three goblins (AC 15). Cast some spells!"));
+      const slotLine = make("p", "");
+      const showSlots = function () {
+        const left = slots.map(function (n, i) { return n ? "level " + (i + 1) + ": " + n : ""; }).filter(Boolean);
+        slotLine.textContent = "🔮 Spell slots left: " + (left.length ? left.join(", ") : "none (a long rest brings them back)");
+      };
+      showSlots();
+      const result = make("pre", "action-result");
+      const buttons = make("div", "ability-buttons");
+      const goblins = [1, 2, 3].map(function (n) {
+        return { id: n, name: "Goblin " + n, ac: 15, saves: { str: -1, dex: 2, con: 0, int: 0, wis: -1, cha: -1 } };
+      });
+      for (const action of actions) {
+        const b = make("button", "small-button", action.label);
+        b.addEventListener("click", function () {
+          const spell = action.spell;
+          let slotLevel = 0;
+          if (spell.level > 0) {
+            const i = slots.findIndex(function (n, level) { return n > 0 && level + 1 >= spell.level; });
+            if (i < 0) { result.textContent = "❌ No spell slots left for " + spell.n + ". Cantrips still work!"; return; }
+            slots[i]--;
+            slotLevel = i + 1;
+            showSlots();
+          }
+          const targets = spell.heal ? [{ id: 0, name: c.name, ac: 10, saves: {} }]
+            : spell.save && isAreaSpell(spell) ? goblins : goblins.slice(0, Math.min(maxTargets(action, profile, slotLevel), 3));
+          const r = resolveAction(c.name, action, targets, { slotLevel: slotLevel, profile: profile });
+          result.textContent = (spell.level === 0 ? "(Cantrip: no slot used.)\n" : "(Used a level " + slotLevel + " slot.)\n") + r.lines.join("\n");
+          if (spell.level === 0) goals.cantrip = true; else goals.slot = true;
+          if (goals.cantrip && (goals.slot || !hasLevelled)) complete();
+        });
+        buttons.append(b);
+      }
+      box.append(slotLine, buttons, result);
+      box.append(make("p", "hint", "Goal: cast a cantrip" + (hasLevelled ? " and a spell that uses a slot" : "") + "."));
+      return box;
+    }
+
+    // Lesson 8: death saving throws.
+    function deathSavePractice(complete) {
+      const box = make("div", "tutor-box");
+      const h = hero();
+      box.append(make("strong", "", "💀 Practice: " + h.name + " has dropped to 0 HP. Roll death saving throws!"));
+      let ok = 0, bad = 0;
+      const marks = make("p", "death-marks");
+      const result = make("p", "quiz-feedback");
+      const roll = make("button", "small-button", "🎲 Roll a death save");
+      const show = function () {
+        marks.textContent = "Successes: " + "✅".repeat(ok) + "⬜".repeat(3 - ok) + "   Failures: " + "❌".repeat(bad) + "⬜".repeat(3 - bad);
+      };
+      const finish = function (text) {
+        result.textContent = text;
+        roll.disabled = true;
+        complete();
+      };
+      roll.addEventListener("click", function () {
+        const die = rollOneDie(20);
+        if (die === 20) { show(); finish("🎲 20! A natural 20: " + h.name + " wakes up with 1 HP!"); return; }
+        if (die === 1) bad += 2;
+        else if (die >= 10) ok++;
+        else bad++;
+        bad = Math.min(bad, 3);
+        show();
+        result.textContent = "🎲 " + die + (die === 1 ? ": a natural 1 counts as TWO failures!" : die >= 10 ? ": 10 or more is a success." : ": under 10 is a failure.");
+        if (ok >= 3) finish("🎲 " + die + ". Three successes: " + h.name + " is stable (still at 0 HP, but no longer dying).");
+        else if (bad >= 3) finish("🎲 " + die + ". Three failures: in a real game, " + h.name + " would die. That's why friends heal each other!");
+      });
+      const reset = make("button", "small-button", "🔁 Try again");
+      reset.addEventListener("click", function () { ok = 0; bad = 0; roll.disabled = false; result.textContent = ""; show(); });
+      show();
+      box.append(marks, roll, reset, result);
+      return box;
+    }
+
+    // =====================================================================
+    // THE LESSONS
+    // =====================================================================
+    const LESSONS = [
+      {
+        id: "abilities", title: "1. Your hero's six abilities",
+        text: [
+          "Every hero has six abilities: Strength (muscle), Dexterity (speed and aim), Constitution (toughness), Intelligence (memory), Wisdom (noticing things) and Charisma (confidence and charm).",
+          "Each has a score, usually between 8 and 18, and a modifier worked out from it. The modifier is the number you'll add to your dice, so it's the one that matters most at the table.",
+          "You don't need to remember the maths: your character sheet shows every modifier."
+        ],
+        practice: abilityPractice,
+        goal: "Answer all six situations."
+      },
+      {
+        id: "checks", title: "2. Rolling a check",
+        recap: "Lesson 1: each ability has a modifier, the number you add to rolls.",
+        text: [
+          "When you try something risky, the GM asks for a check. You roll a twenty-sided die (a d20) and add a bonus. If the total meets or beats the Difficulty Class (DC), you succeed.",
+          "Most checks use a skill: Stealth, Athletics, Perception and so on. Each skill belongs to one ability (Stealth is Dexterity). If your hero is trained in that skill, you also add your proficiency bonus (+2 at level 1).",
+          "The GM tells you which skill to use, or you can ask: \"Can I use Athletics to climb it?\""
+        ],
+        talk: [
+          ["GM", "The wall is slick with rain. Climbing it is an Athletics check."],
+          ["Player", "I rolled 11, plus 5 for Athletics: 16!"],
+          ["GM", "That beats it. You haul yourself over the top, soaked but safe."]
+        ],
+        practice: checkPractice,
+        goal: "Pick the right skill and roll all three checks."
+      },
+      {
+        id: "advantage", title: "3. Advantage and Disadvantage",
+        recap: "Lesson 2: a check is a d20 + your bonus, against the DC.",
+        text: [
+          "Sometimes things are easier or harder. With Advantage, you roll TWO d20s and keep the higher. With Disadvantage, you roll two and keep the lower.",
+          "Help from a friend, a clever plan or a hidden attack can give Advantage. Darkness, being poisoned or a slippery floor can give Disadvantage. If you have both, they cancel out."
+        ],
+        practice: advantagePractice,
+        quiz: [
+          { q: "You have Advantage. You roll a 6 and a 17. Which counts?", choices: [
+            { t: "17", ok: true, why: "With Advantage you keep the higher roll." },
+            { t: "6", ok: false, why: "That's Disadvantage: keep the lower." },
+            { t: "Both added together (23)", ok: false, why: "You keep one die, you don't add them." }
+          ] }
+        ],
+        goal: "Roll both ways and answer the question."
+      },
+      {
+        id: "talk", title: "4. Talking and exploring",
+        recap: "Lessons 2 and 3: when something is uncertain, you roll a check, sometimes with Advantage or Disadvantage.",
+        text: [
+          "Most of the game is a conversation. The GM describes the world; you say what your hero does. You can try anything a person could try.",
+          "Be specific: say what you do and how. \"I search the desk\" is good; \"I pull out every drawer and feel underneath for a hidden switch\" is even better, and good ideas can make checks easier or unnecessary.",
+          "Ask questions! \"What does the old man look like?\" \"Can I hear anything behind the door?\" The GM loves to describe things."
+        ],
+        talk: [
+          ["Vague", "\"I look around.\""],
+          ["Better", "\"I check the fireplace for loose bricks, and I ask the innkeeper if anyone strange came by last night.\""]
+        ],
+        quiz: [
+          { q: "Which is the clearest thing to say?", choices: [
+            { t: "\"I do something.\"", ok: false, why: "The GM can't tell what your hero tries." },
+            { t: "\"I sneak up to the door and listen for voices.\"", ok: true, why: "Clear: what you do and how. The GM knows exactly what to describe (or which check to ask for)." }
+          ] },
+          { q: "Can your hero try something that isn't on the character sheet, like swinging from a chandelier?", choices: [
+            { t: "Yes! You can try anything. The GM may ask for a check.", ok: true, why: "Exactly. The sheet shows what you're good at, not all you're allowed to do." },
+            { t: "No, only the things on the sheet.", ok: false, why: "Imagination is the point of the game. Try it!" }
+          ] },
+          { q: "You don't know what's in the room. What should you do?", choices: [
+            { t: "Ask the GM what you see, hear or smell.", ok: true, why: "Yes. Asking questions is a big part of exploring." },
+            { t: "Guess and hope.", ok: false, why: "Just ask. The GM is happy to describe." }
+          ] }
+        ],
+        goal: "Answer all three questions."
+      },
+      {
+        id: "turns", title: "5. Combat: initiative and your turn",
+        recap: "Lesson 2: you know checks. Initiative is just a Dexterity check that decides who goes first.",
+        text: [
+          "When a fight starts, everyone rolls initiative. The highest goes first, then the next, and so on. That order repeats every round (a round is about 6 seconds).",
+          "On your turn you can MOVE up to your Speed (usually 30 feet, six squares on a map) and take ONE ACTION: attack, cast a spell, dash, dodge, help a friend, or something you make up.",
+          "Some heroes also get a bonus action. And once per round, everyone has a reaction, for example an opportunity attack when an enemy walks away from you."
+        ],
+        practice: initiativePractice,
+        quiz: [
+          { q: "It's your turn. What can you do?", choices: [
+            { t: "Move up to my Speed and take one action.", ok: true, why: "That's a normal turn (plus a bonus action, if you have one)." },
+            { t: "Attack as many times as I like.", ok: false, why: "One action per turn. Some classes get extra attacks later." },
+            { t: "Only move or only attack, not both.", ok: false, why: "You can do both: move, then attack (or attack, then move)." }
+          ] }
+        ],
+        goal: "Roll initiative and answer the question."
+      },
+      {
+        id: "attacks", title: "6. Combat: attacking",
+        recap: "Lesson 5: on your turn you can move and take one action. The most common action is an attack, and it works like a check (lesson 2).",
+        text: [
+          "To attack, roll a d20 and add your attack bonus. Instead of a DC, you compare it to the target's Armor Class (AC). Meet or beat it, and you hit.",
+          "If you hit, roll the weapon's damage dice and add your modifier. That comes off the monster's Hit Points (HP). At 0 HP, it's defeated.",
+          "A natural 20 (the die shows 20) is a critical hit: roll the damage dice twice! A natural 1 always misses.",
+          "Melee weapons (swords, axes) need you next to the enemy. Ranged weapons (bows) can hit from far away."
+        ],
+        practice: attackPractice,
+        goal: "Defeat the goblin."
+      },
+      {
+        id: "spells", title: "7. Magic: cantrips, spell slots and saves",
+        recap: "Lesson 6: you hit by rolling d20 + a bonus against AC. Many spells attack the same way.",
+        text: [
+          "Cantrips are small spells you can cast as often as you like. Bigger spells use a spell slot, like a battery. When your slots run out, a long rest (a night's sleep) refills them.",
+          "Some spells make an attack roll, just like a weapon. Others make the TARGETS roll a saving throw against your spell's DC: if they fail, they take the full effect. Many take half damage if they succeed.",
+          "Some spells hit automatically, like Magic Missile's glowing darts, and some heal instead of hurting."
+        ],
+        practice: spellPractice,
+        quiz: [
+          { q: "You're out of spell slots. What can you still cast?", choices: [
+            { t: "Cantrips.", ok: true, why: "Cantrips never use slots." },
+            { t: "Nothing until next week.", ok: false, why: "A long rest refills your slots, and cantrips always work." }
+          ] }
+        ],
+        goal: "Cast the spells and answer the question."
+      },
+      {
+        id: "hurt", title: "8. Getting hurt, falling down, and resting",
+        recap: "Lessons 6 and 7: attacks and spells take away Hit Points. Monsters do it to you too, rolling against YOUR Armor Class.",
+        text: [
+          "When your hero drops to 0 HP, they fall unconscious. At the start of each of your turns you make a death saving throw: roll a d20, and 10 or more is a success.",
+          "Three successes and you're stable. Three failures and your hero dies. A natural 1 counts as two failures; a natural 20 wakes you up with 1 HP. Any healing gets you back on your feet straight away, so help each other!",
+          "Resting heals you. A short rest (an hour) lets you spend Hit Dice to heal a bit. A long rest (a night's sleep) restores all your HP and spell slots."
+        ],
+        practice: deathSavePractice,
+        quiz: [
+          { q: "What does a long rest do?", choices: [
+            { t: "Brings back all your HP and spell slots.", ok: true, why: "Yes, it's a full night's sleep." },
+            { t: "Nothing: HP never comes back.", ok: false, why: "Resting and healing bring HP back." }
+          ] }
+        ],
+        goal: "Finish a set of death saves and answer the question."
+      },
+      {
+        id: "final", title: "9. Your first adventure",
+        recap: "Everything so far: abilities and checks (1–3), talking and exploring (4), turns and attacks (5–6), spells (7) and staying alive (8).",
+        text: [
+          "Time to put it all together in the tutorial dungeon. You'll explore in the dark, meet monsters, roll initiative, and fight on a real map. A coach explains each new thing as it happens.",
+          "Your adventure saves itself after every move, so you can stop any time and continue later."
+        ],
+        link: { href: "solo.html?tutorial=1", text: "🗡️ Start the tutorial dungeon" },
+        goal: "Win the tutorial dungeon (it ticks this lesson off by itself)."
+      }
+    ];
+
+    // =====================================================================
+    // DRAWING
+    // =====================================================================
+    function unlocked(i) {
+      return i === 0 || done.includes(LESSONS[i - 1].id);
+    }
+
+    function renderProgress() {
+      el("progress").textContent = "Progress: " + done.filter(function (id) { return LESSONS.some(function (l) { return l.id === id; }); }).length +
+        " of " + LESSONS.length + " lessons" + (done.includes("final") ? " 🎉 You're ready to play!" : ".");
+    }
+
+    // openId: the lesson to show open (the one just unlocked, after finishing one)
+    function renderLessons(justFinished) {
+      const list = el("lessons");
+      list.innerHTML = "";
+      LESSONS.forEach(function (lesson, i) {
+        const isDone = done.includes(lesson.id);
+        const open = unlocked(i);
+        const details = make("details", "panel lesson" + (open ? "" : " locked"));
+        const summary = make("summary", "", (isDone ? "✅ " : open ? "" : "🔒 ") + lesson.title +
+          (open ? "" : " (finish lesson " + i + " first)"));
+        details.append(summary);
+        if (!open) {
+          details.addEventListener("toggle", function () { if (details.open) details.open = false; });
+          list.append(details);
+          return;
+        }
+        // After finishing a lesson, open the next one so you can carry straight on
+        if (justFinished && i > 0 && LESSONS[i - 1].id === justFinished) details.open = true;
+        if (!justFinished && !isDone && (i === 0 || done.includes(LESSONS[i - 1].id)) && !list.querySelector("details[open]")) details.open = true;
+
+        if (lesson.recap) {
+          const recap = make("div", "learn-recap");
+          recap.append(make("strong", "", "🧠 Remember: "), document.createTextNode(lesson.recap));
+          details.append(recap);
+        }
+        const speaker = Voice.speakButton(function () { return lesson.text.join(" "); });
+        if (speaker) details.append(speaker);
+        for (const paragraph of lesson.text) details.append(make("p", "lesson-text", paragraph));
+        if (lesson.talk) {
+          const talk = make("div", "learn-talk");
+          talk.append(make("div", "learn-label", "💬 At the table"));
+          for (const [who, words] of lesson.talk) {
+            const row = make("p", "");
+            row.append(make("strong", "", who + ": "), document.createTextNode(words));
+            talk.append(row);
+          }
+          details.append(talk);
+        }
+
+        details.append(make("h3", "section-label", "🏋️ Practice"));
+        const goal = make("p", "lesson-goal", (isDone ? "✅ Done! " : "🎯 Goal: ") + lesson.goal);
+        details.append(goal);
+
+        // A lesson can have a hands-on practice AND questions: both must be finished.
+        const parts = { practice: !lesson.practice, quiz: !lesson.quiz, rolled: lesson.id !== "turns" };
+        const check = function () {
+          if (parts.practice && parts.quiz && parts.rolled) finishLesson(lesson.id);
+        };
+        const part = function (name) { parts[name] = true; check(); };
+        if (lesson.practice) details.append(lesson.practice(function () { part("practice"); }, part));
+        if (lesson.id === "turns") parts.practice = true;   // the initiative roll is its own part
+        if (lesson.quiz) details.append(quizBlock(lesson.quiz, function () { part("quiz"); }));
+        if (lesson.link) {
+          const a = make("a", "plain-button", lesson.link.text);
+          a.href = lesson.link.href;
+          details.append(a);
+        }
+        if (isDone && i + 1 < LESSONS.length) details.append(make("p", "hint", "➡️ Lesson " + (i + 2) + " is unlocked below."));
+        list.append(details);
+      });
+      renderProgress();
+      if (justFinished) {
+        const next = list.querySelector("details[open]");
+        if (next) next.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+
+    el("heroPick").addEventListener("change", function () {
+      try { localStorage.setItem("playHero", el("heroPick").value); } catch (error) { /* fine */ }
+      showHeroLine();
+      renderLessons();
+    });
+    fillHeroes();
+    renderLessons();
+    // Came back from the tutorial dungeon (it marks "final" done)? Show the progress.
+    window.addEventListener("pageshow", function () {
+      try {
+        const fresh = JSON.parse(localStorage.getItem("playLessonsDone") || "[]");
+        if (Array.isArray(fresh) && fresh.length !== done.length) { done = fresh; renderLessons(); }
+      } catch (error) { /* fine */ }
+    });
+  </script>
+  <script src="pwa.js"></script>
+  <script src="feedback.js"></script>
+</body>
+</html>

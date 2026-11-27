@@ -2496,3 +2496,114 @@ details.by-hand > summary {
 .budget-verdict {
   font-weight: bold;
 }
+
+/* GM Screen: "Save & end session" button and its message */
+.gm-topbar .save-session {
+  margin: 0;
+  padding: 3px 10px;
+  font-size: 13px;
+  background-color: #2f5e34;
+  border-color: #6fbf73;
+}
+
+.session-note {
+  margin: 0 auto 8px;
+  max-width: 900px;
+  padding: 8px 12px;
+  border: 2px solid #6fbf73;
+  border-radius: 8px;
+  background-color: rgba(111, 191, 115, 0.15);
+  font-weight: bold;
+}
+
+/* Solo: the tutorial coach's tips, and the tutorial's card */
+.coach-box {
+  margin: 0 0 8px;
+  padding: 8px 12px;
+  border: 2px solid #6fa8dc;
+  border-radius: 8px;
+  background-color: rgba(111, 168, 220, 0.16);
+}
+
+.coach-box p {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: bold;
+  line-height: 1.4;
+}
+
+.premade-card.tutorial-card {
+  border-color: #6fa8dc;
+  background-color: #1f3550;
+}
+
+.solo-status .save-session {
+  background-color: #2f5e34;
+  border-color: #6fbf73;
+}
+
+/* =====================================================================
+   LEARN TO PLAY (learn-play.html)
+   ===================================================================== */
+.lesson.locked summary {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* "Remember:" what earlier lessons taught */
+.learn-recap {
+  margin: 8px 0;
+  padding: 6px 10px;
+  text-align: left;
+  border-radius: 6px;
+  background-color: rgba(111, 191, 115, 0.14);
+  border-left: 4px solid #6fbf73;
+}
+
+.lesson-goal {
+  font-weight: bold;
+  text-align: left;
+}
+
+.ability-mini {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.ability-mini-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px;
+  border: 1px solid #5a4630;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.ability-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ability-buttons .small-button {
+  margin: 0;
+}
+
+.ability-buttons .right {
+  background-color: #2f5e34;
+  border-color: #6fbf73;
+}
+
+.ability-buttons .wrong {
+  background-color: #3a2020;
+  border-color: #e06666;
+  opacity: 0.8;
+  text-decoration: line-through;
+}
+
+.death-marks {
+  font-size: 18px;
+}

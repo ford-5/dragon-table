@@ -31,7 +31,9 @@
       <a href="map.html">🗺️ Map</a>
     </nav>
     <a href="dm-start.html" class="back-link">← Back</a>
+    <button class="small-button save-session" onclick="saveSession()">💾 Save &amp; end session</button>
   </header>
+  <p id="sessionNote" class="session-note hidden" role="status"></p>
 
   <!-- TURN CARDS: one card per creature in the fight, in initiative order. Click a card to
        see what it can do; pick an attack or spell and a target, and the dice do the rest. -->
@@ -60,8 +62,13 @@
 
         <!-- Before the game is open -->
         <div id="liveClosed">
+          <!-- After "Save & end session": reopen with the same code, so players can rejoin -->
+          <div id="reopenBox" class="hidden">
+            <p class="hint" id="reopenText"></p>
+            <button onclick="reopenGame()">🔁 Reopen with the same code</button>
+          </div>
           <label class="sheet-field">Game name (optional) <input id="gameName" type="text" class="wide-input" maxlength="40" placeholder="e.g. The Hollow Crown"></label>
-          <button onclick="openGame()">🚪 Open a game</button>
+          <button onclick="openGame()">🚪 Open a new game</button>
         </div>
 
         <!-- While the game is open -->
@@ -489,6 +496,7 @@
       if (combatUiReady) {
         renderTurnCards();
         sendTurnInfo();
+        saveFight();
       }
 
       // Update the round message.
@@ -1180,6 +1188,7 @@
       document.getElementById("importStatus").textContent = "";
     }
     renderParty();
+    restoreFight();         // a fight from last time (saved automatically)
     combatUiReady = true;   // the turn cards can draw now (they need the party and live game)
     render();
 
@@ -1245,15 +1254,31 @@
         return;
       }
       openGameName = document.getElementById("gameName").value.trim();
+      clearTimeout(reopenTimer);
+      if (peer) dropPeer(peer);
       startPeer(makeGameCode(), 0);   // makeGameCode is in play.js
     }
 
-    function startPeer(code, attempt) {
-      setLiveStatus("Connecting…");
+    // Close a connection for good. We forget it FIRST: closing it fires a "disconnected"
+    // signal, and the handler below must not mistake that for a dropped line and reconnect
+    // (which would keep the old code taken, so the game could never be reopened with it).
+    function dropPeer(p) {
+      if (peer === p) peer = null;
+      p.destroy();
+    }
+
+    // keepCode: reopening a saved game. The matchmaking service can hold on to the old
+    // code for a little while after the page closed, so we wait and try the SAME code again.
+    function startPeer(code, attempt, keepCode) {
+      setLiveStatus(keepCode ? "Reopening game " + code + "…" : "Connecting…");
+      clearTimeout(reopenTimer);
       peer = new Peer(peerIdFromCode(code));
+      const me = peer;   // this connection (an older, closed one must not touch the new one)
 
       peer.on("open", function () {
         gameCode = code;
+        liveError("");
+        rememberSession();   // so "Reopen with the same code" works next time
         showOpenGame();
       });
 
@@ -1261,8 +1286,22 @@
 
       peer.on("error", function (error) {
         // Someone else already holds that code (very unlikely): try a different one.
+        if (error.type === "unavailable-id" && keepCode && attempt < 24) {
+          dropPeer(me);
+          liveError("The code " + code + " is still closing down from last time (this can take a minute or two). " +
+            "Trying again in a few seconds… (" + (attempt + 1) + "/24)");
+          reopenTimer = setTimeout(function () { startPeer(code, attempt + 1, true); }, 5000);
+          return;
+        }
+        if (error.type === "unavailable-id" && keepCode) {
+          dropPeer(me);
+          peer = null;
+          liveError("The old code " + code + " still isn't free. Press \"Open a new game\" and send your players the new invite link.");
+          renderReopen();
+          return;
+        }
         if (error.type === "unavailable-id" && attempt < 5) {
-          peer.destroy();
+          dropPeer(peer);
           startPeer(makeGameCode(), attempt + 1);
           return;
         }
@@ -1272,8 +1311,9 @@
 
       // The connection to the matchmaking service dropped. Players already connected stay connected.
       peer.on("disconnected", function () {
+        if (peer !== me || me.destroyed) return;   // an old, closed game: ignore it
         setLiveStatus("Lost contact with the matchmaking service. Reconnecting…");
-        if (peer && !peer.destroyed) peer.reconnect();
+        me.reconnect();
       });
     }
 
@@ -1316,6 +1356,111 @@
       document.getElementById("copyInviteBtn").classList.toggle("hidden", !inviteLink);
     }
 
+    // =====================================================================
+    // SAVING THE SESSION
+    // Party, notes and the battle map already save themselves. This saves the rest:
+    // the fight (turn cards) and the live game's code and name, so the GM can close
+    // the app and carry on later. Saved in localStorage key "dmSession".
+    // =====================================================================
+    function rememberSession() {
+      const saved = loadSession();
+      saved.code = gameCode || saved.code || "";
+      saved.name = openGameName || saved.name || "";
+      saved.savedAt = new Date().toLocaleString();
+      try { localStorage.setItem("dmSession", JSON.stringify(saved)); } catch (error) { /* storage blocked */ }
+    }
+
+    function loadSession() {
+      try {
+        const saved = JSON.parse(localStorage.getItem("dmSession") || "{}");
+        return saved && typeof saved === "object" ? saved : {};
+      } catch (error) {
+        return {};
+      }
+    }
+
+    // The fight is saved every time it changes (see render), so closing by accident loses nothing.
+    function saveFight() {
+      try {
+        localStorage.setItem("dmCombat", JSON.stringify({ combatants: combatants, currentId: currentId, round: round, nextId: nextId }));
+      } catch (error) { /* storage blocked */ }
+    }
+
+    function restoreFight() {
+      try {
+        const saved = JSON.parse(localStorage.getItem("dmCombat") || "null");
+        if (!saved || !Array.isArray(saved.combatants)) return;
+        combatants = saved.combatants.filter(function (c) {
+          return c && typeof c.name === "string" && Number.isFinite(c.hp) && Number.isFinite(c.maxHp);
+        });
+        currentId = combatants.some(function (c) { return c.id === saved.currentId; }) ? saved.currentId : null;
+        round = Number(saved.round) || 0;
+        nextId = Math.max(Number(saved.nextId) || 1, ...combatants.map(function (c) { return c.id + 1; }));
+      } catch (error) { /* a damaged save: start without a fight */ }
+    }
+
+    function showSessionNote(text) {
+      const note = document.getElementById("sessionNote");
+      note.textContent = text;
+      note.classList.toggle("hidden", !text);
+    }
+
+    // 💾 Save & end session
+    function saveSession() {
+      saveFight();
+      saveParty();
+      const hadGame = Boolean(gameCode);
+      if (hadGame) {
+        rememberSession();
+        for (const connection of liveConns.values()) {
+          if (connection.open) connection.send({ type: "announce", text: "💾 The GM saved the game and is taking a break. When they reopen it, press Leave game, then join again with the same code: " + gameCode + "." });
+        }
+      }
+      const code = gameCode;
+      setTimeout(function () {
+        if (hadGame) closeGame();
+        sessionEnded = true;
+        showSessionNote("💾 Saved! Your party, fight, notes and map are all kept in this browser. It's safe to close the app now." +
+          (hadGame ? " Next time, press \"Reopen with the same code\" (" + code + ") and your players can rejoin." : ""));
+      }, 400);   // a moment for the goodbye message to reach the players
+    }
+
+    function reopenGame() {
+      const saved = loadSession();
+      if (!saved.code) return;
+      liveError("");
+      if (typeof Peer === "undefined") {
+        liveError("Couldn't load the online connection library. Check your internet connection, then reload this page.");
+        return;
+      }
+      openGameName = saved.name || "";
+      document.getElementById("gameName").value = openGameName;
+      sessionEnded = false;
+      showSessionNote("");
+      startPeer(saved.code, 0, true);
+    }
+
+    function renderReopen() {
+      const saved = loadSession();
+      const show = Boolean(saved.code) && !gameCode;
+      document.getElementById("reopenBox").classList.toggle("hidden", !show);
+      if (show) {
+        document.getElementById("reopenText").textContent = "💾 Saved game" + (saved.name ? " \"" + saved.name + "\"" : "") +
+          ": code " + saved.code + (saved.savedAt ? " (saved " + saved.savedAt + ")" : "") + ".";
+      }
+    }
+
+    // Closing the app by accident during a live game asks first (the browser shows its own "Leave?" box).
+    let sessionEnded = false;
+    let reopenTimer = null;   // waiting to try the saved code again
+    window.addEventListener("beforeunload", function (event) {
+      saveFight();
+      if (gameCode && !sessionEnded) {
+        event.preventDefault();
+        event.returnValue = "";   // some browsers need this to show the box
+      }
+    });
+
     function closeGame() {
       stopVoice();
       mapShare.on = false;
@@ -1330,7 +1475,7 @@
       for (const request of pendingRequests) {
         if (request.conn.open) request.conn.send({ type: "closed" });
       }
-      if (peer) peer.destroy();
+      if (peer) dropPeer(peer);
       peer = null;
       gameCode = "";
       inviteLink = "";
@@ -1342,6 +1487,7 @@
       document.getElementById("tableOpen").classList.add("hidden");
       document.getElementById("tableClosed").classList.remove("hidden");
       renderParty();
+      renderReopen();
     }
 
     function copyText(text, doneMessage) {
@@ -1521,10 +1667,12 @@
       if (voice.on) conn.send({ type: "voice", on: true });   // voice chat is already running
       if (mapShare.on) sendMapTo(character.key, conn);          // the map is already being shown
       if (tableMusic.on) conn.send({ type: "music", on: true, mood: tableMusic.mood });   // so is the music
+      lastTurnSent.delete(character.key);   // a fight is going on: send them the turn order (see render)
       talk("✅ " + member.name + " joined the game.");
       saveParty();
       renderParty();
       renderRequests();
+      render();   // redraws the turn cards, which also sends them the turn order if a fight is on
     }
 
     function declinePlayer(request) {
@@ -2005,6 +2153,9 @@
         notesStatus.textContent = "⚠️ Couldn't save notes in this browser.";
       }
     });
+
+    // Last of all (it needs the live-game part above): offer to reopen a saved game.
+    renderReopen();
   </script>
   <!-- The "Send feedback" link at the bottom of the page -->
   <script src="pwa.js"></script>

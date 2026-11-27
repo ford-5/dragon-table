@@ -174,7 +174,6 @@
       <div class="stage-tabs" id="stageTabs">
         <button class="small-button" data-stage="map" title="Battle map">🗺️ Map</button>
         <button class="small-button" data-stage="adventure" title="Starter adventure">📜 Adventure</button>
-        <button class="small-button" data-stage="library" title="Library">📚 Library</button>
         <button class="small-button" data-stage="battle" title="Battle Simulator">⚔️ Simulator</button>
         <button class="small-button" data-stage="characters" title="Characters">🧙 Heroes</button>
         <button class="small-button" data-stage="learn" title="Learn to be a GM">🎓 Learn</button>
@@ -191,12 +190,31 @@
         <div class="stage-pane hidden" id="stage-characters"></div>
         <div class="stage-pane hidden" id="stage-learn"></div>
         <div class="stage-pane hidden" id="stage-shop"></div>
+        <div class="stage-pane hidden" id="stage-book"></div>
         <div class="stage-pane stage-empty hidden" id="stage-none"></div>
       </div>
     </main>
 
     <!-- ===================== RIGHT SIDE ===================== -->
     <aside class="gm-side">
+
+      <!-- THE BOOKSHELF: pull a book out to read it in the middle, then put it back -->
+      <details class="panel drawer" open>
+        <summary>📚 Bookshelf</summary>
+        <div class="bookshelf" id="bookshelf">
+          <button class="book-spine" data-book="rules" style="background-color:#7a2a2a" title="The rules in brief, and the conditions">📕 The Rules</button>
+          <button class="book-spine" data-book="spells" style="background-color:#2f5e34" title="All 339 spells">📗 Spellbook</button>
+          <button class="book-spine" data-book="monsters" style="background-color:#1f3550" title="All 288 monsters">📘 Bestiary</button>
+          <button class="book-spine" data-book="items" style="background-color:#8a5a12" title="Magic items">📙 Magic Items</button>
+          <button class="book-spine" data-book="gear" style="background-color:#5a4630" title="Weapons and armor">📒 Weapons &amp; Armor</button>
+          <button class="book-spine" data-book="heroes" style="background-color:#34244a" title="Classes, features by level, species and backgrounds">📓 Classes</button>
+          <button class="book-spine" data-stage-book="adventure" style="background-color:#6b2f4a" title="The free starter adventure">🔔 Sunken Bell</button>
+          <button class="book-spine" data-stage-book="learn" style="background-color:#2f4a5e" title="Learn to be a Game Master">🎓 GM Guide</button>
+        </div>
+        <p class="hint">Click a book to pull it out and read it in the middle. Press 📚 Put it back to return to what you had there.</p>
+        <p class="hint">The full free rules: <a href="https://www.dndbeyond.com/srd" target="_blank" rel="noopener">SRD 5.2.1</a> ·
+          the paid core books are on the <a href="https://marketplace.dndbeyond.com/" target="_blank" rel="noopener">official marketplace</a>.</p>
+      </details>
 
       <!-- SECRET ROLLS -->
       <details class="panel drawer" open>
@@ -232,42 +250,6 @@
         <summary>📝 Session Notes</summary>
         <textarea id="notes" placeholder="NPC names, plot hooks, what the party did last session..."></textarea>
         <p id="notesStatus" class="hint">Notes save automatically in this browser.</p>
-      </details>
-
-      <!-- BOOKS: our free Library opens in the middle; the official books open in a new tab -->
-      <details class="panel drawer">
-        <summary>📚 Books &amp; rules</summary>
-        <p class="hint">Open a part of the free Library in the middle:</p>
-        <button class="small-button" onclick="setStage('library', 'spells')">✨ Spells</button>
-        <button class="small-button" onclick="setStage('library', 'monsters')">🐉 Monsters</button>
-        <button class="small-button" onclick="setStage('library', 'rules')">📏 Rules in brief</button>
-        <button class="small-button" onclick="setStage('library', 'items')">💎 Magic items</button>
-        <button class="small-button" onclick="setStage('library', 'books')">📖 Free books</button>
-        <button class="small-button" onclick="setStage('adventure')">📜 Starter adventure</button>
-
-        <h3 class="section-label">Free official rules</h3>
-        <ul class="book-list">
-          <!-- target="_blank" opens the link in a new tab, so the GM screen stays open -->
-          <li>
-            <a href="https://www.dndbeyond.com/srd" target="_blank" rel="noopener">System Reference Document (SRD 5.2.1)</a>
-            <br><span class="hint">The core rules, classes, spells and monsters. Free to read and download.</span>
-          </li>
-          <li>
-            <a href="https://www.dndbeyond.com/sources/dnd/br-2024" target="_blank" rel="noopener">Basic Rules (2024)</a>
-            <br><span class="hint">A free, easy-to-read version of the rules for getting started.</span>
-          </li>
-        </ul>
-
-        <h3 class="section-label">The three core books</h3>
-        <ul class="book-list">
-          <li>📕 <strong>Player's Handbook</strong> <span class="hint">— classes, species, spells, character creation</span></li>
-          <li>📘 <strong>Game Master's Guide</strong> <span class="hint">— running games, building worlds, magic items</span></li>
-          <li>📗 <strong>Monster Manual</strong> <span class="hint">— hundreds of creatures and their stat blocks</span></li>
-          <li>
-            <a href="https://marketplace.dndbeyond.com/" target="_blank" rel="noopener">Get them on the official marketplace</a>
-            <span class="hint">(paid, digital or print)</span>
-          </li>
-        </ul>
       </details>
 
       <!-- CONDITIONS -->
@@ -1873,10 +1855,11 @@
       battle: "battle.html?embed=1",
       characters: "character.html?embed=1",
       learn: "dm-learn.html?embed=1",
-      shop: "equipment.html?embed=1"
+      shop: "equipment.html?embed=1",
+      book: "book.html?embed=1"
     };
     const STAGE_TITLES = { map: "Battle map", adventure: "Starter adventure", library: "Library",
-                           battle: "Battle Simulator", characters: "Characters", learn: "Learn to be a GM",
+                           battle: "Battle Simulator", characters: "Characters", learn: "Learn to be a GM", book: "Book",
                            shop: "Equipment shop" };
     let stageNow = "map";
 
@@ -1927,8 +1910,42 @@
 
     // A "Put this fight on the Battle Map" button inside the adventure frame asks us
     // to show the map (it saved the fight first). Only accept messages from our own pages.
+    // ---------- The bookshelf ----------
+    let stageBeforeBook = "map";   // what was in the middle before a book was pulled out
+
+    function markSpine(key) {
+      for (const spine of document.querySelectorAll(".book-spine")) {
+        spine.classList.toggle("out", (spine.dataset.book || spine.dataset.stageBook) === key);
+      }
+    }
+
+    function pullOutBook(key) {
+      if (stageNow !== "book" && stageNow !== "adventure" && stageNow !== "learn") stageBeforeBook = stageNow;
+      setStage("book", key);
+      markSpine(key);
+    }
+
+    function putBookBack() {
+      markSpine(null);
+      setStage(stageBeforeBook || "map");
+    }
+
+    for (const spine of document.querySelectorAll(".book-spine")) {
+      spine.addEventListener("click", function () {
+        if (spine.dataset.book) {
+          if (stageNow === "book" && spine.classList.contains("out")) putBookBack();   // click it again to put it back
+          else pullOutBook(spine.dataset.book);
+        } else {
+          if (stageNow !== "book" && stageNow !== "adventure" && stageNow !== "learn") stageBeforeBook = stageNow;
+          setStage(spine.dataset.stageBook);
+          markSpine(spine.dataset.stageBook);
+        }
+      });
+    }
+
     window.addEventListener("message", function (event) {
       if (event.origin !== location.origin) return;
+      if (event.data && event.data.type === "closeBook") { putBookBack(); return; }
       if (!event.data || event.data.type !== "showMap") return;
       const mapFrame = document.querySelector("#stage-map iframe");
       if (mapFrame) mapFrame.src = STAGE_PAGES.map;   // reload, so the map picks up the fight
@@ -1938,6 +1955,7 @@
     for (const button of document.querySelectorAll("#stageTabs button")) {
       button.addEventListener("click", function () {
         const name = button.dataset.stage;
+        if (typeof markSpine === "function") markSpine(null);   // any book goes back on the shelf
         // Already showing it? Then go back to its first page (handy after following a link inside it).
         const frame = document.querySelector("#stage-" + name + " iframe");
         if (name === stageNow && frame) frame.src = STAGE_PAGES[name];

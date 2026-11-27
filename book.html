@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Book</title>
+  <meta name="description" content="Read the free fifth-edition rules like a book: spells, monsters, magic items, classes and more.">
+  <link rel="stylesheet" href="style.css">
+  <!-- App icon, colors, and the file that makes Dragon Table installable -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#2b1d14">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <meta name="apple-mobile-web-app-title" content="Dragon Table">
+</head>
+
+<body class="book-body">
+  <nav class="top-nav">
+    <a href="index.html">🏠 Home</a>
+    <a href="library.html">📚 Library</a>
+    <a href="character.html">🧙 Characters</a>
+    <a href="dm.html">🛡️ GM Screen</a>
+    <a href="equipment.html">🛒 Equipment</a>
+  </nav>
+
+  <!-- The book: a bar on top, then one page (phone) or two pages side by side -->
+  <div class="book-bar">
+    <strong id="bookTitle"></strong>
+    <select id="chapterPick" aria-label="Contents"></select>
+    <input id="bookSearch" type="search" placeholder="Search this book…" aria-label="Search this book">
+    <button class="small-button" id="putBack">📚 Put it back</button>
+  </div>
+  <p id="searchNote" class="hint"></p>
+
+  <div class="book-spread" id="spread"></div>
+
+  <div class="book-turn">
+    <button class="small-button" id="prevBtn">◀ Back a page</button>
+    <span id="pageNumber" class="hint"></span>
+    <button class="small-button" id="nextBtn">Next page ▶</button>
+  </div>
+  <p class="hint book-credit">From the System Reference Document 5.2.1 by Wizards of the Coast LLC (CC-BY-4.0). Short descriptions are in our own words; the full rules are in the free SRD.</p>
+
+  <script src="dice.js"></script>
+  <script src="rules.js"></script>
+  <script src="spells.js"></script>
+  <script src="monsters.js"></script>
+  <script>
+    // =====================================================================
+    // THE BOOK READER
+    // book.html#spells opens the Spellbook (the part after # picks the book).
+    // Each book is a list of ENTRIES ({ title, meta, lines }) in chapters. The entries
+    // are poured onto pages of about the same length, like a real book.
+    // =====================================================================
+    const el = function (id) { return document.getElementById(id); };
+    const embedded = new URLSearchParams(location.search).get("embed") === "1" && window.parent !== window;
+    if (embedded) document.body.classList.add("embedded");
+
+    function entry(title, meta, lines) {
+      return { title: title, meta: meta || "", lines: (lines || []).filter(Boolean) };
+    }
+
+    const ABILITY_SHORT = ["Str", "Dex", "Con", "Int", "Wis", "Cha"];
+
+    const BOOKS = {
+      rules: {
+        title: "📕 The Rules", color: "#7a2a2a",
+        chapters: function () {
+          return [
+            { name: "Playing the game", entries: RULES_BRIEF.map(function (s) { return entry(s.title, "", s.lines); }) },
+            { name: "Conditions", entries: CONDITIONS.map(function (c) { return entry(c.name, "Condition", [c.text]); }) }
+          ];
+        }
+      },
+      spells: {
+        title: "📗 The Spellbook", color: "#2f5e34",
+        chapters: function () {
+          const chapters = [];
+          for (let level = 0; level <= 9; level++) {
+            const list = SPELLS.filter(function (s) { return s.level === level; }).sort(function (a, b) { return a.n.localeCompare(b.n); });
+            if (!list.length) continue;
+            chapters.push({
+              name: level === 0 ? "Cantrips" : "Level " + level + " spells",
+              entries: list.map(function (s) {
+                const meta = (s.level === 0 ? "Cantrip" : "Level " + s.level) + " " + s.school + " · " + s.time + " · " + s.range + " · " + s.dur +
+                  (s.conc ? " (concentration)" : "") + " · " + s.classes.join(", ");
+                return entry(s.n, meta, (s.text || []).concat(s.higher ? ["At higher levels: " + s.higher] : []).concat(s.cantripUp ? ["Cantrip upgrade: " + s.cantripUp] : []));
+              })
+            });
+          }
+          return chapters;
+        }
+      },
+      monsters: {
+        title: "📘 The Bestiary", color: "#1f3550",
+        chapters: function () {
+          const sorted = MONSTERS.slice().sort(function (a, b) { return a.n.localeCompare(b.n); });
+          const chapters = [];
+          for (const letter of "ABCDEFGHIJKLMNOPQRSTUVWXYZ") {
+            const list = sorted.filter(function (m) { return m.n[0].toUpperCase() === letter; });
+            if (!list.length) continue;
+            chapters.push({
+              name: "Monsters: " + letter,
+              entries: list.map(function (m) {
+                const scores = m.abil.map(function (v, i) { return ABILITY_SHORT[i] + " " + v + " (" + formatBonus(getModifier(v)) + ")"; }).join(" · ");
+                const attacks = m.atk.map(function (a) { return a.n + ": " + formatBonus(a.hit) + " to hit, " + a.reach + ", " + a.dice + " " + a.type + "."; });
+                return entry(m.n, m.size + " " + m.type + " · CR " + m.cr + " (" + m.xp + " XP)",
+                  ["Armor Class " + m.ac + " · Hit Points " + m.hp + " (" + m.hpDice + ") · Speed " + m.speed + " · Initiative " + formatBonus(m.init), scores]
+                    .concat(attacks).concat(m.multi > 1 ? ["Multiattack: makes " + m.multi + " attacks."] : []));
+              })
+            });
+          }
+          return chapters;
+        }
+      },
+      items: {
+        title: "📙 Magic Items", color: "#8a5a12",
+        chapters: function () {
+          return [{ name: "Magic items", entries: MAGIC_ITEMS.map(function (i) {
+            return entry(i.name, [i.type, i.rarity, i.attunement].filter(Boolean).join(" · "), [i.powers]);
+          }) }];
+        }
+      },
+      gear: {
+        title: "📒 Weapons & Armor", color: "#5a4630",
+        chapters: function () {
+          return [
+            { name: "Weapons", entries: WEAPONS.map(function (w) {
+              return entry(w.name, w.category + " " + w.kind + " weapon", [w.damage + " " + w.type + (w.versatile ? " (" + w.versatile + " with two hands)" : "") +
+                (w.range ? " · range " + w.range + " ft" : ""), w.props.length ? "Properties: " + w.props.join(", ") : "", w.mastery ? "Mastery: " + w.mastery : ""]);
+            }) },
+            { name: "Armor", entries: ARMOR.map(function (a) {
+              const ac = a.category === "Shield" ? "+" + a.base + " AC" : "AC " + a.base + (a.dexMax === 0 ? "" : a.dexMax ? " + Dex (max " + a.dexMax + ")" : " + Dex");
+              return entry(a.name, a.category + " armor", [ac + (a.strength ? " · needs Strength " + a.strength : "") + (a.stealth ? " · Disadvantage on Stealth" : "")]);
+            }).concat([entry("Shield", "Shield", ["+2 AC while you hold it."])]) }
+          ];
+        }
+      },
+      heroes: {
+        title: "📓 Classes & Heroes", color: "#34244a",
+        chapters: function () {
+          const chapters = CLASSES.map(function (c) {
+            const features = (CLASS_FEATURES[c.name] || []).map(function (f) { return "Level " + f[0] + " · " + f[1] + ": " + f[2]; });
+            return { name: c.name, entries: [entry(c.name, "Hit die d" + c.hitDie + " · Saves: " + c.saves.map(abilityName).join(", ") + " · Primary: " + describePrimary(c),
+              ["Skills: choose " + c.skillCount + " from " + c.skillOptions.join(", ") + "."].concat(features))] };
+          });
+          chapters.push({ name: "Species", entries: SPECIES.map(function (s) { return entry(s.name, s.size + " · Speed " + s.speed + " ft", ["Traits: " + s.traits.join(", ") + "."]); }) });
+          chapters.push({ name: "Backgrounds", entries: BACKGROUNDS.map(function (b) {
+            return entry(b.name, "Background", ["Ability scores: " + b.abilities.map(abilityName).join(", ") + ".", "Skills: " + b.skills.join(", ") + ".", "Feat: " + b.feat + ".", "Tool: " + b.tool + "."]);
+          }) });
+          return chapters;
+        }
+      }
+    };
+
+    // ---------- Pouring entries onto pages ----------
+    const PAGE_SIZE = 1500;   // about this many letters per page
+    let book = null;          // { key, title, pages: [[entry]], chapterStarts: [{ name, page }] }
+    let page = 0;             // the left-hand page showing
+
+    function sizeOf(e) {
+      return e.title.length + e.meta.length + e.lines.join(" ").length + 120;
+    }
+
+    function openBook(key, filter) {
+      const def = BOOKS[key] || BOOKS.rules;
+      const pages = [];
+      const chapterStarts = [];
+      for (const chapter of def.chapters()) {
+        let entries = chapter.entries;
+        if (filter) {
+          entries = entries.filter(function (e) { return (e.title + " " + e.meta + " " + e.lines.join(" ")).toLowerCase().includes(filter); });
+          if (!entries.length) continue;
+        }
+        chapterStarts.push({ name: chapter.name, page: pages.length });
+        let current = [{ heading: chapter.name }];
+        let size = 200;
+        for (const e of entries) {
+          if (current.length > 1 && size + sizeOf(e) > PAGE_SIZE) {
+            pages.push(current);
+            current = [];
+            size = 0;
+          }
+          current.push(e);
+          size += sizeOf(e);
+        }
+        pages.push(current);
+      }
+      book = { key: key, title: def.title, color: def.color, pages: pages, chapterStarts: chapterStarts };
+      el("bookTitle").textContent = def.title;
+      document.title = def.title.replace(/^\S+\s/, "");
+      document.documentElement.style.setProperty("--book-color", def.color);
+      const pick = el("chapterPick");
+      pick.innerHTML = "";
+      pick.append(new Option("📑 Contents", ""));
+      for (const c of chapterStarts) pick.append(new Option(c.name + " (page " + (c.page + 1) + ")", c.page));
+      el("searchNote").textContent = filter ? (pages.length ? "Showing only pages that match \"" + filter + "\"." : "Nothing in this book matches \"" + filter + "\".") : "";
+      page = 0;
+      showPages();
+    }
+
+    function perSpread() {
+      return window.innerWidth >= 900 ? 2 : 1;   // two pages side by side on a wide screen
+    }
+
+    function drawPage(content, number) {
+      const sheet = document.createElement("article");
+      sheet.className = "book-page";
+      for (const item of content) {
+        if (item.heading) {
+          const h = document.createElement("h2");
+          h.className = "book-chapter";
+          h.textContent = item.heading;
+          sheet.append(h);
+          continue;
+        }
+        const h = document.createElement("h3");
+        h.textContent = item.title;
+        sheet.append(h);
+        if (item.meta) {
+          const meta = document.createElement("p");
+          meta.className = "book-meta";
+          meta.textContent = item.meta;
+          sheet.append(meta);
+        }
+        for (const line of item.lines) {
+          const p = document.createElement("p");
+          p.textContent = line;
+          sheet.append(p);
+        }
+      }
+      const foot = document.createElement("div");
+      foot.className = "book-folio";
+      foot.textContent = number;
+      sheet.append(foot);
+      return sheet;
+    }
+
+    function showPages() {
+      const spread = el("spread");
+      spread.innerHTML = "";
+      const count = perSpread();
+      page = Math.max(0, Math.min(page, Math.max(book.pages.length - 1, 0)));
+      if (count === 2) page -= page % 2;   // left pages are even
+      for (let i = 0; i < count; i++) {
+        const n = page + i;
+        if (n < book.pages.length) spread.append(drawPage(book.pages[n], n + 1));
+      }
+      el("pageNumber").textContent = book.pages.length ? "Page " + (page + 1) + (count === 2 && page + 1 < book.pages.length ? "–" + (page + 2) : "") + " of " + book.pages.length : "";
+      el("prevBtn").disabled = page === 0;
+      el("nextBtn").disabled = page + count >= book.pages.length;
+      // Which chapter are we in?
+      let chapter = "";
+      for (const c of book.chapterStarts) if (c.page <= page) chapter = String(c.page);
+      el("chapterPick").value = chapter;
+    }
+
+    function turn(by) {
+      page += by * perSpread();
+      showPages();
+      el("spread").scrollIntoView({ block: "start" });
+    }
+
+    // ---------- Buttons ----------
+    el("prevBtn").addEventListener("click", function () { turn(-1); });
+    el("nextBtn").addEventListener("click", function () { turn(1); });
+    el("chapterPick").addEventListener("change", function () {
+      if (el("chapterPick").value === "") return;
+      page = Number(el("chapterPick").value);
+      showPages();
+    });
+    let searchTimer = null;
+    el("bookSearch").addEventListener("input", function () {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(function () { openBook(book.key, el("bookSearch").value.trim().toLowerCase()); }, 250);
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.target.tagName === "INPUT" || event.target.tagName === "SELECT") return;
+      if (event.key === "ArrowRight") turn(1);
+      if (event.key === "ArrowLeft") turn(-1);
+    });
+    window.addEventListener("resize", showPages);
+    // Put it back: inside the GM Screen, tell it to close the book; on its own, go back.
+    el("putBack").addEventListener("click", function () {
+      if (embedded) window.parent.postMessage({ type: "closeBook" }, location.origin);
+      else if (history.length > 1) history.back();
+      else location.href = "index.html";
+    });
+    // The GM Screen picks another book by changing the part after #
+    window.addEventListener("hashchange", function () {
+      el("bookSearch").value = "";
+      openBook(location.hash.slice(1));
+    });
+
+    openBook(location.hash.slice(1) || "rules");
+  </script>
+  <script src="pwa.js"></script>
+  <script src="feedback.js"></script>
+</body>
+</html>

@@ -2655,3 +2655,156 @@ details.by-hand > summary {
 .level-badge.good  { background-color: rgba(111, 191, 115, 0.25); }
 .level-badge.tough { background-color: rgba(224, 102, 102, 0.25); }
 .level-badge.easy  { background-color: rgba(201, 162, 39, 0.2); }
+
+/* =====================================================================
+   BOOKS (book.html): a bar, then pages like a real book
+   ===================================================================== */
+body.book-body {
+  --book-color: #7a2a2a;
+}
+
+.book-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 10px;
+  margin: 0 auto 8px;
+  max-width: 1100px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background-color: var(--book-color);
+}
+
+.book-bar strong {
+  font-size: 18px;
+}
+
+.book-bar input,
+.book-bar select {
+  font-size: 14px;
+  max-width: 100%;
+}
+
+.book-spread {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* One page: parchment, with a darker edge on the spine side */
+.book-page {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 540px;
+  min-height: 70vh;
+  padding: 22px 26px 40px;
+  text-align: left;
+  color: #2b1d14;
+  background-color: #f6efe0;
+  border: 1px solid #c9b48a;
+  border-radius: 4px 10px 10px 4px;
+  box-shadow: inset 10px 0 14px -10px rgba(0, 0, 0, 0.35), 0 4px 12px rgba(0, 0, 0, 0.4);
+  line-height: 1.5;
+  font-size: 15px;
+}
+
+.book-spread .book-page:first-child:not(:last-child) {
+  border-radius: 10px 4px 4px 10px;
+  box-shadow: inset -10px 0 14px -10px rgba(0, 0, 0, 0.35), 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.book-page h2.book-chapter {
+  margin: 0 0 10px;
+  padding-bottom: 4px;
+  font-size: 22px;
+  color: var(--book-color);
+  border-bottom: 2px solid var(--book-color);
+}
+
+.book-page h3 {
+  margin: 14px 0 2px;
+  font-size: 17px;
+  color: var(--book-color);
+}
+
+.book-page p {
+  margin: 4px 0;
+}
+
+.book-page .book-meta {
+  font-style: italic;
+  font-size: 13px;
+  color: #6b5a44;
+}
+
+.book-folio {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 12px;
+  color: #8a7a60;
+}
+
+.book-turn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin: 10px 0;
+}
+
+.book-credit {
+  max-width: 700px;
+  margin: 8px auto;
+}
+
+/* Inside the GM Screen the book fills the middle */
+body.embedded.book-body .book-page {
+  min-height: 60vh;
+}
+
+/* =====================================================================
+   THE BOOKSHELF on the GM Screen: book spines to pull out
+   ===================================================================== */
+.bookshelf {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 6px 0;
+  border-bottom: 8px solid #6b4a2b;   /* the shelf */
+  border-radius: 4px;
+  background-color: #2b1d14;
+}
+
+.book-spine {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 128px;
+  margin: 0;
+  padding: 6px 2px;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 12px;
+  font-weight: bold;
+  color: #f3e6c8;
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  border-radius: 3px 3px 0 0;
+  box-shadow: inset -4px 0 6px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.book-spine:hover {
+  transform: translateY(-6px);       /* pulled half out */
+}
+
+.book-spine.out {
+  transform: translateY(-14px);
+  outline: 2px solid #f3e6c8;
+}

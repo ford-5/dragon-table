@@ -317,7 +317,7 @@
       const goblin = MONSTERS.find(function (m) { return m.n === "Goblin Warrior"; });
       let hp = goblin.hp;
       const profile = makeCombatProfile(h);
-      const weapons = heroActions(profile).filter(function (a) { return a.kind === "weapon"; });
+      const weapons = heroActions(profile).filter(function (a) { return a.kind === "weapon" && !a.rider; });
       box.append(make("strong", "", "🗡️ Practice: " + h.name + " fights a Goblin Warrior (AC " + goblin.ac + ", " + goblin.hp + " HP). Pick a weapon and attack!"));
       const status = make("p", "", "🧌 Goblin: " + hp + "/" + goblin.hp + " HP");
       const result = make("p", "quiz-feedback");

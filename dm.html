@@ -427,7 +427,11 @@
         currentId = combatants[index].id;
       }
       const now = findCombatant(currentId);
-      if (now) now.acted = false;     // a new turn: they can act again
+      if (now) {
+        now.acted = false;            // a new turn: they can act again
+        now.bonusActed = false;       // ...and use a bonus action
+        startFeatureTurn(now.state);  // Sneak Attack, Steady Aim, Action Surge: once per turn
+      }
       panelActorId = currentId;       // show their actions
       panelActionKey = null;
       panelTargets = [];
@@ -519,6 +523,7 @@
     let panelTargets = [];       // the ids of the chosen targets
     let panelSlot = "";          // the spell slot picked, like "slot:2" or "pact:3"
     let panelMode = "normal";    // normal, advantage or disadvantage
+    let panelAllyNear = false;   // Sneak Attack: a friend is next to the target
     let lastResult = "";         // what the dice said last time
     const lastTurnSent = new Map();   // player key -> the last turn message (so we don't repeat it)
 
@@ -542,8 +547,10 @@
       if (c.partyId) {
         const member = findPartyMember(c.partyId);
         const profile = profileOfMember(member);
-        return { side: "hero", ac: member ? member.ac : 10, profile: profile,
-                 saves: profile ? profile.saves : {}, actions: heroActions(profile) };
+        // What's left of their class features in this fight (Second Wind uses, Rage...): kept on the card
+        if (profile && !c.state) c.state = newFeatureState(profile);
+        return { side: "hero", ac: member ? member.ac : 10, profile: profile, state: c.state,
+                 saves: profile ? profile.saves : {}, actions: heroActions(profile, c.state) };
       }
       const monster = c.monster ? monsterByName(c.monster) : null;
       if (monster) {
@@ -554,7 +561,8 @@
 
     function targetInfo(c) {
       const info = combatInfo(c);
-      return { id: c.id, name: c.name, ac: info.ac, saves: info.saves };
+      return { id: c.id, name: c.name, ac: info.ac, saves: info.saves, hp: c.hp, maxHp: c.maxHp,
+               resist: c.state && c.state.raging ? ["bludgeoning", "piercing", "slashing"] : null };   // Rage: half weapon damage
     }
 
     // Tell the Battle Map a monster's new HP (the map page listens on the same channel).
@@ -644,7 +652,12 @@
       panel.append(head);
 
       const chips = makeEl("div", "action-chips");
+      if (actor.partyId && actor.id === currentId) {
+        chips.append(makeEl("p", "hint", "Action: " + (actor.acted ? "used" : "free") + " · Bonus action: " + (actor.bonusActed ? "used" : "free") +
+          (actor.state && actor.state.raging ? " · 😤 Raging" : "")));
+      }
       for (const action of info.actions) {
+        if (actor.id === currentId && (action.bonus ? actor.bonusActed : (actor.acted && !action.free))) continue;
         const chip = makeEl("button", "small-button" + (action.key === panelActionKey ? " picked" : ""), action.label);
         chip.addEventListener("click", function () {
           panelActionKey = action.key;
@@ -708,14 +721,24 @@
           controls.append(label);
         }
 
+        // Sneak Attack (Rogue): works with Advantage, or when a friend is right next to the target
+        if (info.profile && info.profile.features && info.profile.features.sneakDice && action.kind === "weapon" && action.attack.finesse) {
+          const ally = makeEl("label", "target-chip");
+          const box = makeEl("input");
+          box.type = "checkbox";
+          box.checked = panelAllyNear;
+          box.addEventListener("change", function () { panelAllyNear = box.checked; });
+          ally.append(box, document.createTextNode(" A friend is next to the target (Sneak Attack " + info.profile.features.sneakDice + "d6)"));
+          controls.append(ally);
+        }
         const mode = makeEl("select");
         mode.append(new Option("Normal roll", "normal"), new Option("Advantage", "advantage"), new Option("Disadvantage", "disadvantage"));
         mode.value = panelMode;
         mode.addEventListener("change", function () { panelMode = mode.value; });
         controls.append(mode);
 
-        const go = makeEl("button", "small-button roll-it", "🎲 Roll it");
-        go.disabled = panelTargets.length === 0 || (action.kind === "spell" && action.spell.level > 0 && !panelSlot);
+        const go = makeEl("button", "small-button roll-it", action.kind === "feature" && action.self ? "✅ Use it" : "🎲 Roll it");
+        go.disabled = (!action.self && panelTargets.length === 0) || (action.kind === "spell" && action.spell.level > 0 && !panelSlot);
         go.addEventListener("click", function () { gmDoAction(actor, info, action); });
         controls.append(go);
         panel.append(controls);
@@ -725,18 +748,35 @@
     }
 
     // The GM rolls an action for anyone (a monster, or a hero whose player is at the table).
-    function gmDoAction(actor, info, action) {
-      let slot = null;
+    // The spell slot an action needs: a spell's chosen slot, or (for a smite) the lowest one.
+    function slotFor(action, profile, slotKind, slotLevel) {
       if (action.kind === "spell" && action.spell.level > 0) {
-        const [kind, level] = panelSlot.split(":");
-        slot = profileSlotChoices(info.profile, action.spell).find(function (ch) {
-          return ch.kind === kind && ch.level === Number(level);
-        });
-        if (!slot) return;
+        return profileSlotChoices(profile, action.spell).find(function (ch) {
+          return ch.kind === slotKind && ch.level === Number(slotLevel);
+        }) || null;
       }
-      const targets = panelTargets.map(findCombatant).filter(Boolean).map(targetInfo);
-      const result = resolveAction(actor.name, action, targets, { mode: panelMode, slotLevel: slot ? slot.level : 0, profile: info.profile });
-      if (slot && actor.partyId) spendSlotFor(findPartyMember(actor.partyId), slot, true);
+      if (action.rider) return profileSlotChoices(profile, action.rider)[0] || null;
+      return null;
+    }
+
+    // After an action: was the action or the bonus action used? (Action Surge gives the action back.)
+    function markTurnUsed(actor, result) {
+      if (result.usedAction) actor.acted = true;
+      if (result.usedBonus) actor.bonusActed = true;
+      if (result.extraAction) actor.acted = false;
+    }
+
+    function gmDoAction(actor, info, action) {
+      const [kind, level] = panelSlot.split(":");
+      const slot = slotFor(action, info.profile, kind, level);
+      if ((action.kind === "spell" && action.spell.level > 0) && !slot) return;
+      if (action.rider && !slot) return;
+      const targets = (action.self ? [actor] : panelTargets.map(findCombatant).filter(Boolean)).map(targetInfo);
+      const result = resolveAction(actor.name, action, targets, { mode: panelMode, slotLevel: slot ? slot.level : 0, profile: info.profile,
+        state: info.state, selfId: actor.id, allyNear: panelAllyNear });
+      // A smite only uses its slot on a hit
+      if (slot && actor.partyId && (!action.rider || result.riderUsed)) spendSlotFor(findPartyMember(actor.partyId), slot, true);
+      markTurnUsed(actor, result);
       applyResult(actor, result);
     }
 
@@ -768,7 +808,7 @@
         if (target.partyId) setPartyHp(target.partyId, target.hp);
         syncMapHp(target);
       }
-      actor.acted = true;
+      // (whether the action or the bonus action was used is marked by markTurnUsed)
       lastResult = result.lines.join("\n");
       for (const line of result.lines) {
         talk("⚔️ " + line);
@@ -800,9 +840,12 @@
         const connection = liveConns.get(member.remoteKey);
         if (!connection || !connection.open) continue;
         const mine = combatants.find(function (c) { return c.partyId === member.id; });
+        const myTurn = Boolean(mine) && mine.id === currentId && mine.hp > 0;
         const message = {
           type: "turn", round: round, started: currentId !== null, order: order,
-          yourTurn: Boolean(mine) && mine.id === currentId && !mine.acted && mine.hp > 0
+          yourTurn: myTurn && (!mine.acted || !mine.bonusActed),
+          canAct: myTurn && !mine.acted, canBonus: myTurn && !mine.bonusActed,
+          state: mine ? mine.state || null : null   // their feature uses (Second Wind left, raging...)
         };
         const text = JSON.stringify(message);
         if (lastTurnSent.get(member.remoteKey) === text) continue;   // nothing new to say
@@ -819,33 +862,35 @@
       };
       const me = combatants.find(function (c) { return c.partyId === member.id; });
       if (!me || currentId !== me.id) return reply(false, "It isn't your turn yet.");
-      if (me.acted) return reply(false, "You've already acted this turn.");
       if (me.hp <= 0) return reply(false, "You're down, so you can't act.");
       const profile = profileOfMember(member);
       if (!profile) return reply(false, "Your GM doesn't have your sheet yet. Press \"Send my updated sheet\".");
+      if (!me.state) me.state = newFeatureState(profile);
 
-      const action = heroActions(profile).find(function (a) { return a.key === data.action; });
-      if (!action) return reply(false, "That isn't one of your attacks or spells.");
-      let slot = null;
-      if (action.kind === "spell" && action.spell.level > 0) {
-        slot = profileSlotChoices(profile, action.spell).find(function (ch) {
-          return ch.kind === data.slotKind && ch.level === Number(data.slotLevel);
-        });
-        if (!slot) return reply(false, "You don't have a spell slot for that.");
+      // Only actions they really have AND still have uses of (heroActions leaves out used-up features)
+      const action = heroActions(profile, me.state).find(function (a) { return a.key === data.action; });
+      if (!action) return reply(false, "That isn't one of your attacks, spells or features (or it's used up).");
+      if (action.bonus ? me.bonusActed : (me.acted && !action.free)) {
+        return reply(false, action.bonus ? "You've already used your bonus action this turn." : "You've already used your action this turn.");
       }
+      const slot = slotFor(action, profile, data.slotKind, data.slotLevel);
+      if (((action.kind === "spell" && action.spell.level > 0) || action.rider) && !slot) return reply(false, "You don't have a spell slot for that.");
       const max = maxTargets(action, profile, slot ? slot.level : 0);
       const ids = [];
       for (const id of (Array.isArray(data.targets) ? data.targets : [])) {
         const n = Number(id);
         if (!ids.includes(n)) ids.push(n);
       }
-      const targets = ids.slice(0, max).map(findCombatant).filter(function (t) { return t && !t.secret; });
+      const targets = action.self ? [me] : ids.slice(0, max).map(findCombatant).filter(function (t) { return t && !t.secret; });
       if (!targets.length) return reply(false, "Pick a target first.");
 
-      const result = resolveAction(member.name, action, targets.map(targetInfo), { mode: "normal", slotLevel: slot ? slot.level : 0, profile: profile });
-      if (slot) spendSlotFor(member, slot, false);   // their device marks it when it gets the reply
+      const result = resolveAction(member.name, action, targets.map(targetInfo), { mode: "normal", slotLevel: slot ? slot.level : 0, profile: profile,
+        state: me.state, selfId: me.id, allyNear: data.allyNear === true });
+      const slotUsed = slot && (!action.rider || result.riderUsed);
+      if (slotUsed) spendSlotFor(member, slot, false);   // their device marks it when it gets the reply
+      markTurnUsed(me, result);
       applyResult(me, result);
-      reply(true, result.lines.join("\n"), slot ? { kind: slot.kind, level: slot.level } : null);
+      reply(true, result.lines.join("\n"), slotUsed ? { kind: slot.kind, level: slot.level } : null);
     }
 
     render();   // draw the empty tracker when the page first loads

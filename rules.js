@@ -669,6 +669,346 @@ function getAttacksPerAction(character) {
   return best;
 }
 
+// =====================================================================
+// CLASS FEATURES BY LEVEL (SRD 5.2.1 class tables; the descriptions are short and
+// in our own words, so read the SRD for the full rules). "Subclass feature" levels
+// depend on the subclass the player picks.
+// Each entry: [level, name, what it does]
+// =====================================================================
+const ASI = "Ability Score Improvement: raise your scores (or take a feat instead).";
+const CLASS_FEATURES = {
+  Barbarian: [
+    [1, "Rage", "A Bonus Action: hit harder with Strength attacks and take half damage from weapons."],
+    [1, "Unarmored Defense", "Without armor, your AC is 10 + Dexterity + Constitution."],
+    [1, "Weapon Mastery", "Use the special mastery property of some weapons you know."],
+    [2, "Danger Sense", "Advantage on Dexterity saves against things you can see."],
+    [2, "Reckless Attack", "Attack with Advantage, but enemies get Advantage against you too."],
+    [3, "Barbarian Subclass", "Choose your Path (the SRD has the Path of the Berserker)."],
+    [3, "Primal Knowledge", "Learn one more skill, and use Strength for some skills while raging."],
+    [4, ASI.split(":")[0], ASI],
+    [5, "Extra Attack", "Attack twice when you take the Attack action."],
+    [5, "Fast Movement", "Your Speed goes up by 10 feet without heavy armor."],
+    [6, "Subclass feature", "A new power from your Path."],
+    [7, "Feral Instinct", "Advantage on Initiative rolls."],
+    [7, "Instinctive Pounce", "Move up to half your Speed when you start a Rage."],
+    [8, ASI.split(":")[0], ASI],
+    [9, "Brutal Strike", "Give up Advantage from Reckless Attack for extra damage and a special effect."],
+    [10, "Subclass feature", "A new power from your Path."],
+    [11, "Relentless Rage", "While raging, a Constitution save can keep you on your feet at 0 HP."],
+    [12, ASI.split(":")[0], ASI],
+    [13, "Improved Brutal Strike", "More Brutal Strike effects."],
+    [14, "Subclass feature", "A new power from your Path."],
+    [15, "Persistent Rage", "Your Rage lasts longer and only ends when you choose."],
+    [16, ASI.split(":")[0], ASI],
+    [17, "Improved Brutal Strike", "Brutal Strike gets even stronger."],
+    [18, "Indomitable Might", "Strength checks can't roll lower than your Strength score."],
+    [19, "Epic Boon", "A powerful feat for legendary heroes."],
+    [20, "Primal Champion", "Strength and Constitution go up by 4 (to a maximum of 25)."]
+  ],
+  Bard: [
+    [1, "Bardic Inspiration", "A Bonus Action: give a friend a die to add to a roll."],
+    [1, "Spellcasting", "Cast bard spells using Charisma."],
+    [2, "Expertise", "Double your proficiency bonus for two skills."],
+    [2, "Jack of All Trades", "Add half your proficiency bonus to checks you aren't trained in."],
+    [3, "Bard Subclass", "Choose your College (the SRD has the College of Lore)."],
+    [4, ASI.split(":")[0], ASI],
+    [5, "Font of Inspiration", "Bardic Inspiration comes back after a Short Rest too."],
+    [6, "Subclass feature", "A new power from your College."],
+    [7, "Countercharm", "Help a friend reroll a failed save against being charmed or frightened."],
+    [8, ASI.split(":")[0], ASI],
+    [9, "Expertise", "Double proficiency for two more skills."],
+    [10, "Magical Secrets", "Learn spells from other classes' lists."],
+    [12, ASI.split(":")[0], ASI],
+    [14, "Subclass feature", "A new power from your College."],
+    [16, ASI.split(":")[0], ASI],
+    [18, "Superior Inspiration", "Regain Bardic Inspiration when you roll Initiative."],
+    [19, "Epic Boon", "A powerful feat for legendary heroes."],
+    [20, "Words of Creation", "Two famous spells are always ready, and can affect two creatures."]
+  ],
+  Cleric: [
+    [1, "Spellcasting", "Cast cleric spells using Wisdom."],
+    [1, "Divine Order", "Choose to be a Protector (armor and weapons) or a Thaumaturge (extra magic)."],
+    [2, "Channel Divinity", "Divine power a few times per rest: turn undead or a domain power."],
+    [3, "Cleric Subclass", "Choose your Domain (the SRD has the Life Domain)."],
+    [4, ASI.split(":")[0], ASI],
+    [5, "Sear Undead", "Turning undead also burns them with radiant damage."],
+    [6, "Subclass feature", "A new power from your Domain."],
+    [7, "Blessed Strikes", "Extra radiant damage on hits, or stronger cantrips."],
+    [8, ASI.split(":")[0], ASI],
+    [10, "Divine Intervention", "Ask your god to cast a spell for you."],
+    [12, ASI.split(":")[0], ASI],
+    [14, "Improved Blessed Strikes", "Blessed Strikes gets stronger."],
+    [16, ASI.split(":")[0], ASI],
+    [17, "Subclass feature", "A new power from your Domain."],
+    [19, "Epic Boon", "A powerful feat for legendary heroes."],
+    [20, "Greater Divine Intervention", "Divine Intervention can even cast Wish."]
+  ],
+  Druid: [
+    [1, "Spellcasting", "Cast druid spells using Wisdom."],
+    [1, "Druidic", "The secret language of druids."],
+    [1, "Primal Order", "Choose to be a Magician (extra cantrip) or a Warden (armor and weapons)."],
+    [2, "Wild Shape", "Turn into an animal for a while."],
+    [2, "Wild Companion", "Summon a spirit animal friend."],
+    [3, "Druid Subclass", "Choose your Circle (the SRD has the Circle of the Land)."],
+    [4, ASI.split(":")[0], ASI],
+    [5, "Wild Resurgence", "Trade spell slots and Wild Shape uses."],
+    [6, "Subclass feature", "A new power from your Circle."],
+    [7, "Elemental Fury", "Extra elemental damage on hits, or stronger cantrips."],
+    [8, ASI.split(":")[0], ASI],
+    [10, "Subclass feature", "A new power from your Circle."],
+    [12, ASI.split(":")[0], ASI],
+    [14, "Subclass feature", "A new power from your Circle."],
+    [15, "Improved Elemental Fury", "Elemental Fury gets stronger."],
+    [16, ASI.split(":")[0], ASI],
+    [18, "Beast Spells", "Cast spells while in Wild Shape."],
+    [19, "Epic Boon", "A powerful feat for legendary heroes."],
+    [20, "Archdruid", "Wild Shape almost never runs out."]
+  ],
+  Fighter: [
+    [1, "Fighting Style", "A fighting specialty, like a bonus with bows or with a shield."],
+    [1, "Second Wind", "A Bonus Action: heal 1d10 + your fighter level."],
+    [1, "Weapon Mastery", "Use the special mastery property of some weapons you know."],
+    [2, "Action Surge", "Once per rest, take one extra action on your turn."],
+    [2, "Tactical Mind", "Spend a Second Wind to add 1d10 to a failed check."],
+    [3, "Fighter Subclass", "Choose your path (the SRD has the Champion)."],
+    [4, ASI.split(":")[0], ASI],
+    [5, "Extra Attack", "Attack twice when you take the Attack action."],
+    [5, "Tactical Shift", "Second Wind also lets you move without provoking attacks."],
+    [6, ASI.split(":")[0], ASI],
+    [7, "Subclass feature", "A new power from your subclass."],
+    [8, ASI.split(":")[0], ASI],
+    [9, "Indomitable", "Reroll a failed saving throw (with a bonus)."],
+    [9, "Tactical Master", "Change a weapon's mastery property for an attack."],
+    [10, "Subclass feature", "A new power from your subclass."],
+    [11, "Two Extra Attacks", "Attack three times when you take the Attack action."],
+    [12, ASI.split(":")[0], ASI],
+    [13, "Indomitable (two uses)", "Use Indomitable twice per rest."],
+    [13, "Studied Attacks", "After a miss, your next attack on that target has Advantage."],
+    [14, ASI.split(":")[0], ASI],
+    [15, "Subclass feature", "A new power from your subclass."],
+    [16, ASI.split(":")[0], ASI],
+    [17, "Action Surge (two uses)", "Use Action Surge twice per rest (once per turn)."],
+    [17, "Indomitable (three uses)", "Use Indomitable three times per rest."],
+    [18, "Subclass feature", "A new power from your subclass."],
+    [19, "Epic Boon", "A powerful feat for legendary heroes."],
+    [20, "Three Extra Attacks", "Attack four times when you take the Attack action."]
+  ],
+  Monk: [
+    [1, "Martial Arts", "Use Dexterity and a Martial Arts die with unarmed strikes and monk weapons."],
+    [1, "Unarmored Defense", "Without armor, your AC is 10 + Dexterity + Wisdom."],
+    [2, "Monk's Focus", "Focus Points for Flurry of Blows (two quick strikes), Patient Defense and Step of the Wind."],
+    [2, "Unarmored Movement", "Your Speed goes up without armor."],
+    [2, "Uncanny Metabolism", "When you roll Initiative, regain Focus and some HP once per rest."],
+    [3, "Deflect Attacks", "Use your Reaction to reduce damage from an attack."],
+    [3, "Monk Subclass", "Choose your Warrior path (the SRD has the Warrior of the Open Hand)."],
+    [4, ASI.split(":")[0], ASI],
+    [4, "Slow Fall", "Take less damage from falling."],
+    [5, "Extra Attack", "Attack twice when you take the Attack action."],
+    [5, "Stunning Strike", "Spend Focus to try to stun a creature you hit."],
+    [6, "Empowered Strikes", "Your unarmed strikes can deal force damage."],
+    [6, "Subclass feature", "A new power from your subclass."],
+    [7, "Evasion", "Take no damage (or half) from many area effects."],
+    [8, ASI.split(":")[0], ASI],
+    [9, "Acrobatic Movement", "Run along walls and across water."],
+    [10, "Heightened Focus", "Flurry of Blows and your other Focus moves get stronger."],
+    [10, "Self-Restoration", "End being charmed, frightened or poisoned on yourself."],
+    [11, "Subclass feature", "A new power from your subclass."],
+    [12, ASI.split(":")[0], ASI],
+    [13, "Deflect Energy", "Deflect Attacks works against any damage type."],
+    [14, "Disciplined Survivor", "Proficiency in all saving throws, and spend Focus to reroll one."],
+    [15, "Perfect Focus", "Regain Focus when you roll Initiative."],
+    [16, ASI.split(":")[0], ASI],
+    [17, "Subclass feature", "A new power from your subclass."],
+    [18, "Superior Defense", "Spend Focus to resist all damage except force for a minute."],
+    [19, "Epic Boon", "A powerful feat for legendary heroes."],
+    [20, "Body and Mind", "Dexterity and Wisdom go up by 4 (to a maximum of 25)."]
+  ],
+  Paladin: [
+    [1, "Lay On Hands", "A Bonus Action: heal someone from a pool of 5 HP per paladin level."],
+    [1, "Spellcasting", "Cast paladin spells using Charisma."],
+    [1, "Weapon Mastery", "Use the special mastery property of some weapons you know."],
+    [2, "Fighting Style", "A fighting specialty, like a bonus with a shield or two hands."],
+    [2, "Paladin's Smite", "You always have Divine Smite ready: extra radiant damage right after a hit."],
+    [3, "Channel Divinity", "Divine power a few times per rest."],
+    [3, "Paladin Subclass", "Swear your Oath (the SRD has the Oath of Devotion)."],
+    [4, ASI.split(":")[0], ASI],
+    [5, "Extra Attack", "Attack twice when you take the Attack action."],
+    [5, "Faithful Steed", "Find Steed is always ready, and once per day costs no slot."],
+    [6, "Aura of Protection", "You and nearby friends add your Charisma to saving throws."],
+    [7, "Subclass feature", "A new power from your Oath."],
+    [8, ASI.split(":")[0], ASI],
+    [9, "Abjure Foes", "Use Channel Divinity to frighten enemies."],
+    [10, "Aura of Courage", "You and nearby friends can't be frightened."],
+    [11, "Radiant Strikes", "Your melee weapon hits deal an extra 1d8 radiant damage."],
+    [12, ASI.split(":")[0], ASI],
+    [14, "Restoring Touch", "Lay On Hands can also end conditions."],
+    [15, "Subclass feature", "A new power from your Oath."],
+    [16, ASI.split(":")[0], ASI],
+    [18, "Aura Expansion", "Your auras reach farther."],
+    [19, "Epic Boon", "A powerful feat for legendary heroes."],
+    [20, "Subclass feature", "The greatest power of your Oath."]
+  ],
+  Ranger: [
+    [1, "Spellcasting", "Cast ranger spells using Wisdom."],
+    [1, "Favored Enemy", "Hunter's Mark is always ready, and some casts cost no slot."],
+    [1, "Weapon Mastery", "Use the special mastery property of some weapons you know."],
+    [2, "Deft Explorer", "Expertise in a skill, and more languages."],
+    [2, "Fighting Style", "A fighting specialty, like a bonus with bows."],
+    [3, "Ranger Subclass", "Choose your path (the SRD has the Hunter)."],
+    [4, ASI.split(":")[0], ASI],
+    [5, "Extra Attack", "Attack twice when you take the Attack action."],
+    [6, "Roving", "Your Speed goes up, and you can climb and swim."],
+    [7, "Subclass feature", "A new power from your subclass."],
+    [8, ASI.split(":")[0], ASI],
+    [9, "Expertise", "Double your proficiency bonus for two skills."],
+    [10, "Tireless", "Gain temporary HP and shake off exhaustion."],
+    [11, "Subclass feature", "A new power from your subclass."],
+    [12, ASI.split(":")[0], ASI],
+    [13, "Relentless Hunter", "Damage can't break your concentration on Hunter's Mark."],
+    [14, "Nature's Veil", "Turn invisible for a moment."],
+    [15, "Subclass feature", "A new power from your subclass."],
+    [16, ASI.split(":")[0], ASI],
+    [17, "Precise Hunter", "Advantage on attacks against your Hunter's Mark target."],
+    [18, "Feral Senses", "Sense nearby creatures even when you can't see them."],
+    [19, "Epic Boon", "A powerful feat for legendary heroes."],
+    [20, "Foe Slayer", "Hunter's Mark deals more damage."]
+  ],
+  Rogue: [
+    [1, "Expertise", "Double your proficiency bonus for two skills."],
+    [1, "Sneak Attack", "Once per turn, extra damage (1d6 per two rogue levels) with a finesse or ranged weapon when you have Advantage or a friend is next to the target."],
+    [1, "Thieves' Cant", "The secret language of rogues."],
+    [1, "Weapon Mastery", "Use the special mastery property of some weapons you know."],
+    [2, "Cunning Action", "A Bonus Action to Dash, Disengage or Hide."],
+    [3, "Rogue Subclass", "Choose your path (the SRD has the Thief)."],
+    [3, "Steady Aim", "A Bonus Action: if you haven't moved, gain Advantage on your next attack."],
+    [4, ASI.split(":")[0], ASI],
+    [5, "Cunning Strike", "Trade Sneak Attack dice for tricks like tripping or poisoning."],
+    [5, "Uncanny Dodge", "Use your Reaction to halve the damage of an attack."],
+    [6, "Expertise", "Double proficiency for two more skills."],
+    [7, "Evasion", "Take no damage (or half) from many area effects."],
+    [7, "Reliable Talent", "Trained skill checks can't roll lower than 10."],
+    [8, ASI.split(":")[0], ASI],
+    [9, "Subclass feature", "A new power from your subclass."],
+    [10, ASI.split(":")[0], ASI],
+    [11, "Improved Cunning Strike", "Use two Cunning Strike tricks at once."],
+    [12, ASI.split(":")[0], ASI],
+    [13, "Subclass feature", "A new power from your subclass."],
+    [14, "Devious Strikes", "New, stronger Cunning Strike tricks."],
+    [15, "Slippery Mind", "Proficiency in Wisdom and Charisma saves."],
+    [16, ASI.split(":")[0], ASI],
+    [17, "Subclass feature", "A new power from your subclass."],
+    [18, "Elusive", "Attacks can't have Advantage against you."],
+    [19, "Epic Boon", "A powerful feat for legendary heroes."],
+    [20, "Stroke of Luck", "Turn a failed d20 roll into a 20, once per rest."]
+  ],
+  Sorcerer: [
+    [1, "Spellcasting", "Cast sorcerer spells using Charisma."],
+    [1, "Innate Sorcery", "A Bonus Action: for a minute your spells are harder to resist and hit more often."],
+    [2, "Font of Magic", "Sorcery Points to make spell slots (and the other way round)."],
+    [2, "Metamagic", "Change how your spells work, like casting them silently or farther."],
+    [3, "Sorcerer Subclass", "Choose your origin (the SRD has Draconic Sorcery)."],
+    [4, ASI.split(":")[0], ASI],
+    [5, "Sorcerous Restoration", "Regain some Sorcery Points on a Short Rest."],
+    [6, "Subclass feature", "A new power from your origin."],
+    [7, "Sorcery Incarnate", "Use Innate Sorcery more often, with two Metamagic options at once."],
+    [8, ASI.split(":")[0], ASI],
+    [10, "Metamagic", "Learn more Metamagic options."],
+    [12, ASI.split(":")[0], ASI],
+    [14, "Subclass feature", "A new power from your origin."],
+    [16, ASI.split(":")[0], ASI],
+    [17, "Metamagic", "Learn more Metamagic options."],
+    [18, "Subclass feature", "A new power from your origin."],
+    [19, "Epic Boon", "A powerful feat for legendary heroes."],
+    [20, "Arcane Apotheosis", "Use one Metamagic option per turn for free while Innate Sorcery is on."]
+  ],
+  Warlock: [
+    [1, "Eldritch Invocations", "Special magical gifts from your patron."],
+    [1, "Pact Magic", "A few spell slots that come back after a Short Rest."],
+    [2, "Magical Cunning", "Regain some Pact Magic slots once per day."],
+    [3, "Warlock Subclass", "Choose your Patron (the SRD has the Fiend)."],
+    [4, ASI.split(":")[0], ASI],
+    [6, "Subclass feature", "A new power from your Patron."],
+    [8, ASI.split(":")[0], ASI],
+    [9, "Contact Patron", "Speak with your patron to ask questions."],
+    [10, "Subclass feature", "A new power from your Patron."],
+    [11, "Mystic Arcanum (level 6 spell)", "Cast one level 6 spell once per day."],
+    [12, ASI.split(":")[0], ASI],
+    [13, "Mystic Arcanum (level 7 spell)", "Cast one level 7 spell once per day."],
+    [14, "Subclass feature", "A new power from your Patron."],
+    [15, "Mystic Arcanum (level 8 spell)", "Cast one level 8 spell once per day."],
+    [16, ASI.split(":")[0], ASI],
+    [17, "Mystic Arcanum (level 9 spell)", "Cast one level 9 spell once per day."],
+    [19, "Epic Boon", "A powerful feat for legendary heroes."],
+    [20, "Eldritch Master", "Magical Cunning brings back all your Pact Magic slots."]
+  ],
+  Wizard: [
+    [1, "Spellcasting", "Cast wizard spells from your spellbook, using Intelligence."],
+    [1, "Ritual Adept", "Cast ritual spells straight from your spellbook."],
+    [1, "Arcane Recovery", "Once a day, regain some spell slots on a Short Rest."],
+    [2, "Scholar", "Expertise in one knowledge skill."],
+    [3, "Wizard Subclass", "Choose your school (the SRD has the Evoker)."],
+    [4, ASI.split(":")[0], ASI],
+    [5, "Memorize Spell", "Swap one prepared spell after a Short Rest."],
+    [6, "Subclass feature", "A new power from your school."],
+    [8, ASI.split(":")[0], ASI],
+    [10, "Subclass feature", "A new power from your school."],
+    [12, ASI.split(":")[0], ASI],
+    [14, "Subclass feature", "A new power from your school."],
+    [16, ASI.split(":")[0], ASI],
+    [18, "Spell Mastery", "Cast one level 1 and one level 2 spell at will."],
+    [19, "Epic Boon", "A powerful feat for legendary heroes."],
+    [20, "Signature Spells", "Two level 3 spells are always ready, and free once per rest."]
+  ]
+};
+
+// The features a character has, class by class: [{ className, levels, features: [[level, name, text]] }]
+function getClassFeatures(character) {
+  return getClassLevels(character).map(function (entry) {
+    const all = CLASS_FEATURES[entry.name] || [];
+    return {
+      className: entry.name,
+      levels: entry.levels,
+      features: all.filter(function (f) { return f[0] <= entry.levels; })
+    };
+  });
+}
+
+// ---------------------------------------------------------------------
+// The numbers behind the features that matter in a fight. Worked out from the
+// class levels (a two-class hero uses each class's own levels).
+//   secondWind: { uses, heal }          (Fighter) Bonus Action, heal 1d10 + fighter level
+//   actionSurge: uses                   (Fighter 2+) one extra action, once per turn
+//   sneakDice: number of d6             (Rogue) once per turn
+//   steadyAim: true                     (Rogue 3+) Bonus Action: Advantage on your next attack if you haven't moved
+//   rage: { uses, bonus }               (Barbarian) Bonus Action; + damage on Strength weapon hits; half weapon damage
+//   layOnHands: pool of HP              (Paladin) Bonus Action, heal from the pool
+//   radiantStrikes: true                (Paladin 11+) +1d8 radiant on melee weapon hits
+//   focus: points                       (Monk 2+) Flurry of Blows costs 1: two unarmed strikes as a Bonus Action
+// ---------------------------------------------------------------------
+function getCombatFeatures(character) {
+  const f = {};
+  for (const entry of getClassLevels(character)) {
+    const n = entry.levels;
+    if (entry.name === "Fighter") {
+      f.secondWind = { uses: n >= 10 ? 4 : n >= 4 ? 3 : 2, heal: "1d10+" + n };
+      if (n >= 2) f.actionSurge = n >= 17 ? 2 : 1;
+    }
+    if (entry.name === "Rogue") {
+      f.sneakDice = Math.ceil(n / 2);
+      if (n >= 3) f.steadyAim = true;
+    }
+    if (entry.name === "Barbarian") {
+      f.rage = { uses: n >= 17 ? 6 : n >= 12 ? 5 : n >= 6 ? 4 : n >= 3 ? 3 : 2, bonus: n >= 16 ? 4 : n >= 9 ? 3 : 2 };
+    }
+    if (entry.name === "Paladin") {
+      f.layOnHands = 5 * n;
+      if (n >= 11) f.radiantStrikes = true;
+    }
+    if (entry.name === "Monk" && n >= 2) f.focus = n;
+  }
+  return f;
+}
+
 // "Fighter" or "Fighter 2 / Rogue 1"
 function classSummary(character) {
   const list = getClassLevels(character);

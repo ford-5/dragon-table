@@ -517,6 +517,7 @@
         game.moveLeft = game.hero.speed;
         game.actionUsed = false;
         game.bonusUsed = false;
+        if (game.featState) startFeatureTurn(game.featState);
         picked = null;
         const hasSpells = heroActionsWithRange().some(function (o) { return o.action.kind === "spell"; });
         coach("yourTurn", "🎯 It's your turn! Pick an attack" + (hasSpells ? " or a spell" : "") + " from the buttons above the map, then tap the monster. " +
@@ -587,6 +588,7 @@
         game.inCombat = false;
         game.moveLeft = Infinity;
         game.actionUsed = false;
+        if (game.featState) game.featState.raging = false;   // Rage ends when the fight does
         log("😮‍💨 The fight is over. Explore on: more monsters may be waiting.");
         if (game.hero.hp < game.hero.maxHp && game.hitDiceLeft > 0) log("🛌 Tip: hurt? Take a Short Rest (the button above the map) before the next room.");
         coach("fightOver", "🏆 You won the fight! You're exploring again, so you can move freely. Hurt? Press Short rest to heal a little. " +
@@ -680,7 +682,9 @@
         return averageDamage(b.action.attack.dmg) * (b.action.times || 1) - averageDamage(a.action.attack.dmg) * (a.action.times || 1);
       });
       const choice = usable[0].action;
-      const result = resolveAction(m.name, choice, [{ id: "hero", name: game.hero.name, ac: game.hero.ac, saves: {} }], { mode: "normal" });
+      const raging = game.featState && game.featState.raging;
+      const result = resolveAction(m.name, choice, [{ id: "hero", name: game.hero.name, ac: game.hero.ac, saves: {},
+        resist: raging ? ["bludgeoning", "piercing", "slashing"] : null }], { mode: "normal" });
       applyChanges(result);
       checkFightOver();
     }
@@ -688,15 +692,29 @@
     // =====================================================================
     // YOUR TURN: move, then one attack or spell
     // =====================================================================
+    // Second Wind uses, Rage on or off... (combat.js newFeatureState), kept on the game so it's saved too
+    function featState(profile) {
+      if (!game.featState) game.featState = newFeatureState(profile);
+      return game.featState;
+    }
+
     function heroActionsWithRange() {
       const c = heroRecord();
       if (!c) return [];
       const profile = makeCombatProfile(c);
       const weapons = getAttacks(c);
       const list = [];
-      for (const action of heroActions(profile)) {
+      for (const action of heroActions(profile, featState(profile))) {
+        if (action.kind === "feature") {
+          // Out of a fight, only healing features make sense
+          if (!game.inCombat && !action.heals && action.feature !== "secondWind") continue;
+          if (action.feature === "actionSurge" && !game.actionUsed) continue;      // only once your action is used
+          if (action.feature === "steadyAim" && game.moveLeft < game.hero.speed) continue;   // only if you haven't moved
+          list.push({ action: action, reach: action.feature === "flurry" ? 1 : 0, range: 0, profile: profile });
+          continue;
+        }
         if (action.kind === "weapon") {
-          const w = weapons.find(function (a) { return a.name === action.name; });
+          const w = weapons.find(function (a) { return a.name === action.attack.n; });
           const weapon = w && w.weapon;
           let reach = weapon && weapon.props.includes("Reach") ? 2 : 1;
           let range = 0;
@@ -732,8 +750,14 @@
     }
 
     function pickAction(option) {
-      if (!game || game.over || busy || game.actionUsed) return;
+      if (!game || game.over || busy) return;
+      if (option.action.bonus ? (game.inCombat && game.bonusUsed) : (game.inCombat && game.actionUsed && !option.action.free)) return;
       const spell = option.action.kind === "spell" ? option.action.spell : null;
+      // Features on yourself (Second Wind, Rage, Steady Aim, Action Surge, Lay On Hands) need no target
+      if (option.action.kind === "feature" && option.action.feature !== "flurry") {
+        doHeroAction(option, null);
+        return;
+      }
       if (spell && spell.level > 0 && !profileSlotChoices(option.profile, spell).length) {
         log("⚠️ No spell slots left for " + spell.n + ".");
         return;
@@ -764,7 +788,9 @@
 
       let targets = [];
       let mode = "normal";
-      if (spell && spell.heal) {
+      if (action.kind === "feature" && action.feature !== "flurry") {
+        targets = [game.hero];
+      } else if (spell && spell.heal) {
         targets = [game.hero];
       } else if (spell && /^Self/i.test(spell.range || "")) {
         // A cone or burst around you: every monster you can see within its size
@@ -777,7 +803,7 @@
         if (!canSee(game.hero, target)) { log("You can't see " + target.name + " from here: something is in the way."); return; }
         const inMelee = option.reach > 0 && d <= option.reach;
         const inRange = option.range > 0 && d <= option.range;
-        const longRange = action.kind === "weapon" && option.range > 0 && d <= option.range * 4;   // long range: up to 4× normal
+        const longRange = action.kind === "weapon" && !action.rider && option.range > 0 && d <= option.range * 4;   // long range: up to 4× normal
         if (!inMelee && !inRange && !longRange) {
           log(target.name + " is too far away for " + action.name + " (" + d * 5 + " ft).");
           return;
@@ -798,11 +824,21 @@
         }
       }
 
-      const c = heroRecord();
+      // A smite uses a slot only if the attack hits
+      let riderSlot = null;
+      if (action.rider) {
+        riderSlot = profileSlotChoices(option.profile, action.rider)[0] || null;
+        if (!riderSlot) { log("⚠️ No spell slots left for " + action.rider.n + "."); return; }
+      }
+
+      const state = featState(option.profile);
       const result = resolveAction(game.hero.name, action, targets.map(function (w) {
-        return { id: w.id, name: w.name, ac: w.ac, saves: w === game.hero ? option.profile.saves : monsterSaves(w.monster) };
-      }), { mode: mode, slotLevel: slot ? slot.level : 0, profile: option.profile });
+        return { id: w.id, name: w.name, ac: w.ac, hp: w.hp, maxHp: w.maxHp,
+                 saves: w === game.hero ? option.profile.saves : monsterSaves(w.monster) };
+      }), { mode: mode, slotLevel: slot ? slot.level : riderSlot ? riderSlot.level : 0, profile: option.profile,
+            state: state, selfId: "hero" });
       if (slot) updateHeroRecord(function (h) { spendSpellSlot(h, slot.kind, slot.level); });
+      if (riderSlot && result.riderUsed) updateHeroRecord(function (h) { spendSpellSlot(h, riderSlot.kind, riderSlot.level); });
       applyChanges(result);
       picked = null;
       if (action.kind === "weapon" || (spell && spell.atk)) {
@@ -811,7 +847,12 @@
       } else if (spell && spell.save) {
         coach("savedSpell", "✨ This spell made the monsters roll a saving throw against your spell's DC. Failing hurts more!");
       }
-      if (game.inCombat) game.actionUsed = true;
+      if (game.inCombat) {
+        if (result.usedAction) game.actionUsed = true;
+        if (result.usedBonus) game.bonusUsed = true;
+        if (result.extraAction) game.actionUsed = false;   // Action Surge
+        if (result.noMove) game.moveLeft = 0;              // Steady Aim
+      }
       checkWakeUps();   // the noise wakes up anyone who can see you
       if (!checkFightOver()) render();
     }
@@ -908,6 +949,8 @@
       const healed = Math.max(roll + game.conMod, 1);
       game.hitDiceLeft--;
       game.hero.hp = Math.min(game.hero.hp + healed, game.hero.maxHp);
+      const c = heroRecord();
+      if (c && game.featState) shortRestFeatures(game.featState, makeCombatProfile(c));   // Second Wind, Action Surge, Focus, Rage
       updateHeroRecord(function (c) { c.hp = sheetHp(c); });
       log("🛌 Short rest: you spend a Hit Die. 🎲 " + roll + " " + formatBonus(game.conMod) + " = +" + healed + " HP → " +
         game.hero.hp + "/" + game.hero.maxHp + ". (" + game.hitDiceLeft + " Hit Dice left for this adventure.)");
@@ -1148,7 +1191,8 @@
       else if (picked) hint = "🎯 Tap a monster to use " + picked.action.name + ". (Tap the floor to cancel.)";
       else if (!game.inCombat) hint = "🧭 Exploring: tap a lit square to walk there. Monsters that see you will attack.";
       else hint = "🎯 Your turn! Move: " + game.moveLeft * 5 + " ft left (tap a glowing square). Action: " +
-        (game.actionUsed ? "used." : "pick one below, then tap a monster.");
+        (game.actionUsed ? "used." : "pick one below, then tap a monster.") + " Bonus action: " + (game.bonusUsed ? "used." : "free.") +
+        (game.featState && game.featState.raging ? " 😤 Raging!" : "");
       el("turnHint").textContent = hint;
 
       const buttons = el("actionButtons");
@@ -1172,8 +1216,11 @@
           buttons.append(drink);
         }
       }
-      if (myTurn && !game.actionUsed) {
+      if (myTurn) {
         for (const option of heroActionsWithRange()) {
+          const a = option.action;
+          // Show what can still be done this turn: bonus actions until the bonus is used, the rest until the action is
+          if (game.inCombat && (a.bonus ? game.bonusUsed : (game.actionUsed && !a.free))) continue;
           const b = document.createElement("button");
           b.className = "small-button" + (picked && picked.action.key === option.action.key ? " picked" : "");
           b.textContent = option.action.label;

@@ -1195,8 +1195,23 @@
       features.innerHTML = "";
       const species = findByName(SPECIES, c.species);
       const background = findByName(BACKGROUNDS, c.background);
-      for (const entry of getClassLevels(c)) {
-        if (entry.data) addFeatureList(features, entry.name + " features (level 1)", entry.data.features);
+      // Every class feature up to the hero's level (rules.js CLASS_FEATURES), newest at the bottom.
+      // Click one to read what it does.
+      for (const group of getClassFeatures(c)) {
+        const heading = document.createElement("h3");
+        heading.className = "section-label";
+        heading.textContent = group.className + " features (level " + group.levels + ")";
+        features.append(heading);
+        for (const [level, name, text] of group.features) {
+          const details = document.createElement("details");
+          details.className = "condition feature-item";
+          const summary = document.createElement("summary");
+          summary.textContent = "Lv " + level + " · " + name;
+          const p = document.createElement("p");
+          p.textContent = text;
+          details.append(summary, p);
+          features.append(details);
+        }
       }
       if (species)    addFeatureList(features, c.species + " traits", species.traits);
       if (background) addFeatureList(features, c.background + " background", ["Feat: " + background.feat, "Tool proficiency: " + background.tool]);

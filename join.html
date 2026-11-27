@@ -88,6 +88,7 @@
         <select id="actionPick" aria-label="Your attack or spell"></select>
         <select id="slotPick" class="hidden" aria-label="Spell slot"></select>
         <div id="targetPick" class="action-controls"></div>
+        <label class="hint hidden" id="allyNearRow"><input type="checkbox" id="allyNearBox"> A friend is right next to the target (for Sneak Attack)</label>
         <button id="actBtn">⚔️ Do it</button>
       </div>
       <pre id="myResult" class="action-result hidden"></pre>
@@ -407,7 +408,15 @@
         }
         order.push(entry);
       }
-      combat = { round: cleanNumber(data.round, 0, 999, 0), started: data.started === true, order: order, yourTurn: data.yourTurn === true };
+      // My class features left (Second Wind uses, raging...), as the GM's screen keeps them: numbers only
+      let state = null;
+      if (data.state && typeof data.state === "object") {
+        state = {};
+        for (const key of ["secondWind", "actionSurge", "rage", "layOnHands", "focus"]) state[key] = cleanNumber(data.state[key], 0, 200, 0);
+        for (const key of ["raging", "aimed", "sneakUsed", "surged"]) state[key] = data.state[key] === true;
+      }
+      combat = { round: cleanNumber(data.round, 0, 999, 0), started: data.started === true, order: order, yourTurn: data.yourTurn === true,
+                 canAct: data.canAct === true, canBonus: data.canBonus === true, state: state };
       if (!combat.yourTurn) waitingForGm = false;
       renderCombat();
     }
@@ -445,9 +454,16 @@
       return hero ? makeCombatProfile(hero) : null;
     }
 
-    function fillMyActions() {
+    // What I can still do this turn: bonus actions while my bonus action is free, the rest while my action is
+    function myActions() {
       const profile = myProfile();
-      const actions = heroActions(profile);
+      return heroActions(profile, combat && combat.state ? combat.state : undefined).filter(function (a) {
+        return a.bonus ? combat.canBonus : (combat.canAct || a.free);
+      });
+    }
+
+    function fillMyActions() {
+      const actions = myActions();
       const pick = el("actionPick");
       const old = pick.value;
       pick.innerHTML = "";
@@ -457,12 +473,17 @@
     }
 
     function chosenAction() {
-      return heroActions(myProfile()).find(function (a) { return a.key === el("actionPick").value; }) || null;
+      return myActions().find(function (a) { return a.key === el("actionPick").value; }) || null;
     }
 
     function fillSlotsAndTargets() {
       const action = chosenAction();
       const profile = myProfile();
+      // Sneak Attack box: only for a rogue's finesse or ranged weapon
+      const sneaky = action && action.kind === "weapon" && action.attack.finesse && profile && profile.features && profile.features.sneakDice;
+      el("allyNearRow").classList.toggle("hidden", !sneaky);
+      // Features used on yourself (Second Wind, Rage...) need no target
+      el("targetPick").classList.toggle("hidden", Boolean(action && action.self));
       const slotPick = el("slotPick");
       slotPick.innerHTML = "";
       let slotLevel = 0;
@@ -509,11 +530,13 @@
       if (!action || !combat || !combat.yourTurn) return;
       const [slotKind, slotLevel] = (el("slotPick").value || ":").split(":");
       const targets = Array.from(el("targetPick").querySelectorAll("input:checked")).map(function (t) { return Number(t.value); });
-      if (!targets.length) {
+      if (!targets.length && !action.self) {
         showMyResult("Pick a target first.");
         return;
       }
-      send({ type: "action", action: action.key, slotKind: slotKind, slotLevel: Number(slotLevel) || 0, targets: targets });
+      const ally = el("allyNearBox");
+      send({ type: "action", action: action.key, slotKind: slotKind, slotLevel: Number(slotLevel) || 0, targets: targets,
+             allyNear: Boolean(ally && ally.checked && !ally.closest(".hidden")) });
       waitingForGm = true;
       showMyResult("⏳ Sent! Your GM's screen is rolling the dice…");
       renderCombat();

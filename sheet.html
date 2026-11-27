@@ -204,8 +204,9 @@
 
       // ----- Features -----
       const features = section("Features & traits");
-      for (const entry of getClassLevels(c)) {
-        if (entry.data) features.append(make("p", "", entry.name + " (level 1 features): " + entry.data.features.join(", ")));
+      for (const group of getClassFeatures(c)) {
+        features.append(make("p", "", group.className + " (level " + group.levels + "): " +
+          group.features.map(function (f) { return f[1] + " (" + f[0] + ")"; }).join(", ")));
       }
       const species = findByName(SPECIES, c.species);
       if (species) features.append(make("p", "", c.species + ": " + species.traits.join(", ")));

@@ -2808,3 +2808,192 @@ body.embedded.book-body .book-page {
   transform: translateY(-14px);
   outline: 2px solid #f3e6c8;
 }
+
+/* =====================================================================
+   THE PLAYER'S BIG SHEET (join.html)
+   ===================================================================== */
+.panel.table-wide {
+  max-width: 1000px;
+}
+
+.my-sheet {
+  margin: 8px 0 14px;
+  padding: 12px;
+  text-align: left;
+  border: 2px solid #c9a227;
+  border-radius: 12px;
+  background-color: #2f2117;
+}
+
+.sheet-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.sheet-name {
+  font-size: 24px;
+}
+
+.sheet-vitals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 6px;
+  margin: 10px 0 6px;
+}
+
+.vital {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px;
+  border: 1px solid #5a4630;
+  border-radius: 8px;
+  background-color: #3a281c;
+}
+
+.vital-value {
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.vital-label {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.vital.low .vital-value {
+  color: #ff8a80;
+}
+
+.sheet-hpbar {
+  height: 8px;
+  border-radius: 4px;
+  background-color: #1a120c;
+  overflow: hidden;
+}
+
+.sheet-hpfill {
+  height: 100%;
+  background-color: #4caf50;
+}
+
+.sheet-turn {
+  margin: 10px 0;
+  font-weight: bold;
+}
+
+.sheet-abilities {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+}
+
+@media (max-width: 560px) {
+  .sheet-abilities {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.ability-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+  padding: 6px 2px;
+  font-family: inherit;
+  background-color: #3a281c;
+  border: 1px solid #c9a227;
+}
+
+.ability-tile-name {
+  font-size: 12px;
+  letter-spacing: 0.05em;
+}
+
+.ability-tile-mod {
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.ability-tile-score {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.sheet-section {
+  margin-top: 12px;
+}
+
+.sheet-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 8px;
+}
+
+.sheet-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid #5a4630;
+  border-radius: 8px;
+  background-color: #3a281c;
+}
+
+.sheet-card.spell-card {
+  border-color: #6fa8dc;
+  background-color: #1f2a3a;
+}
+
+.sheet-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+}
+
+.sheet-use {
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.sheet-spell-level {
+  margin: 10px 0 4px;
+  font-weight: bold;
+  color: #c9a227;
+}
+
+.sheet-spell-text {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.sheet-slots {
+  font-size: 15px;
+  letter-spacing: 0.04em;
+}
+
+.sheet-skill-list .small-button.trained {
+  border-color: #6fbf73;
+}
+
+/* The "your turn" box glows when you tap something on your sheet */
+.flash {
+  animation: flash-glow 1.2s ease-out;
+}
+
+@keyframes flash-glow {
+  0% { box-shadow: 0 0 0 4px #ffde59; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+/* The GM's turn bar glows when a player acts */
+.turn-bar.player-acted {
+  animation: flash-glow 1.5s ease-out;
+}
+
+.action-result {
+  font-size: 13px;
+}

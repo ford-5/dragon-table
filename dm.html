@@ -871,6 +871,13 @@
       const slotUsed = slot && (!action.rider || result.riderUsed);
       if (slotUsed) spendSlotFor(member, slot, false);   // their device marks it when it gets the reply
       markTurnUsed(me, result);
+      // Show it on the GM's screen straight away: the player's card opens with the roll and the result
+      panelActorId = me.id;
+      panelActionKey = null;
+      const bar = document.getElementById("turnBar");
+      bar.classList.remove("player-acted");
+      void bar.offsetWidth;   // restart the glow
+      bar.classList.add("player-acted");
       applyResult(me, result);
       reply(true, result.lines.join("\n"), slotUsed ? { kind: slot.kind, level: slot.level } : null);
     }

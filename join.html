@@ -57,9 +57,13 @@
   </div>
 
   <!-- =============== STEP 2: at the table =============== -->
-  <div class="panel hidden" id="tablePanel">
+  <div class="panel hidden table-wide" id="tablePanel">
     <h2 id="tableTitle">At the table</h2>
     <p>❤️ Your HP (kept by your GM): <strong id="hpDisplay">–</strong></p>
+
+    <!-- MY HERO: the whole character sheet. Tap a weapon or spell to use it: on your turn in a
+         fight it goes to your GM's screen, which rolls it and deals the damage if it hits. -->
+    <section id="mySheet" class="my-sheet"></section>
 
     <!-- Music: appears when the GM starts it -->
     <div id="musicBox" class="voice-box hidden">
@@ -366,6 +370,7 @@
       } else if (data.type === "hp" && joined) {
         showHp(data.hp, data.maxHp);
         saveHpToSheet(data.hp);   // keep the character sheet in step with what the GM tracks
+        renderMySheet();
       } else if (data.type === "music" && joined) {
         handleMusic(data);
       } else if (data.type === "map" && joined) {
@@ -385,6 +390,228 @@
       } else if (data.type === "closed") {
         handleConnectionLost();
       }
+    }
+
+    // =====================================================================
+    // MY HERO: the big character sheet (it re-draws when HP, slots or the turn change)
+    // =====================================================================
+    function sheetEl(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+
+    function renderMySheet() {
+      const box = el("mySheet");
+      const hero = selectedHero();
+      box.innerHTML = "";
+      if (!hero) return;
+      const profile = makeCombatProfile(hero);
+      const maxHp = getMaxHp(hero);
+      const hp = Math.min(hero.hp === undefined ? maxHp : hero.hp, maxHp);
+
+      // --- The top: name and the numbers you need most ---
+      const head = sheetEl("div", "sheet-head");
+      head.append(sheetEl("strong", "sheet-name", hero.name));
+      head.append(sheetEl("span", "hint", "Level " + hero.level + " " + hero.species + " " + classSummary(hero)));
+      box.append(head);
+      const vitals = sheetEl("div", "sheet-vitals");
+      const vital = function (label, value, extra) {
+        const v = sheetEl("div", "vital" + (extra ? " " + extra : ""));
+        v.append(sheetEl("span", "vital-value", String(value)), sheetEl("span", "vital-label", label));
+        vitals.append(v);
+      };
+      vital("Hit Points", hp + "/" + maxHp, hp * 2 <= maxHp ? "low" : "");
+      vital("Armor Class", getAc(hero));
+      vital("Speed", getSpeed(hero) + " ft");
+      vital("Initiative", formatBonus(getModifier(getAbilityScore(hero, "dex"))));
+      vital("Proficiency", formatBonus(getProficiencyBonus(hero.level)));
+      vital("Passive Perception", getPassivePerception(hero));
+      box.append(vitals);
+      const bar = sheetEl("div", "sheet-hpbar");
+      const fill = sheetEl("div", "sheet-hpfill");
+      fill.style.width = Math.max(0, Math.min(1, hp / maxHp)) * 100 + "%";
+      bar.append(fill);
+      box.append(bar);
+
+      // --- What it's my turn to do (a reminder, right on the sheet) ---
+      const turnNote = sheetEl("p", "sheet-turn");
+      if (combat && combat.order.length) {
+        turnNote.textContent = combat.yourTurn
+          ? "🎯 It's your turn! Tap a weapon, spell or feature below." + (combat.canAct ? "" : " (Action used: bonus actions only.)")
+          : "⏳ A fight is on. Wait for your turn: your card in the turn order will light up.";
+      } else {
+        turnNote.textContent = "Tap a weapon or spell to roll it for your GM. In a fight, the GM's screen rolls it on your turn and deals the damage for you.";
+      }
+      box.append(turnNote);
+
+      // --- Abilities (tap to roll a check) ---
+      const abilities = sheetEl("div", "sheet-abilities");
+      for (const a of ABILITIES) {
+        const score = getAbilityScore(hero, a.key);
+        const b = sheetEl("button", "ability-tile");
+        b.append(sheetEl("span", "ability-tile-name", a.name.slice(0, 3).toUpperCase()), sheetEl("span", "ability-tile-mod", formatBonus(getModifier(score))),
+                 sheetEl("span", "ability-tile-score", score + " · save " + formatBonus(getSaveBonus(hero, a.key))));
+        b.title = "Roll a " + a.name + " check";
+        b.addEventListener("click", function () {
+          sendCheck(hero, getCheckList(hero).find(function (e) { return e.label === a.name + " check"; }));
+        });
+        abilities.append(b);
+      }
+      box.append(abilities);
+
+      // --- Attacks and features ---
+      const actions = heroActions(profile, combat && combat.state ? combat.state : undefined);
+      const fighting = sheetEl("div", "sheet-section");
+      fighting.append(sheetEl("h3", "section-label", "⚔️ Attacks & features"));
+      const cards = sheetEl("div", "sheet-cards");
+      for (const action of actions.filter(function (a) { return a.kind === "weapon" || a.kind === "feature"; })) {
+        cards.append(actionCard(action, action.kind === "feature" ? action.label.replace(/^\S+\s/, "") : null));
+      }
+      fighting.append(cards);
+      box.append(fighting);
+
+      // --- Spells, by level, with the slots left ---
+      const spellActions = actions.filter(function (a) { return a.kind === "spell"; });
+      const riders = actions.filter(function (a) { return a.rider; });
+      if (spellActions.length || riders.length) {
+        const spells = sheetEl("div", "sheet-section");
+        spells.append(sheetEl("h3", "section-label", "✨ Spells"));
+        const slots = getSpellSlotsLeft(hero), totals = getSpellSlotTotals(hero);
+        const slotText = totals.map(function (t, i) { return t ? "Level " + (i + 1) + ": " + "●".repeat(slots[i]) + "○".repeat(t - slots[i]) : ""; }).filter(Boolean);
+        const pact = getPactSlots(hero);
+        if (pact) slotText.push("Pact (level " + pact.level + "): " + "●".repeat(getPactSlotsLeft(hero)) + "○".repeat(pact.count - getPactSlotsLeft(hero)));
+        if (slotText.length) spells.append(sheetEl("p", "sheet-slots", "🔮 Spell slots: " + slotText.join("   ")));
+        for (let level = 0; level <= 9; level++) {
+          const here = spellActions.filter(function (a) { return a.spell.level === level; });
+          if (!here.length) continue;
+          spells.append(sheetEl("p", "sheet-spell-level", level === 0 ? "Cantrips (free, any time)" : "Level " + level));
+          const row = sheetEl("div", "sheet-cards");
+          for (const a of here) row.append(actionCard(a, null, a.spell));
+          spells.append(row);
+        }
+        box.append(spells);
+      }
+
+      // --- Equipment ---
+      const gear = sheetEl("div", "sheet-section");
+      gear.append(sheetEl("h3", "section-label", "🎒 Equipment"));
+      const armor = findByName(ARMOR, hero.armor);
+      gear.append(sheetEl("p", "", "Armor: " + (armor ? armor.name : "none") + (hero.shield ? " + Shield" : "") +
+        " · Weapons: " + ((hero.weapons || []).join(", ") || "none")));
+      if (hero.specialItem && hero.specialItem.name) {
+        gear.append(sheetEl("p", "", "✨ " + hero.specialItem.name + (hero.specialItem.powers ? ": " + hero.specialItem.powers : "")));
+      }
+      if (hero.inventory) gear.append(sheetEl("p", "sheet-inventory", "Backpack: " + hero.inventory));
+      box.append(gear);
+
+      // --- Skills (tap to roll) ---
+      const skills = sheetEl("details", "sheet-section");
+      skills.append(sheetEl("summary", "section-label", "🎯 Skills (tap one to roll it)"));
+      const skillRow = sheetEl("div", "sheet-skill-list");
+      for (const skill of SKILLS) {
+        const trained = (hero.proficientSkills || []).includes(skill.name);
+        const b = sheetEl("button", "small-button" + (trained ? " trained" : ""), skill.name + " " + formatBonus(getSkillBonus(hero, skill)));
+        b.addEventListener("click", function () {
+          sendCheck(hero, getCheckList(hero).find(function (e) { return e.label === skill.name; }));
+        });
+        skillRow.append(b);
+      }
+      skills.append(skillRow);
+      box.append(skills);
+    }
+
+    // One weapon / spell / feature card with its button.
+    function actionCard(action, text, spell) {
+      const card = sheetEl("div", "sheet-card" + (spell ? " spell-card" : ""));
+      const top = sheetEl("div", "sheet-card-top");
+      const usable = !combat || !combat.order.length || (combat.yourTurn && (action.bonus ? combat.canBonus : (combat.canAct || action.free)));
+      const button = sheetEl("button", "small-button sheet-use", spell ? "✨ Cast" : action.kind === "feature" ? "✅ Use" : "⚔️ Attack");
+      button.disabled = Boolean(combat && combat.order.length && !usable);
+      button.addEventListener("click", function () { useFromSheet(action); });
+      top.append(sheetEl("strong", "", spell ? spell.n : action.name), button);
+      card.append(top);
+      if (spell) {
+        card.append(sheetEl("span", "hint", spellShortInfo(spell) + " · " + spell.range + (action.bonus ? " · bonus action" : "")));
+        const more = sheetEl("details", "");
+        more.append(sheetEl("summary", "hint", "Read the spell"));
+        for (const line of spell.text || []) more.append(sheetEl("p", "sheet-spell-text", line));
+        card.append(more);
+      } else if (action.kind === "weapon") {
+        card.append(sheetEl("span", "hint", formatBonus(action.attack.toHit) + " to hit · " + action.attack.dmg + " " + String(action.attack.type || "").toLowerCase() +
+          (action.times > 1 ? " · attacks " + action.times + " times" : "") + (action.rider ? " · +" + action.rider.dmg + " " + action.rider.n + " on a hit" : "")));
+      } else if (text) {
+        card.append(sheetEl("span", "hint", text));
+      }
+      return card;
+    }
+
+    // A check from the sheet (abilities and skills): rolled here and shown to the GM.
+    function sendCheck(hero, entry) {
+      if (!entry) return;
+      const result = rollCharacterCheck(hero, entry, "normal", currentTarget());
+      addToFeed("You " + result.text);
+      send({ type: "roll", text: result.text });
+    }
+
+    // Using a weapon, spell or feature from the sheet.
+    function useFromSheet(action) {
+      // In a fight, on my turn: the GM's screen rolls it (so nobody can fake a roll) and deals the damage
+      if (combat && combat.order.length) {
+        if (!combat.yourTurn) { addToFeed("⏳ It isn't your turn yet."); return; }
+        const pick = el("actionPick");
+        fillMyActions();
+        if (![...pick.options].some(function (o) { return o.value === action.key; })) { addToFeed("You can't use that right now."); return; }
+        pick.value = action.key;
+        fillSlotsAndTargets();
+        if (action.self) { doMyAction(); return; }   // on yourself: no target to choose
+        el("myTurn").classList.remove("hidden");
+        el("myTurn").classList.add("flash");
+        setTimeout(function () { el("myTurn").classList.remove("flash"); }, 1200);
+        el("myTurn").scrollIntoView({ behavior: "smooth", block: "center" });
+        showMyResult("👉 Now tick who you aim at, then press ⚔️ Do it.");
+        return;
+      }
+      // Not in a fight: roll it here and tell the GM, who decides what happens
+      const hero = selectedHero();
+      const profile = makeCombatProfile(hero);
+      if (action.kind === "spell" && action.spell.level > 0) {
+        const choice = profileSlotChoices(profile, action.spell)[0];
+        if (!choice) { addToFeed("⚠️ No spell slots left for " + action.spell.n + "."); return; }
+        const list = loadCharacters();
+        const saved = list.find(function (h) { return h.id === hero.id; });
+        if (saved && spendSpellSlot(saved, choice.kind, choice.level)) {
+          saveCharacters(list);
+          send({ type: "update", character: makeSharedCharacter(saved) });
+        }
+      }
+      const target = currentTarget();
+      let text;
+      if (target || action.kind === "feature" || (action.kind === "spell" && !action.spell.atk)) {
+        // A number to beat is set (or nothing needs one): roll it fully, hit or miss
+        const result = resolveAction(hero.name, action, [{ id: 0, name: target ? "the target (AC " + target + ")" : "the target", ac: target || 10, saves: {}, hp: 0, maxHp: 0 }],
+          { profile: profile, state: newFeatureState(profile), selfId: 0, slotLevel: action.kind === "spell" ? action.spell.level : 0 });
+        text = result.lines.join(" ");
+      } else {
+        // No number yet: roll the attack and the damage, and let the GM say whether it hits
+        const bonus = action.kind === "weapon" ? action.attack.toHit : action.caster.atk;
+        const dice = action.kind === "weapon" ? action.attack.dmg : getSpellDamage(action.spell, { level: profile.level }, action.spell.level).dice;
+        const times = action.kind === "weapon" ? action.times || 1 : spellRepeats(action.spell, profile, action.spell.level);
+        const parts = [];
+        for (let i = 0; i < times; i++) {
+          const d20 = rollOneDie(20);
+          const damage = rollDiceText(dice, d20 === 20);
+          parts.push("🎲 " + (d20 + bonus) + " to hit (" + d20 + " " + formatBonus(bonus) + ")" + (d20 === 20 ? " CRITICAL!" : d20 === 1 ? " natural 1!" : "") +
+            ", " + damage.total + " damage if it hits");
+        }
+        text = hero.name + " uses " + (action.kind === "weapon" ? action.attack.n : action.spell.n) + ": " + parts.join("; ") + ". The GM says whether it hits.";
+      }
+      // The GM's feed already shows who it is, so the message starts after the name
+      const message = text.indexOf(hero.name + " ") === 0 ? text.slice(hero.name.length + 1) : text;
+      addToFeed("You: " + message);
+      send({ type: "roll", text: message });
+      renderMySheet();
     }
 
     // =====================================================================
@@ -419,6 +646,7 @@
                  canAct: data.canAct === true, canBonus: data.canBonus === true, state: state };
       if (!combat.yourTurn) waitingForGm = false;
       renderCombat();
+      renderMySheet();   // the buttons on the sheet follow whose turn it is
     }
 
     function renderCombat() {
@@ -550,9 +778,25 @@
 
     function handleActionResult(data) {
       waitingForGm = false;
-      showMyResult((data.ok === true ? "" : "⚠️ ") + cleanText(data.text, 1500));
+      const text = cleanText(data.text, 1500);
+      let headline = "";
+      if (data.ok === true) {
+        // Count the hits and misses, and add up the damage, for a big clear answer
+        const hits = (text.match(/→ (hit!|CRITICAL HIT!)/g) || []).length;
+        const misses = (text.match(/→ (miss\.|natural 1, miss\.)/g) || []).length;
+        let damage = 0;
+        for (const m of text.matchAll(/→ (?:hit!|CRITICAL HIT!) (\d+)/g)) damage += Number(m[1]);
+        for (const m of text.matchAll(/takes (\d+)\./g)) damage += Number(m[1]);
+        if (/CRITICAL HIT/.test(text)) headline = "💥 CRITICAL HIT! ";
+        else if (hits) headline = "✅ HIT! ";
+        else if (misses) headline = "❌ MISS. ";
+        if (damage) headline += damage + " damage dealt. ";
+        if (/heals (\d+)/.test(text)) headline += "💚 Healed! ";
+      }
+      showMyResult((data.ok === true ? headline + "\n" : "⚠️ ") + text);
       if (data.ok === true && data.spent) markSlotUsed(data.spent);
       renderCombat();
+      renderMySheet();
     }
 
     // The GM's screen spent one of my spell slots: mark it on my sheet too, and send the GM my sheet.
@@ -564,6 +808,7 @@
       if (!hero || !spendSpellSlot(hero, kind, level)) return;
       saveCharacters(list);
       send({ type: "update", character: makeSharedCharacter(hero) });
+      renderMySheet();
     }
 
     function enterTable(gameName, hp, maxHp) {
@@ -577,6 +822,7 @@
       fillCheckSelect(el("checkSelect"), hero);   // from play.js
       showHp(hp, maxHp);
       addToFeed("✅ The GM accepted you. Welcome, " + hero.name + "!");
+      renderMySheet();
     }
 
     function showHp(hp, maxHp) {

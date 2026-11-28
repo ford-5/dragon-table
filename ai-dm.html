@@ -825,13 +825,10 @@
       return "speechSynthesis" in window;
     }
 
-    // Pick a voice that matches the browser's language, if there is one.
+    // The voice for the Game Master's replies: the one chosen in the "Voice and speed" box,
+    // otherwise the best voice on this device (voice.js).
     function pickVoice() {
-      const voices = speechSynthesis.getVoices();
-      const language = (navigator.language || "en-US").toLowerCase();
-      return voices.find(function (v) { return v.lang.toLowerCase() === language; }) ||
-             voices.find(function (v) { return v.lang.toLowerCase().startsWith(language.slice(0, 2)); }) ||
-             null;
+      return Voice.pickVoice();
     }
 
     // Press once to read, press again to stop.
@@ -855,6 +852,7 @@
       sentences.forEach(function (sentence, i) {
         const utterance = new SpeechSynthesisUtterance(sentence.trim());
         utterance.lang = navigator.language || "en-US";
+        utterance.rate = Voice.readingSpeed();   // the speed chosen in the "Voice and speed" box
         if (voice) utterance.voice = voice;
         if (i === sentences.length - 1) {
           // After the last sentence, show the buttons as "Read aloud" again.
@@ -1152,6 +1150,8 @@
     for (const id of ["campaignName", "tone", "pickName", "pickPowers", "pickLooks"]) Voice.micButton(el(id));
     const howToSpeaker = Voice.speakButton(function () { return Voice.textOf(el("howToPlay")); });   // the lesson, read aloud
     if (howToSpeaker) el("howToPlay").append(howToSpeaker);
+    const howToVoice = Voice.voicePicker();   // "Voice and speed" for that 🔊 button
+    if (howToVoice) el("howToPlay").append(howToVoice);
     el("newBtn").addEventListener("click", newAdventure);
 
     // Ready-to-roll and music controls
@@ -1184,6 +1184,9 @@
       if (!el("autoRead").checked) stopSpeaking();
     });
     if (!canSpeak()) el("autoRead").parentElement.classList.add("hidden");
+    // "Voice and speed" for the Game Master's replies (null where speaking isn't possible)
+    const replyVoice = Voice.voicePicker();
+    if (replyVoice) el("voiceStatus").after(replyVoice);
 
     checkServer();
   </script>

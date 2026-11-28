@@ -1741,6 +1741,42 @@ body.embedded h1#pageTitle {
   margin: 0 0 10px;
 }
 
+/* The "Voice and speed" box (voice.js): a closed box that opens to a voice and a speed.
+   Long voice names must not push the box wider than a phone screen. */
+.voice-picker {
+  margin: 8px 0;
+  font-size: 0.95em;
+  max-width: 100%;
+  text-align: left;
+}
+
+.voice-picker summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.voice-picker-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 8px;
+  max-width: 100%;
+}
+
+.voice-picker label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.voice-picker select {
+  min-width: 0;
+  max-width: 100%;
+}
+
 /* =====================================================================
    GM SCREEN: one screen in three parts (dm.html)
    Phone: the middle (stage) comes first, then the side drawers below it.

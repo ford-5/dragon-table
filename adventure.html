@@ -340,6 +340,12 @@
     el("printBtn").addEventListener("click", function () {
       window.print();
     });
+    // "Voice and speed" for the Read aloud boxes. It sits above the adventure and is not printed.
+    const adventureVoice = Voice.voicePicker();
+    if (adventureVoice) {
+      adventureVoice.classList.add("no-print");
+      el("adv").before(adventureVoice);
+    }
     build();
   </script>
 

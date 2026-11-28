@@ -1389,6 +1389,9 @@
       if (!el("readFeed").checked) Voice.stop();
     });
     if (!Voice.canSpeak()) el("readFeed").parentElement.classList.add("hidden");
+    // "Voice and speed" for the GM's messages that are read aloud (null where speaking isn't possible)
+    const feedVoice = Voice.voicePicker();
+    if (feedVoice) el("readFeed").parentElement.after(feedVoice);
     el("sayText").addEventListener("keydown", function (event) {
       if (event.key === "Enter") say();
     });

@@ -735,6 +735,9 @@
       }
     }
 
+    // "Voice and speed" for the 🔊 buttons on the lessons (only once, above the list)
+    const lessonVoice = Voice.voicePicker();
+    if (lessonVoice) el("lessons").before(lessonVoice);
     renderLessons();
     renderProgress();
   </script>

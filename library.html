@@ -460,6 +460,10 @@
       RENDERERS[key](el("content"));
     }
 
+    // "Voice and speed" for the 🔊 buttons on each entry (only once, above the tabs)
+    const libraryVoice = Voice.voicePicker();
+    if (libraryVoice) el("tabs").before(libraryVoice);
+
     // library.html#monsters opens that tab; #spell-fireball opens a spell
     const hash = location.hash.replace("#", "");
     showTab(hash.startsWith("spell-") ? "spells" : (RENDERERS[hash] ? hash : "spells"));
